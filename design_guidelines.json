@@ -1,0 +1,94 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "design_context": "SaaS App / Dashboard",
+  "emotional_tone": "Trustworthy, transparent, precise, effortless.",
+  "typography": {
+    "heading_font": "Cabinet Grotesk",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "IBM Plex Mono",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tight leading-none font-bold text-[#111110]",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-semibold text-[#111110]",
+      "h3": "text-xl sm:text-2xl font-medium text-[#111110]",
+      "h4": "text-lg sm:text-xl font-medium text-[#111110]",
+      "body": "text-sm sm:text-base leading-relaxed text-[#5C5C59]",
+      "label": "text-xs tracking-[0.2em] uppercase font-semibold text-[#5C5C59]"
+    }
+  },
+  "colors": {
+    "background": {
+      "primary": "#F9F9F8",
+      "secondary": "#FFFFFF",
+      "tertiary": "#F0F0EE"
+    },
+    "text": {
+      "primary": "#111110",
+      "secondary": "#5C5C59",
+      "disabled": "#A1A19E"
+    },
+    "border": {
+      "default": "#E5E5E3",
+      "focus": "#001F54"
+    },
+    "brand": {
+      "primary": "#001F54",
+      "secondary": "#1A4331"
+    },
+    "status": {
+      "success": "#1A4331",
+      "warning": "#D4A373",
+      "error": "#E63946",
+      "info": "#002FA7"
+    }
+  },
+  "spacing_and_layout": {
+    "base_spacing": "Use p-6 or p-8 for standard padding. Generous whitespace to avoid clutter.",
+    "container_borders": "1px solid border-[#E5E5E3], sharp corners (rounded-sm or rounded-none). No heavy shadows.",
+    "grid_system": "The 'Control Room' Grid pattern. grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6.",
+    "alignment": "Strict left-alignment for text. Right-aligned for metrics/numbers in tables."
+  },
+  "components": {
+    "buttons": "Flat background, sharp edges (rounded-sm), text-xs uppercase tracking-wider font-semibold. Primary: bg-[#001F54] text-white hover:bg-[#001F54]/90.",
+    "cards": "bg-white border border-[#E5E5E3] rounded-sm p-6. No drop shadows unless interacting (hover:-translate-y-1 hover:shadow-md transition-all duration-200).",
+    "inputs": "Shadcn based. border border-[#E5E5E3] focus:ring-1 focus:ring-[#001F54] rounded-sm. Use standard form wrappers.",
+    "navigation": "Sidebar navigation with white background, 1px right border. Links should have subtle hover states (bg-[#F0F0EE] text-[#111110]).",
+    "tables": "Minimalist. No vertical borders. 1px bottom border per row (`border-b border-[#E5E5E3]`). Hover effect on rows (`hover:bg-[#F9F9F8]`).",
+    "activity_log": "Vertical timeline layout (Thread System). Left border for the thread line, dot indicators for agent nodes. Use mono font for AI raw data.",
+    "status_tags": "text-xs uppercase tracking-wider px-2 py-1 rounded-sm border border-current font-medium."
+  },
+  "motion": {
+    "hover": "transition-all duration-200 ease-in-out",
+    "click": "active:scale-95 transition-transform",
+    "entrance": "Staggered fade-up for list items.",
+    "progress": "Smooth width transitions for progress bars."
+  },
+  "media": {
+    "images": {
+      "user_avatar": {
+        "url": "https://images.unsplash.com/photo-1762522926157-bcc04bf0b10a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGNsZWFuJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzU2MDA4MDl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Professional Italian user avatar."
+      },
+      "abstract_texture": {
+        "url": "https://images.unsplash.com/photo-1761481755390-83999d790b95?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGNsZWFuJTIwd2hpdGUlMjBwYXBlciUyMHRleHR1cmV8ZW58MHx8fHwxNzc1NjAwODI2fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract white paper texture for dashboard headers or empty states."
+      }
+    },
+    "icons_library": "lucide-react"
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure text contrast meets APCA/WCAG standards. Do not use light gray text on white backgrounds.",
+    "test_attributes": "All interactive elements MUST have `data-testid` attribute (e.g., `data-testid='crea-pratica-button'`)."
+  },
+  "instructions_to_main_agent": [
+    "Build the UI entirely in Italian as per the problem statement (e.g., 'AIC – Artificial Commercialista', 'Nuova Pratica', 'Agenti AI', 'Carica Documenti').",
+    "Design for a SaaS App / Dashboard layout. Implement the 'Control Room' grid pattern (dense and functional).",
+    "The AI Activity Log is critical. Design it as a sophisticated vertical timeline or thread UI. Use `font-mono` (`IBM Plex Mono` or default monospace) for the agent outputs to give a technical, transparent feel.",
+    "Keep borders sharp (`rounded-sm` or `rounded-none`). No soft, large radii or glassmorphism.",
+    "Use standard `.js` and `.jsx` extensions (not `.tsx`).",
+    "Ensure the primary CTA ('Crea Pratica') uses the deep navy brand color (`#001F54`).",
+    "Include an 'Agenti AI' view with 4 distinct agents: Analysis, Validation, Document, Communication.",
+    "Add an upload zone for tax documents ('Carica Documenti') with a clean dashed border and neutral background.",
+    "Always apply `data-testid` attributes to critical functional elements for automated testing."
+  ]
+}

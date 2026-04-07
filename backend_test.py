@@ -1,0 +1,270 @@
+import requests
+import sys
+import json
+from datetime import datetime
+
+class AICAPITester:
+    def __init__(self, base_url="https://ai-practice-manager.preview.emergentagent.com"):
+        self.base_url = base_url
+        self.token = None
+        self.user_id = None
+        self.tests_run = 0
+        self.tests_passed = 0
+        self.session = requests.Session()
+
+    def run_test(self, name, method, endpoint, expected_status, data=None, files=None, headers=None):
+        """Run a single API test"""
+        url = f"{self.base_url}/api/{endpoint}"
+        test_headers = {'Content-Type': 'application/json'}
+        
+        if headers:
+            test_headers.update(headers)
+        
+        if self.token:
+            test_headers['Authorization'] = f'Bearer {self.token}'
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing {name}...")
+        print(f"   URL: {url}")
+        
+        try:
+            if method == 'GET':
+                response = self.session.get(url, headers=test_headers)
+            elif method == 'POST':
+                if files:
+                    # Remove Content-Type for file uploads
+                    test_headers.pop('Content-Type', None)
+                    response = self.session.post(url, files=files, headers=test_headers)
+                else:
+                    response = self.session.post(url, json=data, headers=test_headers)
+            elif method == 'PUT':
+                response = self.session.put(url, json=data, headers=test_headers)
+            elif method == 'DELETE':
+                response = self.session.delete(url, headers=test_headers)
+
+            success = response.status_code == expected_status
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    return success, response.json()
+                except:
+                    return success, {}
+            else:
+                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                try:
+                    error_data = response.json()
+                    print(f"   Error: {error_data}")
+                except:
+                    print(f"   Error: {response.text}")
+                return False, {}
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False, {}
+
+    def test_health_check(self):
+        """Test health endpoint"""
+        return self.run_test("Health Check", "GET", "health", 200)
+
+    def test_admin_login(self):
+        """Test admin login"""
+        success, response = self.run_test(
+            "Admin Login",
+            "POST",
+            "auth/login",
+            200,
+            data={"email": "admin@aic.it", "password": "Admin123!"}
+        )
+        if success and 'id' in response:
+            self.user_id = response['id']
+            print(f"   Admin ID: {self.user_id}")
+            return True
+        return False
+
+    def test_user_registration(self):
+        """Test user registration"""
+        test_email = f"test_{datetime.now().strftime('%H%M%S')}@test.it"
+        success, response = self.run_test(
+            "User Registration",
+            "POST",
+            "auth/register",
+            200,
+            data={
+                "email": test_email,
+                "password": "TestPass123!",
+                "name": "Test User"
+            }
+        )
+        return success
+
+    def test_get_current_user(self):
+        """Test get current user"""
+        return self.run_test("Get Current User", "GET", "auth/me", 200)
+
+    def test_dashboard_stats(self):
+        """Test dashboard stats"""
+        return self.run_test("Dashboard Stats", "GET", "dashboard/stats", 200)
+
+    def test_create_practice(self):
+        """Test creating a practice"""
+        success, response = self.run_test(
+            "Create Practice",
+            "POST",
+            "practices",
+            200,
+            data={
+                "practice_type": "vat_registration",
+                "description": "Test VAT registration",
+                "client_name": "Test Client",
+                "fiscal_code": "TSTCLT80A01H501Z",
+                "vat_number": "12345678901",
+                "additional_data": {"test": "data"}
+            }
+        )
+        if success and 'id' in response:
+            self.practice_id = response['id']
+            print(f"   Practice ID: {self.practice_id}")
+            return True
+        return False
+
+    def test_get_practices(self):
+        """Test getting practices list"""
+        return self.run_test("Get Practices", "GET", "practices", 200)
+
+    def test_get_practice_detail(self):
+        """Test getting practice detail"""
+        if hasattr(self, 'practice_id'):
+            return self.run_test("Get Practice Detail", "GET", f"practices/{self.practice_id}", 200)
+        return False
+
+    def test_update_practice(self):
+        """Test updating a practice"""
+        if hasattr(self, 'practice_id'):
+            return self.run_test(
+                "Update Practice",
+                "PUT",
+                f"practices/{self.practice_id}",
+                200,
+                data={
+                    "status": "processing",
+                    "description": "Updated description"
+                }
+            )
+        return False
+
+    def test_agents_info(self):
+        """Test getting agents info"""
+        return self.run_test("Agents Info", "GET", "agents/info", 200)
+
+    def test_execute_agent(self):
+        """Test executing an AI agent"""
+        if hasattr(self, 'practice_id'):
+            success, response = self.run_test(
+                "Execute Analysis Agent",
+                "POST",
+                "agents/execute",
+                200,
+                data={
+                    "agent_type": "analysis",
+                    "practice_id": self.practice_id,
+                    "input_data": {
+                        "query": "Analizza questa pratica di apertura partita IVA"
+                    }
+                }
+            )
+            if success:
+                print(f"   Agent Response: {response.get('output', 'No output')[:100]}...")
+            return success
+        return False
+
+    def test_activity_logs(self):
+        """Test getting activity logs"""
+        return self.run_test("Activity Logs", "GET", "activity-logs", 200)
+
+    def test_notifications(self):
+        """Test getting notifications"""
+        return self.run_test("Notifications", "GET", "notifications", 200)
+
+    def test_document_upload(self):
+        """Test document upload"""
+        if hasattr(self, 'practice_id'):
+            # Create a test file
+            test_content = b"Test document content"
+            files = {'file': ('test.txt', test_content, 'text/plain')}
+            
+            success, response = self.run_test(
+                "Document Upload",
+                "POST",
+                f"documents/upload/{self.practice_id}",
+                200,
+                files=files
+            )
+            if success and 'id' in response:
+                self.document_id = response['id']
+                print(f"   Document ID: {self.document_id}")
+                return True
+            return False
+        return False
+
+    def test_get_practice_documents(self):
+        """Test getting practice documents"""
+        if hasattr(self, 'practice_id'):
+            return self.run_test("Get Practice Documents", "GET", f"documents/practice/{self.practice_id}", 200)
+        return False
+
+    def test_logout(self):
+        """Test logout"""
+        return self.run_test("Logout", "POST", "auth/logout", 200)
+
+def main():
+    print("🚀 Starting AIC API Testing...")
+    tester = AICAPITester()
+
+    # Test sequence
+    tests = [
+        ("Health Check", tester.test_health_check),
+        ("Admin Login", tester.test_admin_login),
+        ("Get Current User", tester.test_get_current_user),
+        ("Dashboard Stats", tester.test_dashboard_stats),
+        ("User Registration", tester.test_user_registration),
+        ("Create Practice", tester.test_create_practice),
+        ("Get Practices", tester.test_get_practices),
+        ("Get Practice Detail", tester.test_get_practice_detail),
+        ("Update Practice", tester.test_update_practice),
+        ("Agents Info", tester.test_agents_info),
+        ("Execute Agent", tester.test_execute_agent),
+        ("Activity Logs", tester.test_activity_logs),
+        ("Notifications", tester.test_notifications),
+        ("Document Upload", tester.test_document_upload),
+        ("Get Practice Documents", tester.test_get_practice_documents),
+        ("Logout", tester.test_logout)
+    ]
+
+    failed_tests = []
+    
+    for test_name, test_func in tests:
+        try:
+            success = test_func()
+            if not success:
+                failed_tests.append(test_name)
+        except Exception as e:
+            print(f"❌ {test_name} - Exception: {str(e)}")
+            failed_tests.append(test_name)
+
+    # Print results
+    print(f"\n📊 Test Results:")
+    print(f"   Tests run: {tester.tests_run}")
+    print(f"   Tests passed: {tester.tests_passed}")
+    print(f"   Tests failed: {len(failed_tests)}")
+    print(f"   Success rate: {(tester.tests_passed/tester.tests_run*100):.1f}%")
+    
+    if failed_tests:
+        print(f"\n❌ Failed tests: {', '.join(failed_tests)}")
+        return 1
+    else:
+        print(f"\n✅ All tests passed!")
+        return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

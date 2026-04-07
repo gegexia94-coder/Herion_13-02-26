@@ -110,7 +110,7 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Token non valido")
 
 # Create the main app
-app = FastAPI(title="AIC - Artificial Commercialista")
+app = FastAPI(title="TaxPilot - Assistente Fiscale Intelligente")
 api_router = APIRouter(prefix="/api")
 
 # ========================
@@ -137,9 +137,16 @@ class PracticeCreate(BaseModel):
     practice_type: str  # vat_registration, vat_closure, tax_declaration
     description: str
     client_name: str
+    client_type: str = "private"  # private, freelancer, company
     fiscal_code: Optional[str] = None
-    vat_number: Optional[str] = None
+    vat_number: Optional[str] = None  # Only required for freelancer/company
     additional_data: Optional[dict] = {}
+
+CLIENT_TYPES = {
+    "private": "Privato",
+    "freelancer": "Libero Professionista",
+    "company": "Azienda"
+}
 
 class PracticeUpdate(BaseModel):
     description: Optional[str] = None
@@ -254,8 +261,10 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "practice_type_label": PRACTICE_TYPES.get(practice.practice_type, practice.practice_type),
         "description": practice.description,
         "client_name": practice.client_name,
+        "client_type": practice.client_type,
+        "client_type_label": CLIENT_TYPES.get(practice.client_type, practice.client_type),
         "fiscal_code": practice.fiscal_code,
-        "vat_number": practice.vat_number,
+        "vat_number": practice.vat_number if practice.client_type in ["freelancer", "company"] else None,
         "additional_data": practice.additional_data or {},
         "status": "pending",
         "status_label": "In Attesa",
@@ -408,7 +417,7 @@ AGENT_DESCRIPTIONS = {
     "analysis": {
         "name": "Agente di Analisi",
         "description": "Analizza la situazione dell'utente e determina la pratica fiscale necessaria.",
-        "system_message": """Sei l'Agente di Analisi di AIC - Artificial Commercialista.
+        "system_message": """Sei l'Agente di Analisi di TaxPilot - Assistente Fiscale Intelligente.
 Il tuo compito è analizzare la situazione fiscale dell'utente e determinare quale pratica è necessaria.
 Rispondi SEMPRE in italiano.
 Sii chiaro, trasparente e spiega ogni passaggio del tuo ragionamento.
@@ -422,7 +431,7 @@ Format della risposta:
     "validation": {
         "name": "Agente di Validazione",
         "description": "Verifica la completezza e correttezza dei dati inseriti.",
-        "system_message": """Sei l'Agente di Validazione di AIC - Artificial Commercialista.
+        "system_message": """Sei l'Agente di Validazione di TaxPilot - Assistente Fiscale Intelligente.
 Il tuo compito è verificare che i dati inseriti siano completi e corretti.
 Rispondi SEMPRE in italiano.
 Identifica eventuali errori o dati mancanti.
@@ -436,7 +445,7 @@ Format della risposta:
     "document": {
         "name": "Agente Documenti",
         "description": "Estrae dati strutturati dai documenti e genera bozze.",
-        "system_message": """Sei l'Agente Documenti di AIC - Artificial Commercialista.
+        "system_message": """Sei l'Agente Documenti di TaxPilot - Assistente Fiscale Intelligente.
 Il tuo compito è analizzare i documenti caricati ed estrarre informazioni strutturate.
 Rispondi SEMPRE in italiano.
 Format della risposta:
@@ -448,7 +457,7 @@ Format della risposta:
     "communication": {
         "name": "Agente Comunicazione",
         "description": "Spiega chiaramente all'utente cosa sta succedendo.",
-        "system_message": """Sei l'Agente Comunicazione di AIC - Artificial Commercialista.
+        "system_message": """Sei l'Agente Comunicazione di TaxPilot - Assistente Fiscale Intelligente.
 Il tuo compito è spiegare in modo chiaro e semplice all'utente lo stato della pratica.
 Rispondi SEMPRE in italiano, usando un linguaggio semplice e accessibile.
 Evita termini tecnici quando possibile.
@@ -694,7 +703,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "AIC - Artificial Commercialista API", "version": "1.0.0"}
+    return {"message": "TaxPilot API - Assistente Fiscale Intelligente", "version": "1.0.0"}
 
 @api_router.get("/health")
 async def health():
@@ -752,7 +761,7 @@ async def startup():
     # Write test credentials
     Path("/app/memory").mkdir(exist_ok=True)
     with open("/app/memory/test_credentials.md", "w") as f:
-        f.write(f"""# Test Credentials for AIC
+        f.write(f"""# Test Credentials for TaxPilot
 
 ## Admin Account
 - Email: {admin_email}
@@ -764,9 +773,14 @@ async def startup():
 - POST /api/auth/login - Login
 - POST /api/auth/logout - Logout
 - GET /api/auth/me - Get current user
+
+## Client Types
+- private: Privato (no VAT number required)
+- freelancer: Libero Professionista (VAT number required)
+- company: Azienda (VAT number required)
 """)
     
-    logger.info("AIC - Artificial Commercialista started successfully")
+    logger.info("TaxPilot - Assistente Fiscale Intelligente started successfully")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

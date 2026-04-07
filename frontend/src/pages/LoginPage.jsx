@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileText, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { TaxPilotLogo } from '@/components/TaxPilotLogo';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -33,14 +34,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#F9F9F8] flex" data-testid="login-page">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#001F54] text-white p-12 flex-col justify-between">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#0F4C5C] to-[#0A3640] text-white p-12 flex-col justify-between">
         <div>
           <div className="flex items-center gap-3 mb-12">
-            <FileText className="w-10 h-10" />
-            <span className="text-2xl font-bold tracking-tight">AIC</span>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4" y="4" width="40" height="40" rx="8" fill="#5DD9C1" fillOpacity="0.2" />
+              <path d="M24 10L38 24L24 38L18 32L26 24L18 16L24 10Z" fill="#5DD9C1" />
+              <rect x="10" y="18" width="6" height="6" rx="1" fill="#5DD9C1" opacity="0.7" />
+              <rect x="10" y="26" width="6" height="6" rx="1" fill="#5DD9C1" opacity="0.5" />
+            </svg>
+            <span className="text-2xl font-bold tracking-tight">TaxPilot</span>
           </div>
           <h1 className="text-4xl font-bold leading-tight mb-6">
-            Artificial<br />Commercialista
+            Il tuo assistente<br />fiscale intelligente
           </h1>
           <p className="text-lg text-white/80 leading-relaxed">
             Gestisci le tue pratiche fiscali con l'aiuto dell'intelligenza artificiale.
@@ -48,17 +54,26 @@ export default function LoginPage() {
           </p>
         </div>
         <div className="space-y-4 text-sm text-white/60">
-          <p>Ogni azione AI è registrata e spiegabile</p>
-          <p>Nessuna raccolta dati senza consenso</p>
+          <p className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#5DD9C1]"></span>
+            Ogni azione AI è registrata e spiegabile
+          </p>
+          <p className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#5DD9C1]"></span>
+            Nessuna raccolta dati senza consenso
+          </p>
+          <p className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#5DD9C1]"></span>
+            Supporto per privati, professionisti e aziende
+          </p>
         </div>
       </div>
 
       {/* Right Panel - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <FileText className="w-8 h-8 text-[#001F54]" />
-            <span className="text-xl font-bold text-[#001F54]">AIC</span>
+          <div className="lg:hidden mb-8">
+            <TaxPilotLogo size="lg" />
           </div>
           
           <h2 className="heading-2 mb-2">Accedi</h2>
@@ -82,7 +97,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nome@esempio.it"
                 required
-                className="border-[#E5E5E3] focus:ring-1 focus:ring-[#001F54] rounded-sm"
+                className="border-[#E5E5E3] focus:ring-1 focus:ring-[#0F4C5C] rounded-sm"
                 data-testid="login-email-input"
               />
             </div>
@@ -97,7 +112,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="border-[#E5E5E3] focus:ring-1 focus:ring-[#001F54] rounded-sm pr-10"
+                  className="border-[#E5E5E3] focus:ring-1 focus:ring-[#0F4C5C] rounded-sm pr-10"
                   data-testid="login-password-input"
                 />
                 <button
@@ -113,7 +128,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#001F54] hover:bg-[#001F54]/90 text-white rounded-sm h-11"
+              className="w-full bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white rounded-sm h-11"
               data-testid="login-submit-btn"
             >
               {loading ? 'Accesso in corso...' : 'Accedi'}
@@ -123,7 +138,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center body-text">
             Non hai un account?{' '}
-            <Link to="/register" className="text-[#001F54] font-medium hover:underline" data-testid="register-link">
+            <Link to="/register" className="text-[#0F4C5C] font-medium hover:underline" data-testid="register-link">
               Registrati
             </Link>
           </p>

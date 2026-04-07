@@ -32,10 +32,10 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_COLORS = {
-  auth: '#001F54',
+  auth: '#0F4C5C',
   practice: '#1A4331',
   document: '#D4A373',
-  agent: '#002FA7',
+  agent: '#5DD9C1',
   notification: '#E63946'
 };
 
@@ -97,7 +97,7 @@ export default function ActivityLogPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#001F54]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
       </div>
     );
   }

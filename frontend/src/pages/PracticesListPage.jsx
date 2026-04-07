@@ -107,7 +107,7 @@ export default function PracticesListPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#001F54]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
       </div>
     );
   }
@@ -121,7 +121,7 @@ export default function PracticesListPage() {
           <p className="body-text">Gestisci tutte le tue pratiche fiscali</p>
         </div>
         <Link to="/practices/new">
-          <Button className="bg-[#001F54] hover:bg-[#001F54]/90 rounded-sm" data-testid="create-practice-btn">
+          <Button className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm" data-testid="create-practice-btn">
             <Plus className="w-4 h-4 mr-2" />
             Nuova Pratica
           </Button>
@@ -245,7 +245,7 @@ export default function PracticesListPage() {
           </p>
           {practices.length === 0 && (
             <Link to="/practices/new">
-              <Button className="bg-[#001F54] hover:bg-[#001F54]/90 rounded-sm" data-testid="empty-create-btn">
+              <Button className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm" data-testid="empty-create-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 Crea Prima Pratica
               </Button>

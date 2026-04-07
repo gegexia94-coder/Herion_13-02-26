@@ -61,7 +61,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#001F54]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function DashboardPage() {
           <p className="body-text">Panoramica delle tue pratiche fiscali</p>
         </div>
         <Link to="/practices/new">
-          <Button className="bg-[#001F54] hover:bg-[#001F54]/90 rounded-sm" data-testid="create-practice-btn">
+          <Button className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm" data-testid="create-practice-btn">
             <Plus className="w-4 h-4 mr-2" />
             Nuova Pratica
           </Button>
@@ -87,7 +87,7 @@ export default function DashboardPage() {
         <div className="aic-card animate-fade-in stagger-1">
           <div className="flex items-center justify-between mb-4">
             <span className="label-text">Totale Pratiche</span>
-            <FileText className="w-5 h-5 text-[#001F54]" />
+            <FileText className="w-5 h-5 text-[#0F4C5C]" />
           </div>
           <p className="text-3xl font-bold text-[#111110]" data-testid="stat-total">{stats?.total_practices || 0}</p>
         </div>
@@ -103,9 +103,9 @@ export default function DashboardPage() {
         <div className="aic-card animate-fade-in stagger-3">
           <div className="flex items-center justify-between mb-4">
             <span className="label-text">In Elaborazione</span>
-            <TrendingUp className="w-5 h-5 text-[#002FA7]" />
+            <TrendingUp className="w-5 h-5 text-[#5DD9C1]" />
           </div>
-          <p className="text-3xl font-bold text-[#002FA7]" data-testid="stat-processing">{stats?.processing || 0}</p>
+          <p className="text-3xl font-bold text-[#5DD9C1]" data-testid="stat-processing">{stats?.processing || 0}</p>
         </div>
 
         <div className="aic-card animate-fade-in stagger-4">

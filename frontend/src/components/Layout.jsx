@@ -9,14 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { TaxPilotLogo } from '@/components/TaxPilotLogo';
 import { 
-  FileText,
   LayoutDashboard,
   FolderOpen,
   Bot,
   History,
   LogOut,
-  User,
   Menu,
   X,
   ChevronDown
@@ -25,7 +24,7 @@ import {
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/practices', label: 'Pratiche', icon: FolderOpen },
-  { path: '/agents', label: 'Agenti AI', icon: Bot },
+  { path: '/agents', label: 'TaxPilot AI', icon: Bot },
   { path: '/activity-log', label: 'Log Attività', icon: History },
 ];
 
@@ -46,9 +45,14 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <NavLink to="/dashboard" className="flex items-center gap-3" data-testid="logo-link">
-              <FileText className="w-8 h-8 text-[#001F54]" />
-              <span className="text-xl font-bold text-[#001F54] hidden sm:inline">AIC</span>
+            <NavLink to="/dashboard" className="flex items-center gap-2" data-testid="logo-link">
+              <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="40" height="40" rx="8" fill="#0F4C5C" />
+                <path d="M24 10L38 24L24 38L18 32L26 24L18 16L24 10Z" fill="#5DD9C1" />
+                <rect x="10" y="18" width="6" height="6" rx="1" fill="#5DD9C1" opacity="0.7" />
+                <rect x="10" y="26" width="6" height="6" rx="1" fill="#5DD9C1" opacity="0.5" />
+              </svg>
+              <span className="text-xl font-bold text-[#0F4C5C] hidden sm:inline">TaxPilot</span>
             </NavLink>
 
             {/* Desktop Navigation */}
@@ -60,7 +64,7 @@ export default function Layout() {
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
                       isActive 
-                        ? 'bg-[#001F54] text-white' 
+                        ? 'bg-[#0F4C5C] text-white' 
                         : 'text-[#5C5C59] hover:bg-[#F0F0EE] hover:text-[#111110]'
                     }`
                   }
@@ -77,7 +81,7 @@ export default function Layout() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2" data-testid="user-menu-btn">
-                    <div className="w-8 h-8 rounded-full bg-[#001F54] flex items-center justify-center text-white text-sm font-medium">
+                    <div className="w-8 h-8 rounded-full bg-[#0F4C5C] flex items-center justify-center text-white text-sm font-medium">
                       {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
                     <span className="hidden sm:inline text-sm font-medium text-[#111110]">
@@ -122,7 +126,7 @@ export default function Layout() {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-medium ${
                     isActive 
-                      ? 'bg-[#001F54] text-white' 
+                      ? 'bg-[#0F4C5C] text-white' 
                       : 'text-[#5C5C59] hover:bg-[#F0F0EE]'
                   }`
                 }
@@ -146,8 +150,11 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-[#5C5C59]">
-              <FileText className="w-4 h-4" />
-              <span>AIC - Artificial Commercialista</span>
+              <svg width="16" height="16" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="40" height="40" rx="8" fill="#0F4C5C" />
+                <path d="M24 10L38 24L24 38L18 32L26 24L18 16L24 10Z" fill="#5DD9C1" />
+              </svg>
+              <span>TaxPilot - Assistente Fiscale Intelligente</span>
             </div>
             <p className="text-xs text-[#A1A19E]">
               Trasparenza totale • Nessuna logica nascosta • Ogni azione registrata

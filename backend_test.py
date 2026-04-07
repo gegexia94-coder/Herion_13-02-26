@@ -106,26 +106,93 @@ class AICAPITester:
         """Test dashboard stats"""
         return self.run_test("Dashboard Stats", "GET", "dashboard/stats", 200)
 
-    def test_create_practice(self):
-        """Test creating a practice"""
+    def test_create_practice_private(self):
+        """Test creating a practice for private client (no VAT)"""
         success, response = self.run_test(
-            "Create Practice",
+            "Create Practice - Private Client",
+            "POST",
+            "practices",
+            200,
+            data={
+                "practice_type": "tax_declaration",
+                "description": "Test tax declaration for private client",
+                "client_name": "Mario Rossi",
+                "client_type": "private",
+                "fiscal_code": "RSSMRA80A01H501Z",
+                "additional_data": {"test": "data"}
+            }
+        )
+        if success and 'id' in response:
+            self.practice_id_private = response['id']
+            print(f"   Private Practice ID: {self.practice_id_private}")
+            # Verify client type is correctly stored
+            if response.get('client_type') == 'private' and response.get('client_type_label') == 'Privato':
+                print(f"   ✅ Client type correctly set: {response.get('client_type_label')}")
+                return True
+            else:
+                print(f"   ❌ Client type mismatch: {response.get('client_type_label')}")
+        return False
+
+    def test_create_practice_freelancer(self):
+        """Test creating a practice for freelancer (with VAT)"""
+        success, response = self.run_test(
+            "Create Practice - Freelancer",
             "POST",
             "practices",
             200,
             data={
                 "practice_type": "vat_registration",
-                "description": "Test VAT registration",
-                "client_name": "Test Client",
-                "fiscal_code": "TSTCLT80A01H501Z",
+                "description": "Test VAT registration for freelancer",
+                "client_name": "Giulia Bianchi",
+                "client_type": "freelancer",
+                "fiscal_code": "BNCGLI85M01H501Z",
                 "vat_number": "12345678901",
                 "additional_data": {"test": "data"}
             }
         )
         if success and 'id' in response:
-            self.practice_id = response['id']
-            print(f"   Practice ID: {self.practice_id}")
-            return True
+            self.practice_id_freelancer = response['id']
+            print(f"   Freelancer Practice ID: {self.practice_id_freelancer}")
+            # Verify client type and VAT number
+            if (response.get('client_type') == 'freelancer' and 
+                response.get('client_type_label') == 'Libero Professionista' and
+                response.get('vat_number') == '12345678901'):
+                print(f"   ✅ Client type correctly set: {response.get('client_type_label')}")
+                print(f"   ✅ VAT number correctly stored: {response.get('vat_number')}")
+                return True
+            else:
+                print(f"   ❌ Client type or VAT mismatch")
+        return False
+
+    def test_create_practice_company(self):
+        """Test creating a practice for company (with VAT)"""
+        success, response = self.run_test(
+            "Create Practice - Company",
+            "POST",
+            "practices",
+            200,
+            data={
+                "practice_type": "vat_registration",
+                "description": "Test VAT registration for company",
+                "client_name": "Rossi S.r.l.",
+                "client_type": "company",
+                "fiscal_code": "RSSSRL80A01H501Z",
+                "vat_number": "98765432109",
+                "additional_data": {"test": "data"}
+            }
+        )
+        if success and 'id' in response:
+            self.practice_id_company = response['id']
+            print(f"   Company Practice ID: {self.practice_id_company}")
+            # Verify client type and VAT number
+            if (response.get('client_type') == 'company' and 
+                response.get('client_type_label') == 'Azienda' and
+                response.get('vat_number') == '98765432109'):
+                print(f"   ✅ Client type correctly set: {response.get('client_type_label')}")
+                print(f"   ✅ VAT number correctly stored: {response.get('vat_number')}")
+                return True
+            else:
+                print(f"   ❌ Client type or VAT mismatch")
         return False
 
     def test_get_practices(self):
@@ -134,17 +201,17 @@ class AICAPITester:
 
     def test_get_practice_detail(self):
         """Test getting practice detail"""
-        if hasattr(self, 'practice_id'):
-            return self.run_test("Get Practice Detail", "GET", f"practices/{self.practice_id}", 200)
+        if hasattr(self, 'practice_id_private'):
+            return self.run_test("Get Practice Detail - Private", "GET", f"practices/{self.practice_id_private}", 200)
         return False
 
     def test_update_practice(self):
         """Test updating a practice"""
-        if hasattr(self, 'practice_id'):
+        if hasattr(self, 'practice_id_freelancer'):
             return self.run_test(
                 "Update Practice",
                 "PUT",
-                f"practices/{self.practice_id}",
+                f"practices/{self.practice_id_freelancer}",
                 200,
                 data={
                     "status": "processing",
@@ -153,13 +220,43 @@ class AICAPITester:
             )
         return False
 
-    def test_agents_info(self):
-        """Test getting agents info"""
-        return self.run_test("Agents Info", "GET", "agents/info", 200)
+    def test_taxpilot_branding(self):
+        """Test TaxPilot branding in API responses"""
+        success, response = self.run_test("TaxPilot API Root", "GET", "", 200)
+        if success:
+            message = response.get('message', '')
+            if 'TaxPilot' in message and 'Assistente Fiscale Intelligente' in message:
+                print(f"   ✅ TaxPilot branding found in API: {message}")
+                return True
+            else:
+                print(f"   ❌ TaxPilot branding not found. Got: {message}")
+        return False
+
+    def test_agents_branding(self):
+        """Test TaxPilot AI branding in agents"""
+        success, response = self.run_test("Agents Info - TaxPilot Branding", "GET", "agents/info", 200)
+        if success:
+            agents = response.get('agents', [])
+            transparency_note = response.get('transparency_note', '')
+            
+            # Check if agents have TaxPilot branding
+            taxpilot_found = False
+            for agent in agents:
+                system_prompt = agent.get('system_prompt', '')  # Changed from 'system_message' to 'system_prompt'
+                if 'TaxPilot' in system_prompt and 'Assistente Fiscale Intelligente' in system_prompt:
+                    taxpilot_found = True
+                    print(f"   ✅ TaxPilot branding found in {agent.get('name')} agent")
+                    break
+            
+            if taxpilot_found:
+                return True
+            else:
+                print(f"   ❌ TaxPilot branding not found in agent system prompts")
+        return False
 
     def test_execute_agent(self):
         """Test executing an AI agent"""
-        if hasattr(self, 'practice_id'):
+        if hasattr(self, 'practice_id_freelancer'):
             success, response = self.run_test(
                 "Execute Analysis Agent",
                 "POST",
@@ -167,7 +264,7 @@ class AICAPITester:
                 200,
                 data={
                     "agent_type": "analysis",
-                    "practice_id": self.practice_id,
+                    "practice_id": self.practice_id_freelancer,
                     "input_data": {
                         "query": "Analizza questa pratica di apertura partita IVA"
                     }
@@ -188,7 +285,7 @@ class AICAPITester:
 
     def test_document_upload(self):
         """Test document upload"""
-        if hasattr(self, 'practice_id'):
+        if hasattr(self, 'practice_id_company'):
             # Create a test file
             test_content = b"Test document content"
             files = {'file': ('test.txt', test_content, 'text/plain')}
@@ -196,7 +293,7 @@ class AICAPITester:
             success, response = self.run_test(
                 "Document Upload",
                 "POST",
-                f"documents/upload/{self.practice_id}",
+                f"documents/upload/{self.practice_id_company}",
                 200,
                 files=files
             )
@@ -209,8 +306,8 @@ class AICAPITester:
 
     def test_get_practice_documents(self):
         """Test getting practice documents"""
-        if hasattr(self, 'practice_id'):
-            return self.run_test("Get Practice Documents", "GET", f"documents/practice/{self.practice_id}", 200)
+        if hasattr(self, 'practice_id_company'):
+            return self.run_test("Get Practice Documents", "GET", f"documents/practice/{self.practice_id_company}", 200)
         return False
 
     def test_logout(self):
@@ -224,15 +321,18 @@ def main():
     # Test sequence
     tests = [
         ("Health Check", tester.test_health_check),
+        ("TaxPilot API Branding", tester.test_taxpilot_branding),
         ("Admin Login", tester.test_admin_login),
         ("Get Current User", tester.test_get_current_user),
         ("Dashboard Stats", tester.test_dashboard_stats),
         ("User Registration", tester.test_user_registration),
-        ("Create Practice", tester.test_create_practice),
+        ("Create Practice - Private Client", tester.test_create_practice_private),
+        ("Create Practice - Freelancer", tester.test_create_practice_freelancer),
+        ("Create Practice - Company", tester.test_create_practice_company),
         ("Get Practices", tester.test_get_practices),
         ("Get Practice Detail", tester.test_get_practice_detail),
         ("Update Practice", tester.test_update_practice),
-        ("Agents Info", tester.test_agents_info),
+        ("Agents Info - TaxPilot Branding", tester.test_agents_branding),
         ("Execute Agent", tester.test_execute_agent),
         ("Activity Logs", tester.test_activity_logs),
         ("Notifications", tester.test_notifications),

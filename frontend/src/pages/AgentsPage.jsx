@@ -19,10 +19,10 @@ const AGENT_ICONS = {
 };
 
 const AGENT_COLORS = {
-  analysis: '#002FA7',
+  analysis: '#0F4C5C',
   validation: '#1A4331',
   document: '#D4A373',
-  communication: '#001F54'
+  communication: '#5DD9C1'
 };
 
 export default function AgentsPage() {
@@ -51,7 +51,7 @@ export default function AgentsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#001F54]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
       </div>
     );
   }
@@ -60,16 +60,16 @@ export default function AgentsPage() {
     <div className="space-y-6" data-testid="agents-page">
       {/* Header */}
       <div>
-        <h1 className="heading-2 mb-2">Agenti AI</h1>
+        <h1 className="heading-2 mb-2">TaxPilot AI</h1>
         <p className="body-text">
-          Scopri come funzionano gli agenti AI di AIC. Ogni agente è trasparente e ogni azione viene registrata.
+          Scopri come funzionano gli agenti fiscali intelligenti. Ogni agente è trasparente e ogni azione viene registrata.
         </p>
       </div>
 
       {/* Transparency Notice */}
-      <div className="p-4 bg-[#001F54]/5 border border-[#001F54]/20 rounded-sm">
+      <div className="p-4 bg-[#0F4C5C]/5 border border-[#0F4C5C]/20 rounded-sm">
         <div className="flex items-start gap-3">
-          <Shield className="w-5 h-5 text-[#001F54] mt-0.5" />
+          <Shield className="w-5 h-5 text-[#0F4C5C] mt-0.5" />
           <div>
             <p className="font-medium text-[#111110] mb-1">Trasparenza Totale</p>
             <p className="text-sm text-[#5C5C59]">
@@ -85,14 +85,14 @@ export default function AgentsPage() {
         <div className="space-y-4">
           {agentsInfo?.agents?.map((agent) => {
             const IconComponent = AGENT_ICONS[agent.type] || Bot;
-            const color = AGENT_COLORS[agent.type] || '#001F54';
+            const color = AGENT_COLORS[agent.type] || '#0F4C5C';
             const isSelected = selectedAgent?.type === agent.type;
 
             return (
               <button
                 key={agent.type}
                 onClick={() => setSelectedAgent(agent)}
-                className={`w-full aic-card text-left transition-all ${isSelected ? 'border-[#001F54] shadow-md' : ''}`}
+                className={`w-full aic-card text-left transition-all ${isSelected ? 'border-[#0F4C5C] shadow-md' : ''}`}
                 data-testid={`agent-card-${agent.type}`}
               >
                 <div className="flex items-start gap-4">
@@ -119,7 +119,7 @@ export default function AgentsPage() {
               <div className="flex items-center gap-4 mb-6">
                 {(() => {
                   const IconComponent = AGENT_ICONS[selectedAgent.type] || Bot;
-                  const color = AGENT_COLORS[selectedAgent.type] || '#001F54';
+                  const color = AGENT_COLORS[selectedAgent.type] || '#0F4C5C';
                   return (
                     <div 
                       className="w-16 h-16 rounded-sm flex items-center justify-center"
@@ -138,7 +138,7 @@ export default function AgentsPage() {
               {/* System Prompt (Transparency) */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
-                  <Eye className="w-4 h-4 text-[#001F54]" />
+                  <Eye className="w-4 h-4 text-[#0F4C5C]" />
                   <h4 className="text-sm font-semibold text-[#111110] uppercase tracking-wider">
                     Istruzioni di Sistema (System Prompt)
                   </h4>
@@ -162,21 +162,21 @@ export default function AgentsPage() {
                 </h4>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 p-3 bg-[#F9F9F8] rounded-sm">
-                    <div className="w-6 h-6 rounded-full bg-[#001F54] text-white flex items-center justify-center text-xs font-bold">1</div>
+                    <div className="w-6 h-6 rounded-full bg-[#0F4C5C] text-white flex items-center justify-center text-xs font-bold">1</div>
                     <div>
                       <p className="text-sm font-medium text-[#111110]">Input</p>
                       <p className="text-xs text-[#5C5C59]">Riceve i dati della pratica e la tua richiesta</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 bg-[#F9F9F8] rounded-sm">
-                    <div className="w-6 h-6 rounded-full bg-[#001F54] text-white flex items-center justify-center text-xs font-bold">2</div>
+                    <div className="w-6 h-6 rounded-full bg-[#0F4C5C] text-white flex items-center justify-center text-xs font-bold">2</div>
                     <div>
                       <p className="text-sm font-medium text-[#111110]">Elaborazione</p>
                       <p className="text-xs text-[#5C5C59]">Analizza i dati seguendo le istruzioni di sistema</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 bg-[#F9F9F8] rounded-sm">
-                    <div className="w-6 h-6 rounded-full bg-[#001F54] text-white flex items-center justify-center text-xs font-bold">3</div>
+                    <div className="w-6 h-6 rounded-full bg-[#0F4C5C] text-white flex items-center justify-center text-xs font-bold">3</div>
                     <div>
                       <p className="text-sm font-medium text-[#111110]">Output</p>
                       <p className="text-xs text-[#5C5C59]">Fornisce una risposta strutturata e spiegazione</p>

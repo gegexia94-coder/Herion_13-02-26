@@ -9,21 +9,21 @@
   --font-body: 'IBM Plex Sans', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
   
-  /* AIC Colors */
-  --aic-bg-primary: #F9F9F8;
-  --aic-bg-secondary: #FFFFFF;
-  --aic-bg-tertiary: #F0F0EE;
-  --aic-text-primary: #111110;
-  --aic-text-secondary: #5C5C59;
-  --aic-text-disabled: #A1A19E;
-  --aic-border: #E5E5E3;
-  --aic-border-focus: #001F54;
-  --aic-brand-primary: #001F54;
-  --aic-brand-secondary: #1A4331;
-  --aic-success: #1A4331;
-  --aic-warning: #D4A373;
-  --aic-error: #E63946;
-  --aic-info: #002FA7;
+  /* TaxPilot Brand Colors */
+  --tp-bg-primary: #F9F9F8;
+  --tp-bg-secondary: #FFFFFF;
+  --tp-bg-tertiary: #F0F0EE;
+  --tp-text-primary: #111110;
+  --tp-text-secondary: #5C5C59;
+  --tp-text-disabled: #A1A19E;
+  --tp-border: #E5E5E3;
+  --tp-border-focus: #0F4C5C;
+  --tp-brand-primary: #0F4C5C;
+  --tp-brand-secondary: #5DD9C1;
+  --tp-success: #1A4331;
+  --tp-warning: #D4A373;
+  --tp-error: #E63946;
+  --tp-info: #5DD9C1;
 }
 
 body {
@@ -47,25 +47,25 @@ code, .font-mono {
     --card-foreground: 60 6% 7%;
     --popover: 0 0% 100%;
     --popover-foreground: 60 6% 7%;
-    --primary: 218 100% 17%;
+    --primary: 189 72% 21%;
     --primary-foreground: 0 0% 100%;
     --secondary: 60 4% 94%;
     --secondary-foreground: 60 6% 7%;
     --muted: 60 4% 94%;
     --muted-foreground: 60 2% 36%;
-    --accent: 60 4% 94%;
+    --accent: 166 58% 61%;
     --accent-foreground: 60 6% 7%;
     --destructive: 355 70% 56%;
     --destructive-foreground: 0 0% 100%;
     --border: 60 4% 90%;
     --input: 60 4% 90%;
-    --ring: 218 100% 17%;
+    --ring: 189 72% 21%;
     --radius: 0.25rem;
     --chart-1: 146 41% 15%;
-    --chart-2: 218 100% 17%;
-    --chart-3: 29 48% 64%;
+    --chart-2: 189 72% 21%;
+    --chart-3: 166 58% 61%;
     --chart-4: 355 70% 56%;
-    --chart-5: 226 83% 33%;
+    --chart-5: 29 48% 64%;
   }
 }
 
@@ -145,11 +145,11 @@ code, .font-mono {
 
 /* Buttons */
 .btn-primary {
-  @apply bg-[#001F54] text-white text-xs uppercase tracking-wider font-semibold px-4 py-2 rounded-sm transition-all duration-200;
+  @apply bg-[#0F4C5C] text-white text-xs uppercase tracking-wider font-semibold px-4 py-2 rounded-sm transition-all duration-200;
 }
 
 .btn-primary:hover {
-  @apply bg-[#001F54]/90;
+  @apply bg-[#0F4C5C]/90;
 }
 
 .btn-primary:active {
@@ -166,7 +166,7 @@ code, .font-mono {
 }
 
 .timeline-dot-active {
-  @apply border-[#001F54] bg-[#001F54];
+  @apply border-[#0F4C5C] bg-[#0F4C5C];
 }
 
 /* Document Upload Zone */
@@ -175,7 +175,7 @@ code, .font-mono {
 }
 
 .upload-zone:hover {
-  @apply border-[#001F54] bg-[#F0F0EE];
+  @apply border-[#0F4C5C] bg-[#F0F0EE];
 }
 
 /* Sidebar Navigation */
@@ -188,7 +188,7 @@ code, .font-mono {
 }
 
 .nav-link.active {
-  @apply bg-[#001F54] text-white;
+  @apply bg-[#0F4C5C] text-white;
 }
 
 /* Tables */

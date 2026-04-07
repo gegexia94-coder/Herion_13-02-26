@@ -37,6 +37,12 @@ const AGENTS = [
   { type: 'communication', name: 'Agente Comunicazione', icon: '💬', description: 'Spiega lo stato e i prossimi passi' },
 ];
 
+const CLIENT_TYPE_LABELS = {
+  private: 'Privato',
+  freelancer: 'Libero Professionista',
+  company: 'Azienda'
+};
+
 export default function PracticeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -131,7 +137,7 @@ export default function PracticeDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#001F54]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
       </div>
     );
   }
@@ -187,6 +193,12 @@ export default function PracticeDetailPage() {
           <div className="aic-card">
             <h3 className="heading-4 mb-4">Dettagli Pratica</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
+              {practice.client_type && (
+                <div>
+                  <p className="label-text mb-1">Tipo Cliente</p>
+                  <p className="font-medium text-[#111110]">{CLIENT_TYPE_LABELS[practice.client_type] || practice.client_type_label || practice.client_type}</p>
+                </div>
+              )}
               {practice.fiscal_code && (
                 <div>
                   <p className="label-text mb-1">Codice Fiscale</p>
@@ -270,12 +282,12 @@ export default function PracticeDetailPage() {
           {/* AI Agents */}
           <div className="aic-card">
             <div className="flex items-center gap-3 mb-4">
-              <Bot className="w-5 h-5 text-[#001F54]" />
-              <h3 className="heading-4">Agenti AI</h3>
+              <Bot className="w-5 h-5 text-[#0F4C5C]" />
+              <h3 className="heading-4">TaxPilot AI</h3>
             </div>
             
             <p className="text-sm text-[#5C5C59] mb-4">
-              Utilizza gli agenti AI per analizzare, validare e gestire la pratica. Ogni azione viene registrata per completa trasparenza.
+              Utilizza gli agenti fiscali intelligenti per analizzare, validare e gestire la pratica. Ogni azione viene registrata per completa trasparenza.
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -285,8 +297,8 @@ export default function PracticeDetailPage() {
                   onClick={() => setSelectedAgent(agent.type)}
                   className={`p-3 border rounded-sm text-center transition-all ${
                     selectedAgent === agent.type 
-                      ? 'border-[#001F54] bg-[#001F54]/5' 
-                      : 'border-[#E5E5E3] hover:border-[#001F54]/50'
+                      ? 'border-[#0F4C5C] bg-[#0F4C5C]/5' 
+                      : 'border-[#E5E5E3] hover:border-[#0F4C5C]/50'
                   }`}
                   data-testid={`agent-select-${agent.type}`}
                 >
@@ -307,7 +319,7 @@ export default function PracticeDetailPage() {
 
             <div className="space-y-4">
               <Textarea
-                placeholder="Inserisci la tua richiesta per l'agente AI..."
+                placeholder="Inserisci la tua richiesta per TaxPilot AI..."
                 value={agentQuery}
                 onChange={(e) => setAgentQuery(e.target.value)}
                 className="border-[#E5E5E3] rounded-sm min-h-[100px]"
@@ -316,7 +328,7 @@ export default function PracticeDetailPage() {
               <Button
                 onClick={handleAgentExecute}
                 disabled={agentLoading || !agentQuery.trim()}
-                className="bg-[#001F54] hover:bg-[#001F54]/90 rounded-sm"
+                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm"
                 data-testid="execute-agent-btn"
               >
                 {agentLoading ? (
@@ -335,10 +347,10 @@ export default function PracticeDetailPage() {
 
             {/* Agent Response */}
             {agentResponse && (
-              <div className="mt-6 p-4 bg-[#001F54]/5 border border-[#001F54]/20 rounded-sm animate-fade-in" data-testid="agent-response">
+              <div className="mt-6 p-4 bg-[#0F4C5C]/5 border border-[#0F4C5C]/20 rounded-sm animate-fade-in" data-testid="agent-response">
                 <div className="flex items-center gap-2 mb-3">
                   <CheckCircle className="w-4 h-4 text-[#1A4331]" />
-                  <span className="text-sm font-medium text-[#111110]">Risposta dell'Agente</span>
+                  <span className="text-sm font-medium text-[#111110]">Risposta TaxPilot AI</span>
                 </div>
                 <div className="font-mono text-sm text-[#111110] whitespace-pre-wrap bg-white p-4 rounded-sm border border-[#E5E5E3]">
                   {agentResponse.output}
@@ -354,7 +366,7 @@ export default function PracticeDetailPage() {
         {/* Right Column - Activity Log */}
         <div className="aic-card h-fit">
           <div className="flex items-center gap-3 mb-4">
-            <History className="w-5 h-5 text-[#001F54]" />
+            <History className="w-5 h-5 text-[#0F4C5C]" />
             <h3 className="heading-4">Log Attività</h3>
           </div>
           

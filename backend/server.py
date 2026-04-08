@@ -110,7 +110,7 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Token non valido")
 
 # Create the main app
-app = FastAPI(title="TaxPilot - Assistente Fiscale Intelligente")
+app = FastAPI(title="Herion - Precision. Control. Confidence.")
 api_router = APIRouter(prefix="/api")
 
 # ========================
@@ -417,7 +417,7 @@ AGENT_DESCRIPTIONS = {
     "analysis": {
         "name": "Agente di Analisi",
         "description": "Analizza la situazione dell'utente e determina la pratica fiscale necessaria.",
-        "system_message": """Sei l'Agente di Analisi di TaxPilot - Assistente Fiscale Intelligente.
+        "system_message": """Sei l'Agente di Analisi di Herion - Assistente AI.
 Il tuo compito è analizzare la situazione fiscale dell'utente e determinare quale pratica è necessaria.
 Rispondi SEMPRE in italiano.
 Sii chiaro, trasparente e spiega ogni passaggio del tuo ragionamento.
@@ -431,7 +431,7 @@ Format della risposta:
     "validation": {
         "name": "Agente di Validazione",
         "description": "Verifica la completezza e correttezza dei dati inseriti.",
-        "system_message": """Sei l'Agente di Validazione di TaxPilot - Assistente Fiscale Intelligente.
+        "system_message": """Sei l'Agente di Validazione di Herion - Assistente AI.
 Il tuo compito è verificare che i dati inseriti siano completi e corretti.
 Rispondi SEMPRE in italiano.
 Identifica eventuali errori o dati mancanti.
@@ -445,7 +445,7 @@ Format della risposta:
     "document": {
         "name": "Agente Documenti",
         "description": "Estrae dati strutturati dai documenti e genera bozze.",
-        "system_message": """Sei l'Agente Documenti di TaxPilot - Assistente Fiscale Intelligente.
+        "system_message": """Sei l'Agente Documenti di Herion - Assistente AI.
 Il tuo compito è analizzare i documenti caricati ed estrarre informazioni strutturate.
 Rispondi SEMPRE in italiano.
 Format della risposta:
@@ -457,7 +457,7 @@ Format della risposta:
     "communication": {
         "name": "Agente Comunicazione",
         "description": "Spiega chiaramente all'utente cosa sta succedendo.",
-        "system_message": """Sei l'Agente Comunicazione di TaxPilot - Assistente Fiscale Intelligente.
+        "system_message": """Sei l'Agente Comunicazione di Herion - Assistente AI.
 Il tuo compito è spiegare in modo chiaro e semplice all'utente lo stato della pratica.
 Rispondi SEMPRE in italiano, usando un linguaggio semplice e accessibile.
 Evita termini tecnici quando possibile.
@@ -703,7 +703,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "TaxPilot API - Assistente Fiscale Intelligente", "version": "1.0.0"}
+    return {"message": "Herion API - Precision. Control. Confidence.", "version": "1.0.0"}
 
 @api_router.get("/health")
 async def health():
@@ -761,7 +761,7 @@ async def startup():
     # Write test credentials
     Path("/app/memory").mkdir(exist_ok=True)
     with open("/app/memory/test_credentials.md", "w") as f:
-        f.write(f"""# Test Credentials for TaxPilot
+        f.write(f"""# Test Credentials for Herion
 
 ## Admin Account
 - Email: {admin_email}
@@ -780,7 +780,7 @@ async def startup():
 - company: Azienda (VAT number required)
 """)
     
-    logger.info("TaxPilot - Assistente Fiscale Intelligente started successfully")
+    logger.info("Herion - Precision. Control. Confidence. - started successfully")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

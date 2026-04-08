@@ -220,38 +220,38 @@ class AICAPITester:
             )
         return False
 
-    def test_taxpilot_branding(self):
-        """Test TaxPilot branding in API responses"""
-        success, response = self.run_test("TaxPilot API Root", "GET", "", 200)
+    def test_herion_branding(self):
+        """Test Herion branding in API responses"""
+        success, response = self.run_test("Herion API Root", "GET", "", 200)
         if success:
             message = response.get('message', '')
-            if 'TaxPilot' in message and 'Assistente Fiscale Intelligente' in message:
-                print(f"   ✅ TaxPilot branding found in API: {message}")
+            if 'Herion' in message and 'Precision. Control. Confidence.' in message:
+                print(f"   ✅ Herion branding found in API: {message}")
                 return True
             else:
-                print(f"   ❌ TaxPilot branding not found. Got: {message}")
+                print(f"   ❌ Herion branding not found. Got: {message}")
         return False
 
     def test_agents_branding(self):
-        """Test TaxPilot AI branding in agents"""
-        success, response = self.run_test("Agents Info - TaxPilot Branding", "GET", "agents/info", 200)
+        """Test Herion AI branding in agents"""
+        success, response = self.run_test("Agents Info - Herion Branding", "GET", "agents/info", 200)
         if success:
             agents = response.get('agents', [])
             transparency_note = response.get('transparency_note', '')
             
-            # Check if agents have TaxPilot branding
-            taxpilot_found = False
+            # Check if agents have Herion branding
+            herion_found = False
             for agent in agents:
                 system_prompt = agent.get('system_prompt', '')  # Changed from 'system_message' to 'system_prompt'
-                if 'TaxPilot' in system_prompt and 'Assistente Fiscale Intelligente' in system_prompt:
-                    taxpilot_found = True
-                    print(f"   ✅ TaxPilot branding found in {agent.get('name')} agent")
+                if 'Herion' in system_prompt and 'Assistente AI' in system_prompt:
+                    herion_found = True
+                    print(f"   ✅ Herion branding found in {agent.get('name')} agent")
                     break
             
-            if taxpilot_found:
+            if herion_found:
                 return True
             else:
-                print(f"   ❌ TaxPilot branding not found in agent system prompts")
+                print(f"   ❌ Herion branding not found in agent system prompts")
         return False
 
     def test_execute_agent(self):
@@ -315,13 +315,13 @@ class AICAPITester:
         return self.run_test("Logout", "POST", "auth/logout", 200)
 
 def main():
-    print("🚀 Starting AIC API Testing...")
+    print("🚀 Starting Herion API Testing...")
     tester = AICAPITester()
 
     # Test sequence
     tests = [
         ("Health Check", tester.test_health_check),
-        ("TaxPilot API Branding", tester.test_taxpilot_branding),
+        ("Herion API Branding", tester.test_herion_branding),
         ("Admin Login", tester.test_admin_login),
         ("Get Current User", tester.test_get_current_user),
         ("Dashboard Stats", tester.test_dashboard_stats),
@@ -332,7 +332,7 @@ def main():
         ("Get Practices", tester.test_get_practices),
         ("Get Practice Detail", tester.test_get_practice_detail),
         ("Update Practice", tester.test_update_practice),
-        ("Agents Info - TaxPilot Branding", tester.test_agents_branding),
+        ("Agents Info - Herion Branding", tester.test_agents_branding),
         ("Execute Agent", tester.test_execute_agent),
         ("Activity Logs", tester.test_activity_logs),
         ("Notifications", tester.test_notifications),

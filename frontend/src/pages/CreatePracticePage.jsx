@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   ArrowLeft,
   ArrowRight,
@@ -19,7 +22,9 @@ import {
   Briefcase,
   Info,
   Building2,
-  UserCircle
+  UserCircle,
+  CheckCircle,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,8 +38,8 @@ const PRACTICE_TYPES = [
 ];
 
 const CLIENT_TYPES = [
-  { value: 'private', label: 'Privato', description: 'Persona fisica senza partita IVA', icon: UserCircle, requiresVat: false },
-  { value: 'freelancer', label: 'Libero Professionista', description: 'Lavoratore autonomo con partita IVA', icon: User, requiresVat: true },
+  { value: 'private', label: 'Privato', description: 'Persona fisica senza P.IVA', icon: UserCircle, requiresVat: false },
+  { value: 'freelancer', label: 'Professionista', description: 'Con Partita IVA', icon: User, requiresVat: true },
   { value: 'company', label: 'Azienda', description: 'Società o impresa', icon: Building2, requiresVat: true },
 ];
 
@@ -42,6 +47,7 @@ export default function CreatePracticePage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState({
     practice_type: '',
     client_type: '',
@@ -52,7 +58,26 @@ export default function CreatePracticePage() {
     additional_data: {}
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async () => {
+    setShowConfirmDialog(false);
+    setLoading(true);
+    
+    try {
+      const response = await createPractice(formData);
+      toast.success('Pratica creata con successo', {
+        description: 'La pratica è stata registrata nel sistema'
+      });
+      navigate(`/practices/${response.data.id}`);
+    } catch (error) {
+      toast.error('Errore nella creazione', {
+        description: error.response?.data?.detail || 'Si è verificato un errore'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFormSubmit = (e) => {
     e.preventDefault();
     
     if (!formData.practice_type || !formData.client_name || !formData.description || !formData.client_type) {
@@ -62,20 +87,11 @@ export default function CreatePracticePage() {
 
     const selectedClientType = CLIENT_TYPES.find(t => t.value === formData.client_type);
     if (selectedClientType?.requiresVat && !formData.vat_number) {
-      toast.error('La partita IVA è obbligatoria per questo tipo di cliente');
+      toast.error('La partita IVA è obbligatoria');
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await createPractice(formData);
-      toast.success('Pratica creata con successo!');
-      navigate(`/practices/${response.data.id}`);
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Errore nella creazione della pratica');
-    } finally {
-      setLoading(false);
-    }
+    setShowConfirmDialog(true);
   };
 
   const selectedType = PRACTICE_TYPES.find(t => t.value === formData.practice_type);
@@ -88,60 +104,67 @@ export default function CreatePracticePage() {
       <div className="mb-8">
         <button 
           onClick={() => navigate('/practices')}
-          className="flex items-center gap-2 text-sm text-[#5C5C59] hover:text-[#111110] mb-4"
+          className="flex items-center gap-2 text-sm text-[#5C5C59] hover:text-[#111110] mb-4 transition-colors"
           data-testid="back-btn"
         >
           <ArrowLeft className="w-4 h-4" />
           Torna alle pratiche
         </button>
-        <h1 className="heading-2 mb-2">Nuova Pratica</h1>
-        <p className="body-text">Crea una nuova pratica fiscale in pochi passaggi</p>
+        <h1 className="text-2xl font-semibold text-[#111110] mb-2">Nuova Pratica</h1>
+        <p className="text-sm text-[#5C5C59]">Crea una nuova pratica fiscale in pochi passaggi</p>
       </div>
 
       {/* Progress Steps */}
-      <div className="flex items-center justify-center mb-8">
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-2 ${step >= 1 ? 'text-[#0F4C5C]' : 'text-[#A1A19E]'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= 1 ? 'bg-[#0F4C5C] text-white' : 'bg-[#E5E5E3] text-[#5C5C59]'}`}>1</div>
-            <span className="text-sm font-medium hidden sm:inline">Tipo Pratica</span>
-          </div>
-          <div className="w-12 h-px bg-[#E5E5E3]" />
-          <div className={`flex items-center gap-2 ${step >= 2 ? 'text-[#0F4C5C]' : 'text-[#A1A19E]'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= 2 ? 'bg-[#0F4C5C] text-white' : 'bg-[#E5E5E3] text-[#5C5C59]'}`}>2</div>
-            <span className="text-sm font-medium hidden sm:inline">Dati Cliente</span>
-          </div>
-          <div className="w-12 h-px bg-[#E5E5E3]" />
-          <div className={`flex items-center gap-2 ${step >= 3 ? 'text-[#0F4C5C]' : 'text-[#A1A19E]'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= 3 ? 'bg-[#0F4C5C] text-white' : 'bg-[#E5E5E3] text-[#5C5C59]'}`}>3</div>
-            <span className="text-sm font-medium hidden sm:inline">Riepilogo</span>
-          </div>
+      <div className="flex items-center justify-center mb-10">
+        <div className="flex items-center gap-3">
+          {[1, 2, 3].map((num) => (
+            <div key={num} className="flex items-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold transition-all ${
+                step >= num 
+                  ? 'bg-[#0F4C5C] text-white shadow-lg shadow-[#0F4C5C]/20' 
+                  : 'bg-[#F5F5F4] text-[#A1A19E]'
+              }`}>
+                {step > num ? <CheckCircle className="w-5 h-5" /> : num}
+              </div>
+              {num < 3 && (
+                <div className={`w-16 h-1 mx-2 rounded-full transition-colors ${
+                  step > num ? 'bg-[#0F4C5C]' : 'bg-[#E5E5E3]'
+                }`} />
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleFormSubmit}>
         {/* Step 1: Practice Type */}
         {step === 1 && (
-          <div className="aic-card animate-fade-in">
+          <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <Briefcase className="w-5 h-5 text-[#0F4C5C]" />
-              <h3 className="heading-4">Seleziona Tipo Pratica</h3>
+              <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-[#0F4C5C]" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[#111110]">Tipo Pratica</h3>
+                <p className="text-xs text-[#5C5C59]">Seleziona il tipo di pratica da creare</p>
+              </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {PRACTICE_TYPES.map((type) => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setFormData({ ...formData, practice_type: type.value })}
-                  className={`p-4 border rounded-sm text-left transition-all duration-200 ${
+                  className={`p-4 border rounded-xl text-left transition-all duration-200 ${
                     formData.practice_type === type.value 
-                      ? 'border-[#0F4C5C] bg-[#0F4C5C]/5' 
-                      : 'border-[#E5E5E3] hover:border-[#0F4C5C]/50'
+                      ? 'border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C]' 
+                      : 'border-[#E5E5E3] hover:border-[#0F4C5C]/50 hover:bg-[#FAFAFA]'
                   }`}
                   data-testid={`practice-type-${type.value}`}
                 >
-                  <p className="font-medium text-[#111110] mb-1">{type.label}</p>
-                  <p className="text-sm text-[#5C5C59]">{type.description}</p>
+                  <p className="font-medium text-[#111110] text-sm mb-1">{type.label}</p>
+                  <p className="text-xs text-[#5C5C59]">{type.description}</p>
                 </button>
               ))}
             </div>
@@ -151,7 +174,7 @@ export default function CreatePracticePage() {
                 type="button" 
                 onClick={() => setStep(2)}
                 disabled={!formData.practice_type}
-                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm"
+                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20"
                 data-testid="next-step-1"
               >
                 Continua <ArrowRight className="w-4 h-4 ml-2" />
@@ -162,17 +185,22 @@ export default function CreatePracticePage() {
 
         {/* Step 2: Client Data */}
         {step === 2 && (
-          <div className="aic-card animate-fade-in">
+          <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <User className="w-5 h-5 text-[#0F4C5C]" />
-              <h3 className="heading-4">Dati del Cliente</h3>
+              <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
+                <User className="w-5 h-5 text-[#0F4C5C]" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[#111110]">Dati Cliente</h3>
+                <p className="text-xs text-[#5C5C59]">Inserisci le informazioni del cliente</p>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              {/* Client Type Selection */}
-              <div className="space-y-3">
-                <Label className="label-text">Tipo Cliente *</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-5">
+              {/* Client Type */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Tipo Cliente *</Label>
+                <div className="grid grid-cols-3 gap-3">
                   {CLIENT_TYPES.map((type) => {
                     const IconComponent = type.icon;
                     return (
@@ -180,60 +208,62 @@ export default function CreatePracticePage() {
                         key={type.value}
                         type="button"
                         onClick={() => setFormData({ ...formData, client_type: type.value, vat_number: type.requiresVat ? formData.vat_number : '' })}
-                        className={`p-4 border rounded-sm text-left transition-all duration-200 ${
+                        className={`p-4 border rounded-xl text-center transition-all duration-200 ${
                           formData.client_type === type.value 
-                            ? 'border-[#0F4C5C] bg-[#0F4C5C]/5' 
+                            ? 'border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C]' 
                             : 'border-[#E5E5E3] hover:border-[#0F4C5C]/50'
                         }`}
                         data-testid={`client-type-${type.value}`}
                       >
-                        <IconComponent className={`w-6 h-6 mb-2 ${formData.client_type === type.value ? 'text-[#0F4C5C]' : 'text-[#5C5C59]'}`} />
-                        <p className="font-medium text-[#111110] text-sm">{type.label}</p>
-                        <p className="text-xs text-[#5C5C59] mt-1">{type.description}</p>
+                        <IconComponent className={`w-6 h-6 mx-auto mb-2 ${formData.client_type === type.value ? 'text-[#0F4C5C]' : 'text-[#A1A19E]'}`} />
+                        <p className="text-xs font-medium text-[#111110]">{type.label}</p>
+                        <p className="text-[10px] text-[#5C5C59] mt-0.5">{type.description}</p>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
+              {/* Client Name */}
               <div className="space-y-2">
-                <Label htmlFor="client_name" className="label-text">Nome Cliente / Ragione Sociale *</Label>
+                <Label htmlFor="client_name" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Nome / Ragione Sociale *</Label>
                 <Input
                   id="client_name"
                   value={formData.client_name}
                   onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
                   placeholder="Es: Mario Rossi / Rossi S.r.l."
-                  className="border-[#E5E5E3] rounded-sm"
+                  className="rounded-xl border-[#E5E5E3] h-11"
                   required
                   data-testid="client-name-input"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Fiscal Code & VAT */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fiscal_code" className="label-text">Codice Fiscale</Label>
+                  <Label htmlFor="fiscal_code" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Codice Fiscale</Label>
                   <Input
                     id="fiscal_code"
                     value={formData.fiscal_code}
                     onChange={(e) => setFormData({ ...formData, fiscal_code: e.target.value.toUpperCase() })}
                     placeholder="RSSMRA85M01H501Z"
-                    className="border-[#E5E5E3] rounded-sm font-mono"
+                    className="rounded-xl border-[#E5E5E3] h-11 font-mono"
                     maxLength={16}
                     data-testid="fiscal-code-input"
                   />
                 </div>
 
                 {showVatField && (
-                  <div className="space-y-2 animate-fade-in">
-                    <Label htmlFor="vat_number" className="label-text">
-                      Partita IVA {selectedClientType?.requiresVat && <span className="text-[#E63946]">*</span>}
+                  <div className="space-y-2 animate-in slide-in-from-left-2 duration-200">
+                    <Label htmlFor="vat_number" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">
+                      Partita IVA *
                     </Label>
                     <Input
                       id="vat_number"
                       value={formData.vat_number}
                       onChange={(e) => setFormData({ ...formData, vat_number: e.target.value })}
                       placeholder="12345678901"
-                      className="border-[#E5E5E3] rounded-sm font-mono"
+                      className="rounded-xl border-[#E5E5E3] h-11 font-mono"
                       maxLength={11}
                       required={selectedClientType?.requiresVat}
                       data-testid="vat-number-input"
@@ -242,14 +272,15 @@ export default function CreatePracticePage() {
                 )}
               </div>
 
+              {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="label-text">Descrizione della Pratica *</Label>
+                <Label htmlFor="description" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Descrizione *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descrivi brevemente la pratica e le esigenze del cliente..."
-                  className="border-[#E5E5E3] rounded-sm min-h-[120px]"
+                  placeholder="Descrivi brevemente la pratica..."
+                  className="rounded-xl border-[#E5E5E3] min-h-[100px] resize-none"
                   required
                   data-testid="description-input"
                 />
@@ -261,7 +292,7 @@ export default function CreatePracticePage() {
                 type="button" 
                 variant="outline"
                 onClick={() => setStep(1)}
-                className="rounded-sm"
+                className="rounded-xl"
                 data-testid="back-step-2"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
@@ -270,7 +301,7 @@ export default function CreatePracticePage() {
                 type="button" 
                 onClick={() => setStep(3)}
                 disabled={!formData.client_name || !formData.description || !formData.client_type || (selectedClientType?.requiresVat && !formData.vat_number)}
-                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm"
+                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20"
                 data-testid="next-step-2"
               >
                 Continua <ArrowRight className="w-4 h-4 ml-2" />
@@ -281,56 +312,58 @@ export default function CreatePracticePage() {
 
         {/* Step 3: Summary */}
         {step === 3 && (
-          <div className="aic-card animate-fade-in">
+          <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <Info className="w-5 h-5 text-[#0F4C5C]" />
-              <h3 className="heading-4">Riepilogo Pratica</h3>
+              <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
+                <Info className="w-5 h-5 text-[#0F4C5C]" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[#111110]">Riepilogo</h3>
+                <p className="text-xs text-[#5C5C59]">Verifica i dati prima di creare la pratica</p>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="p-4 bg-[#F9F9F8] rounded-sm border border-[#E5E5E3]">
+            <div className="space-y-5">
+              <div className="p-5 bg-[#FAFAFA] rounded-xl border border-[#E5E5E3]/60">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="label-text mb-1">Tipo Pratica</p>
-                    <p className="font-medium text-[#111110]">{selectedType?.label}</p>
+                    <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Tipo Pratica</p>
+                    <p className="text-sm font-medium text-[#111110]">{selectedType?.label}</p>
                   </div>
                   <div>
-                    <p className="label-text mb-1">Tipo Cliente</p>
-                    <p className="font-medium text-[#111110]">{selectedClientType?.label}</p>
+                    <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Tipo Cliente</p>
+                    <p className="text-sm font-medium text-[#111110]">{selectedClientType?.label}</p>
                   </div>
                   <div>
-                    <p className="label-text mb-1">Cliente</p>
-                    <p className="font-medium text-[#111110]">{formData.client_name}</p>
+                    <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Cliente</p>
+                    <p className="text-sm font-medium text-[#111110]">{formData.client_name}</p>
                   </div>
                   {formData.fiscal_code && (
                     <div>
-                      <p className="label-text mb-1">Codice Fiscale</p>
-                      <p className="font-mono text-[#111110]">{formData.fiscal_code}</p>
+                      <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Codice Fiscale</p>
+                      <p className="text-sm font-mono text-[#111110]">{formData.fiscal_code}</p>
                     </div>
                   )}
                   {formData.vat_number && (
                     <div>
-                      <p className="label-text mb-1">Partita IVA</p>
-                      <p className="font-mono text-[#111110]">{formData.vat_number}</p>
+                      <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Partita IVA</p>
+                      <p className="text-sm font-mono text-[#111110]">{formData.vat_number}</p>
                     </div>
                   )}
                 </div>
-                <div className="mt-4 pt-4 border-t border-[#E5E5E3]">
-                  <p className="label-text mb-1">Descrizione</p>
-                  <p className="text-[#111110]">{formData.description}</p>
+                <div className="mt-4 pt-4 border-t border-[#E5E5E3]/60">
+                  <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Descrizione</p>
+                  <p className="text-sm text-[#111110]">{formData.description}</p>
                 </div>
               </div>
 
-              <div className="p-4 bg-[#0F4C5C]/5 rounded-sm border border-[#0F4C5C]/20">
+              <div className="p-4 bg-[#0F4C5C]/5 rounded-xl border border-[#0F4C5C]/10">
                 <div className="flex items-start gap-3">
-                  <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-0.5">
-                    <rect x="4" y="4" width="40" height="40" rx="8" fill="#0F4C5C" />
-                    <path d="M24 10L38 24L24 38L18 32L26 24L18 16L24 10Z" fill="#5DD9C1" />
-                  </svg>
+                  <FileText className="w-5 h-5 text-[#0F4C5C] mt-0.5" />
                   <div>
-                    <p className="font-medium text-[#111110] mb-1">Cosa succede dopo?</p>
-                    <p className="text-sm text-[#5C5C59]">
-                      Una volta creata la pratica, potrai caricare documenti e utilizzare TaxPilot AI per analizzare, validare e gestire la pratica in modo trasparente.
+                    <p className="text-sm font-medium text-[#111110] mb-1">Dopo la creazione</p>
+                    <p className="text-xs text-[#5C5C59]">
+                      Potrai caricare documenti e utilizzare Herion AI per analizzare e gestire la pratica.
                     </p>
                   </div>
                 </div>
@@ -342,7 +375,7 @@ export default function CreatePracticePage() {
                 type="button" 
                 variant="outline"
                 onClick={() => setStep(2)}
-                className="rounded-sm"
+                className="rounded-xl"
                 data-testid="back-step-3"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
@@ -350,15 +383,42 @@ export default function CreatePracticePage() {
               <Button 
                 type="submit" 
                 disabled={loading}
-                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-sm"
+                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20"
                 data-testid="submit-practice"
               >
-                {loading ? 'Creazione in corso...' : 'Crea Pratica'}
+                {loading ? 'Creazione...' : 'Crea Pratica'}
               </Button>
             </div>
           </div>
         )}
       </form>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent className="rounded-2xl border-[#E5E5E3]/60 shadow-2xl max-w-md">
+          <AlertDialogHeader>
+            <div className="w-12 h-12 rounded-xl bg-[#0F4C5C]/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-6 h-6 text-[#0F4C5C]" />
+            </div>
+            <AlertDialogTitle className="text-xl font-semibold text-center">Conferma creazione</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[#5C5C59]">
+              Stai per creare una pratica <span className="font-medium text-[#111110]">"{selectedType?.label}"</span> per <span className="font-medium text-[#111110]">{formData.client_name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 sm:gap-3">
+            <AlertDialogCancel className="rounded-xl border-[#E5E5E3] hover:bg-[#F5F5F4] flex-1">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSubmit}
+              className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl flex-1"
+              data-testid="confirm-create-btn"
+            >
+              Conferma
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

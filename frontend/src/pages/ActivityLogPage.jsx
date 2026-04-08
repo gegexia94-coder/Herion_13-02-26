@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { getActivityLogs } from '@/services/api';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -32,18 +31,18 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_COLORS = {
-  auth: '#0F4C5C',
-  practice: '#1A4331',
-  document: '#D4A373',
-  agent: '#5DD9C1',
-  notification: '#E63946'
+  auth: { bg: 'bg-violet-50', text: 'text-violet-600' },
+  practice: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  document: { bg: 'bg-amber-50', text: 'text-amber-600' },
+  agent: { bg: 'bg-sky-50', text: 'text-sky-600' },
+  notification: { bg: 'bg-red-50', text: 'text-red-600' }
 };
 
 const CATEGORY_LABELS = {
   auth: 'Autenticazione',
   practice: 'Pratiche',
   document: 'Documenti',
-  agent: 'Agenti AI',
+  agent: 'Herion AI',
   notification: 'Notifiche'
 };
 
@@ -105,97 +104,88 @@ export default function ActivityLogPage() {
   return (
     <div className="space-y-6" data-testid="activity-log-page">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="heading-2 mb-2">Log Attività</h1>
-          <p className="body-text">
-            Registro completo di tutte le azioni eseguite nel sistema. Trasparenza totale.
+          <h1 className="text-2xl font-semibold text-[#111110] mb-1">Attività</h1>
+          <p className="text-sm text-[#5C5C59]">
+            Registro completo di tutte le azioni. Trasparenza totale.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-48 border-[#E5E5E3] rounded-sm" data-testid="category-filter">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filtra per categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutte le categorie</SelectItem>
-              <SelectItem value="auth">Autenticazione</SelectItem>
-              <SelectItem value="practice">Pratiche</SelectItem>
-              <SelectItem value="document">Documenti</SelectItem>
-              <SelectItem value="agent">Agenti AI</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-48 rounded-xl border-[#E5E5E3] h-10" data-testid="category-filter">
+            <Filter className="w-4 h-4 mr-2 text-[#A1A19E]" />
+            <SelectValue placeholder="Filtra" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl">
+            <SelectItem value="all">Tutte le categorie</SelectItem>
+            <SelectItem value="auth">Autenticazione</SelectItem>
+            <SelectItem value="practice">Pratiche</SelectItem>
+            <SelectItem value="document">Documenti</SelectItem>
+            <SelectItem value="agent">Herion AI</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Activity Log */}
-      <div className="aic-card">
+      <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm">
         {logs.length > 0 ? (
           <ScrollArea className="h-[600px]">
             {Object.entries(groupedLogs).map(([date, dateLogs]) => (
               <div key={date} className="mb-8 last:mb-0">
-                <div className="sticky top-0 bg-white py-2 mb-4 border-b border-[#E5E5E3]">
+                <div className="sticky top-0 bg-white py-2 mb-4 z-10">
                   <p className="text-sm font-semibold text-[#111110]">
                     {format(new Date(date), 'EEEE, d MMMM yyyy', { locale: it })}
                   </p>
                 </div>
 
-                <div className="space-y-4 pl-4">
+                <div className="space-y-3 pl-4 border-l-2 border-[#E5E5E3]/60">
                   {dateLogs.map((log, index) => {
                     const IconComponent = CATEGORY_ICONS[log.category] || History;
-                    const color = CATEGORY_COLORS[log.category] || '#5C5C59';
+                    const colors = CATEGORY_COLORS[log.category] || { bg: 'bg-gray-50', text: 'text-gray-600' };
                     const isExpanded = expandedLogs.has(log.id);
 
                     return (
                       <div 
                         key={log.id} 
-                        className="relative pl-8 pb-4 border-l-2 border-[#E5E5E3] last:border-0 animate-fade-in"
+                        className="relative animate-fade-in"
                         style={{ animationDelay: `${index * 30}ms` }}
                         data-testid={`log-entry-${log.id}`}
                       >
                         {/* Timeline Dot */}
-                        <div 
-                          className="absolute left-[-9px] top-0 w-4 h-4 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: `${color}20` }}
-                        >
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                        </div>
+                        <div className={`absolute -left-[25px] top-4 w-3 h-3 rounded-full border-2 border-white ${colors.bg}`} />
 
-                        {/* Log Content */}
-                        <div className="aic-card p-4">
+                        {/* Log Card */}
+                        <div className="bg-[#FAFAFA] rounded-xl p-4 ml-4 hover:bg-[#F5F5F4] transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
-                              <div 
-                                className="w-8 h-8 rounded-sm flex items-center justify-center"
-                                style={{ backgroundColor: `${color}10` }}
-                              >
-                                <IconComponent className="w-4 h-4" style={{ color }} />
+                              <div className={`w-9 h-9 rounded-lg ${colors.bg} flex items-center justify-center`}>
+                                <IconComponent className={`w-4 h-4 ${colors.text}`} />
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-[#111110] capitalize">
                                   {log.action.replace(/_/g, ' ')}
                                 </p>
                                 <p className="text-xs text-[#5C5C59]">
-                                  {format(new Date(log.timestamp), 'HH:mm:ss', { locale: it })} • {CATEGORY_LABELS[log.category] || log.category}
+                                  {format(new Date(log.timestamp), 'HH:mm', { locale: it })} • {CATEGORY_LABELS[log.category] || log.category}
                                 </p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => toggleExpand(log.id)}
-                              className="text-[#5C5C59] hover:text-[#111110] transition-colors"
-                            >
-                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
+                            {log.details && Object.keys(log.details).length > 0 && (
+                              <button
+                                onClick={() => toggleExpand(log.id)}
+                                className="p-1 rounded-lg hover:bg-white transition-colors"
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4 text-[#A1A19E]" /> : <ChevronDown className="w-4 h-4 text-[#A1A19E]" />}
+                              </button>
+                            )}
                           </div>
 
                           <p className="mt-2 text-sm text-[#5C5C59]">{log.explanation}</p>
 
-                          {/* Expanded Details */}
                           {isExpanded && log.details && (
-                            <div className="mt-4 p-3 bg-[#F9F9F8] rounded-sm animate-fade-in">
-                              <p className="text-xs font-semibold text-[#5C5C59] uppercase tracking-wider mb-2">
-                                Dettagli (Input/Output)
+                            <div className="mt-3 p-3 bg-white rounded-lg border border-[#E5E5E3]/60 animate-fade-in">
+                              <p className="text-[10px] font-medium text-[#5C5C59] uppercase tracking-wider mb-2">
+                                Dettagli
                               </p>
                               <pre className="font-mono text-xs text-[#111110] whitespace-pre-wrap overflow-x-auto">
                                 {JSON.stringify(log.details, null, 2)}
@@ -211,10 +201,12 @@ export default function ActivityLogPage() {
             ))}
           </ScrollArea>
         ) : (
-          <div className="text-center py-12">
-            <History className="w-12 h-12 text-[#A1A19E] mx-auto mb-4" />
-            <h3 className="heading-4 mb-2">Nessuna attività registrata</h3>
-            <p className="body-text">
+          <div className="text-center py-16">
+            <div className="w-14 h-14 rounded-2xl bg-[#F5F5F4] flex items-center justify-center mx-auto mb-4">
+              <History className="w-7 h-7 text-[#A1A19E]" />
+            </div>
+            <h3 className="text-lg font-medium text-[#111110] mb-2">Nessuna attività</h3>
+            <p className="text-sm text-[#5C5C59]">
               Le attività verranno registrate qui quando utilizzerai il sistema.
             </p>
           </div>

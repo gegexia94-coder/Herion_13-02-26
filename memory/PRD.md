@@ -1,90 +1,74 @@
-# Herion - European Premium Tax Management Platform
+# Herion - Controlled Execution Platform for Tax/Fiscal Management
 ## Product Requirements Document
 
 ### Original Problem Statement
-Build a transparent, AI-driven tax management web application called "Herion" for the European market. The platform provides:
-- User dashboard for tax practice management (VAT registration, closure, declarations)
-- 5 transparent AI agents (Analysis, Validation, Compliance, Document, Communication) powered by GPT-5.2
-- Full activity audit log with zero hidden logic
-- Document upload with categorized storage
-- Registration with user types (Private, Freelancer, Company)
-- Professional UI with "Herion" branding (Deep Teal #0F4C5C, Emerald #5DD9C1)
-- PDF export for completed practices
-- UI strictly in Italian, codebase in English
-- Europe-ready structure with EU country selector and adaptable fiscal logic
+Build a transparent, AI-driven tax management web application called "Herion". It is a confidential operational platform where users manage sensitive personal and business procedures inside a protected environment through a controlled execution flow.
 
-### Tech Stack
-- Frontend: React 18, Tailwind CSS, Shadcn/UI, Lucide Icons, Manrope font
-- Backend: FastAPI, Python
-- Database: MongoDB (Motor async driver)
-- AI: GPT-5.2 via Emergent LLM Key (emergentintegrations)
-- PDF: ReportLab
-- Auth: JWT (httpOnly cookies) + bcrypt
-- Storage: Emergent Object Storage
+### Core Product Vision
+Herion is NOT a generic chatbot or tax assistant. It is a **controlled execution platform** where 9 specialist AI agents:
+- Understand the case
+- Prepare the procedure
+- Collect required data and documents
+- Evaluate risk
+- Request user approval
+- Execute only after explicit confirmation
+- Track the practice after submission
 
 ### Architecture
-```
-/app/
-├── backend/
-│   ├── server.py              # All API endpoints, AI agents, PDF generation
-│   ├── requirements.txt
-│   └── .env
-├── frontend/
-│   ├── src/
-│   │   ├── index.css           # Global styles, Manrope font, Herion variables
-│   │   ├── App.js              # Routes
-│   │   ├── contexts/AuthContext.js
-│   │   ├── components/
-│   │   │   ├── Layout.jsx      # Floating premium navbar
-│   │   │   ├── ProtectedRoute.jsx
-│   │   │   └── ui/             # Shadcn components
-│   │   ├── pages/
-│   │   │   ├── LoginPage.jsx
-│   │   │   ├── RegisterPage.jsx
-│   │   │   ├── ForgotPasswordPage.jsx
-│   │   │   ├── ResetPasswordPage.jsx
-│   │   │   ├── ProfilePage.jsx
-│   │   │   ├── DashboardPage.jsx
-│   │   │   ├── PracticesListPage.jsx
-│   │   │   ├── CreatePracticePage.jsx
-│   │   │   ├── PracticeDetailPage.jsx
-│   │   │   ├── AgentsPage.jsx
-│   │   │   └── ActivityLogPage.jsx
-│   │   └── services/api.js
-```
+- **Frontend**: React + Tailwind CSS + Shadcn/UI
+- **Backend**: FastAPI + MongoDB
+- **AI**: OpenAI GPT-5.2 via Emergent LLM Key
+- **Branding**: Deep Teal #0F4C5C + Emerald #5DD9C1, Manrope font
+- **Language**: UI in Italian, codebase in English
 
-### What's Been Implemented (v2.0 - Apr 8 2026)
+### 9-Agent Controlled Execution Pipeline
+1. **Herion Intake** (Step 1) - Case understanding and classification
+2. **Herion Ledger** (Step 2) - Financial and accounting data
+3. **Herion Compliance** (Step 3) - Regulatory compliance check
+4. **Herion Documents** (Step 4) - Document preparation and verification
+5. **Herion Delegate** (Step 5) - Delegation and authorization check
+6. **Herion Deadline** (Step 6) - Deadline and timing monitoring
+7. **Herion Flow** (Step 7) - Workflow progression management
+8. **Herion Monitor** (Step 8) - Status tracking and reminders
+9. **Herion Advisor** (Step 9) - Final user-facing explanation
+- **Herion Admin** (Coordinator) - Orchestrates all 9 agents, evaluates risk, prepares approval summary
 
-#### P0 - Completed
-- [x] JWT Auth with httpOnly cookies, bcrypt hashing
-- [x] Expanded registration: first_name, last_name, email, phone, DOB, country, city, address, client_type, vat_number, fiscal_code, company_name, password, privacy/terms consent
-- [x] Forgot password flow (MOCKED email - logs reset link to console)
-- [x] Reset password with token-based validation
-- [x] User profile page (view/edit personal info, change password)
-- [x] EU country selector (27 countries with fiscal_id_label, vat_prefix)
-- [x] Document categories (10 types: identity, tax, VAT, invoices, company, accounting, compliance, payroll, activity, other)
-- [x] Public-facing product messaging (dashboard benefits cards, AI banner, footer)
-- [x] Premium Herion branding (Manrope font, teal/emerald palette, floating navbar)
+### Status Model
+- draft -> in_progress -> waiting_approval -> approved -> submitted -> completed
+- Also: blocked, escalated, rejected
+- Backward compatible with old "pending" status
 
-#### P1 - Completed
-- [x] 5 AI agents: Analysis, Validation, Compliance, Document, Communication
-- [x] Agent orchestration endpoint (sequential 5-step pipeline)
-- [x] Agent workflow UI with pipeline visualization
-- [x] PDF download button on completed practices
-- [x] Practice detail with categorized document upload
-- [x] Full activity logging with transparency
+### Key Features Implemented
+- [x] JWT Authentication with admin/user roles
+- [x] Practice CRUD with EU country support
+- [x] 9-Agent Controlled Execution Platform
+- [x] Explicit User Approval Gate (waiting_approval state)
+- [x] Approval Snapshot persistence
+- [x] Practice Timeline/Audit Trail
+- [x] Risk Assessment (low/medium/high)
+- [x] Delegation Status evaluation
+- [x] Role-based visibility (admin sees system prompts, users don't)
+- [x] Document upload with categories
+- [x] PDF export
+- [x] Practice Q&A Chat
+- [x] Smart Reminders Banner
+- [x] Extended registration (EU country selector, client types)
+- [x] Mock password reset flow
+- [x] Notification system
 
-#### Features Summary
-- Auth: register, login, logout, forgot-password, reset-password, profile, change-password
-- Practices: CRUD, status management, document upload with categories
-- AI: 5 agents, individual execution, full orchestration pipeline
-- PDF: Herion-branded PDF export for completed practices
-- Reference: 27 EU countries, 10 document categories
+### Non-Negotiable Principles
+1. `waiting_approval` is a true blocking state - no submission without explicit user approval
+2. Every approval creates a persisted snapshot with all context
+3. All actions are traceable via timeline
+4. High-risk practices are escalated, not auto-processed
+5. Internal agent logic is hidden from regular users
 
-### Backlog (P2 - Future)
-- [ ] Real email provider integration (Resend/SendGrid) for password reset
-- [ ] Full country-specific tax rule implementations
-- [ ] 2FA-ready architecture
-- [ ] Email notifications for practice status changes
-- [ ] Multi-language support
-- [ ] Advanced analytics dashboard
+### Upcoming Tasks (P1)
+- Real email provider integration (replace mock email logging)
+
+### Future/Backlog (P2)
+- Country-specific tax rules implementation
+- 2FA-ready architecture
+- Advanced analytics dashboard
+- Multi-language support
+- Email notifications for practice status changes

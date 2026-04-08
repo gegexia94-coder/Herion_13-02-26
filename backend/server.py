@@ -7,9 +7,10 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import secrets
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import List, Optional, Any
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
@@ -114,33 +115,8 @@ app = FastAPI(title="Herion - Precision. Control. Confidence.")
 api_router = APIRouter(prefix="/api")
 
 # ========================
-# MODELS
+# CONSTANTS
 # ========================
-
-class UserRegister(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-class UserResponse(BaseModel):
-    id: str
-    email: str
-    name: str
-    role: str
-    created_at: str
-
-class PracticeCreate(BaseModel):
-    practice_type: str  # vat_registration, vat_closure, tax_declaration
-    description: str
-    client_name: str
-    client_type: str = "private"  # private, freelancer, company
-    fiscal_code: Optional[str] = None
-    vat_number: Optional[str] = None  # Only required for freelancer/company
-    additional_data: Optional[dict] = {}
 
 CLIENT_TYPES = {
     "private": "Privato",
@@ -148,20 +124,127 @@ CLIENT_TYPES = {
     "company": "Azienda"
 }
 
+EU_COUNTRIES = [
+    {"code": "IT", "name": "Italia", "fiscal_id_label": "Codice Fiscale", "vat_prefix": "IT"},
+    {"code": "DE", "name": "Germania", "fiscal_id_label": "Steuerliche Identifikationsnummer", "vat_prefix": "DE"},
+    {"code": "FR", "name": "Francia", "fiscal_id_label": "Numero fiscal de reference", "vat_prefix": "FR"},
+    {"code": "ES", "name": "Spagna", "fiscal_id_label": "NIF / NIE", "vat_prefix": "ES"},
+    {"code": "PT", "name": "Portogallo", "fiscal_id_label": "NIF", "vat_prefix": "PT"},
+    {"code": "NL", "name": "Paesi Bassi", "fiscal_id_label": "BSN", "vat_prefix": "NL"},
+    {"code": "BE", "name": "Belgio", "fiscal_id_label": "Numero nazionale", "vat_prefix": "BE"},
+    {"code": "AT", "name": "Austria", "fiscal_id_label": "Steuernummer", "vat_prefix": "AT"},
+    {"code": "IE", "name": "Irlanda", "fiscal_id_label": "PPS Number", "vat_prefix": "IE"},
+    {"code": "GR", "name": "Grecia", "fiscal_id_label": "AFM", "vat_prefix": "EL"},
+    {"code": "PL", "name": "Polonia", "fiscal_id_label": "PESEL / NIP", "vat_prefix": "PL"},
+    {"code": "SE", "name": "Svezia", "fiscal_id_label": "Personnummer", "vat_prefix": "SE"},
+    {"code": "DK", "name": "Danimarca", "fiscal_id_label": "CPR-nummer", "vat_prefix": "DK"},
+    {"code": "FI", "name": "Finlandia", "fiscal_id_label": "Henkilotunnus", "vat_prefix": "FI"},
+    {"code": "CZ", "name": "Repubblica Ceca", "fiscal_id_label": "Rodne cislo", "vat_prefix": "CZ"},
+    {"code": "RO", "name": "Romania", "fiscal_id_label": "CNP", "vat_prefix": "RO"},
+    {"code": "HU", "name": "Ungheria", "fiscal_id_label": "Adoazonosito jel", "vat_prefix": "HU"},
+    {"code": "HR", "name": "Croazia", "fiscal_id_label": "OIB", "vat_prefix": "HR"},
+    {"code": "SK", "name": "Slovacchia", "fiscal_id_label": "Rodne cislo", "vat_prefix": "SK"},
+    {"code": "SI", "name": "Slovenia", "fiscal_id_label": "Davcna stevilka", "vat_prefix": "SI"},
+    {"code": "BG", "name": "Bulgaria", "fiscal_id_label": "EGN", "vat_prefix": "BG"},
+    {"code": "LT", "name": "Lituania", "fiscal_id_label": "Asmens kodas", "vat_prefix": "LT"},
+    {"code": "LV", "name": "Lettonia", "fiscal_id_label": "Personas kods", "vat_prefix": "LV"},
+    {"code": "EE", "name": "Estonia", "fiscal_id_label": "Isikukood", "vat_prefix": "EE"},
+    {"code": "CY", "name": "Cipro", "fiscal_id_label": "TIC", "vat_prefix": "CY"},
+    {"code": "MT", "name": "Malta", "fiscal_id_label": "ID Number", "vat_prefix": "MT"},
+    {"code": "LU", "name": "Lussemburgo", "fiscal_id_label": "Matricule", "vat_prefix": "LU"},
+]
+
+DOCUMENT_CATEGORIES = [
+    {"key": "identity", "label": "Documenti di Identita", "description": "Carta d'identita, passaporto, patente"},
+    {"key": "tax_declarations", "label": "Dichiarazioni Fiscali", "description": "Dichiarazioni dei redditi, modelli unici"},
+    {"key": "vat_documents", "label": "Documenti IVA", "description": "Registri IVA, liquidazioni periodiche"},
+    {"key": "invoices", "label": "Fatture", "description": "Fatture emesse e ricevute"},
+    {"key": "company_documents", "label": "Documenti Societari", "description": "Visure, statuti, atti costitutivi"},
+    {"key": "accounting", "label": "Documenti Contabili", "description": "Bilanci, registri contabili, prima nota"},
+    {"key": "compliance", "label": "Conformita", "description": "Certificazioni, attestazioni, conformita"},
+    {"key": "payroll", "label": "Buste Paga e Lavoro", "description": "Cedolini, contratti di lavoro, CU"},
+    {"key": "activity", "label": "Apertura / Chiusura Attivita", "description": "Pratiche di apertura o chiusura"},
+    {"key": "other", "label": "Altri Documenti", "description": "Documenti non categorizzati"},
+]
+
+PRACTICE_TYPES = {
+    "vat_registration": "Apertura Partita IVA",
+    "vat_closure": "Chiusura Partita IVA",
+    "tax_declaration": "Dichiarazione dei Redditi",
+    "f24_payment": "Versamento F24",
+    "inps_registration": "Iscrizione INPS",
+    "accounting_setup": "Impostazione Contabilita",
+    "company_formation": "Costituzione Societa",
+    "annual_report": "Bilancio Annuale",
+    "other": "Altra Pratica"
+}
+
+# ========================
+# MODELS
+# ========================
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    country: Optional[str] = "IT"
+    city: Optional[str] = None
+    address: Optional[str] = None
+    client_type: Optional[str] = "private"
+    vat_number: Optional[str] = None
+    fiscal_code: Optional[str] = None
+    company_name: Optional[str] = None
+    privacy_consent: bool = True
+    terms_consent: bool = True
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class ProfileUpdate(BaseModel):
+    phone: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class PracticeCreate(BaseModel):
+    practice_type: str
+    description: str
+    client_name: str
+    client_type: str = "private"
+    fiscal_code: Optional[str] = None
+    vat_number: Optional[str] = None
+    country: Optional[str] = "IT"
+    additional_data: Optional[dict] = {}
+
 class PracticeUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
     additional_data: Optional[dict] = None
 
 class AgentAction(BaseModel):
-    agent_type: str  # analysis, validation, document, communication
+    agent_type: str
     practice_id: str
     input_data: dict
 
-class NotificationCreate(BaseModel):
-    title: str
-    message: str
-    notification_type: str  # info, warning, success, error
+class OrchestrationRequest(BaseModel):
+    practice_id: str
+    query: Optional[str] = "Analizza questa pratica in modo completo"
 
 # ========================
 # AUTH ENDPOINTS
@@ -172,60 +255,79 @@ async def register(user_data: UserRegister):
     email = user_data.email.lower()
     existing = await db.users.find_one({"email": email})
     if existing:
-        raise HTTPException(status_code=400, detail="Email già registrata")
-    
+        raise HTTPException(status_code=400, detail="Email gia registrata")
+
+    full_name = f"{user_data.first_name} {user_data.last_name}".strip()
     user_doc = {
         "email": email,
         "password_hash": hash_password(user_data.password),
-        "name": user_data.name,
+        "first_name": user_data.first_name,
+        "last_name": user_data.last_name,
+        "name": full_name,
+        "phone": user_data.phone,
+        "date_of_birth": user_data.date_of_birth,
+        "country": user_data.country or "IT",
+        "city": user_data.city,
+        "address": user_data.address,
+        "client_type": user_data.client_type or "private",
+        "vat_number": user_data.vat_number if user_data.client_type in ["freelancer", "company"] else None,
+        "fiscal_code": user_data.fiscal_code,
+        "company_name": user_data.company_name if user_data.client_type == "company" else None,
         "role": "user",
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "consent_given": True,
-        "consent_date": datetime.now(timezone.utc).isoformat()
+        "privacy_consent": user_data.privacy_consent,
+        "privacy_consent_date": datetime.now(timezone.utc).isoformat(),
+        "terms_consent": user_data.terms_consent,
+        "terms_consent_date": datetime.now(timezone.utc).isoformat()
     }
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
-    
+
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    
+
     response = JSONResponse(content={
         "id": user_id,
         "email": email,
-        "name": user_data.name,
-        "role": "user"
+        "name": full_name,
+        "first_name": user_data.first_name,
+        "last_name": user_data.last_name,
+        "role": "user",
+        "client_type": user_data.client_type or "private",
+        "country": user_data.country or "IT"
     })
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    
-    # Log registration
+
     await log_activity(user_id, "auth", "user_registered", {"email": email})
-    
     return response
 
 @api_router.post("/auth/login")
 async def login(user_data: UserLogin):
     email = user_data.email.lower()
     user = await db.users.find_one({"email": email})
-    
+
     if not user or not verify_password(user_data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Credenziali non valide")
-    
+
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    
+
     response = JSONResponse(content={
         "id": user_id,
         "email": user["email"],
-        "name": user["name"],
-        "role": user["role"]
+        "name": user.get("name", ""),
+        "first_name": user.get("first_name", ""),
+        "last_name": user.get("last_name", ""),
+        "role": user.get("role", "user"),
+        "client_type": user.get("client_type", "private"),
+        "country": user.get("country", "IT")
     })
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    
+
     await log_activity(user_id, "auth", "user_login", {"email": email})
-    
     return response
 
 @api_router.post("/auth/logout")
@@ -239,18 +341,107 @@ async def logout(request: Request):
 async def get_me(user: dict = Depends(get_current_user)):
     return user
 
+@api_router.post("/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest):
+    email = req.email.lower()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        return {"message": "Se l'email e registrata, riceverai un link per reimpostare la password."}
+
+    token = secrets.token_urlsafe(32)
+    await db.password_reset_tokens.insert_one({
+        "token": token,
+        "user_id": str(user["_id"]),
+        "email": email,
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+        "used": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    reset_link = f"{frontend_url}/reset-password?token={token}"
+    logger.info(f"[MOCK EMAIL] Password reset link for {email}: {reset_link}")
+
+    return {"message": "Se l'email e registrata, riceverai un link per reimpostare la password."}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(req: ResetPasswordRequest):
+    token_doc = await db.password_reset_tokens.find_one({
+        "token": req.token,
+        "used": False,
+        "expires_at": {"$gt": datetime.now(timezone.utc)}
+    })
+    if not token_doc:
+        raise HTTPException(status_code=400, detail="Link non valido o scaduto")
+
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="La password deve avere almeno 8 caratteri")
+
+    await db.users.update_one(
+        {"_id": ObjectId(token_doc["user_id"])},
+        {"$set": {"password_hash": hash_password(req.new_password)}}
+    )
+    await db.password_reset_tokens.update_one(
+        {"token": req.token},
+        {"$set": {"used": True}}
+    )
+
+    return {"message": "Password reimpostata con successo"}
+
+@api_router.get("/auth/profile")
+async def get_profile(user: dict = Depends(get_current_user)):
+    return user
+
+@api_router.put("/auth/profile")
+async def update_profile(update: ProfileUpdate, user: dict = Depends(get_current_user)):
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if update.phone is not None:
+        update_data["phone"] = update.phone
+    if update.date_of_birth is not None:
+        update_data["date_of_birth"] = update.date_of_birth
+    if update.country is not None:
+        update_data["country"] = update.country
+    if update.city is not None:
+        update_data["city"] = update.city
+    if update.address is not None:
+        update_data["address"] = update.address
+
+    await db.users.update_one({"_id": ObjectId(user["id"])}, {"$set": update_data})
+    updated_user = await db.users.find_one({"_id": ObjectId(user["id"])}, {"_id": 0, "password_hash": 0})
+    if updated_user:
+        updated_user["id"] = user["id"]
+    return updated_user
+
+@api_router.put("/auth/change-password")
+async def change_password(req: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    user_doc = await db.users.find_one({"_id": ObjectId(user["id"])})
+    if not user_doc or not verify_password(req.current_password, user_doc["password_hash"]):
+        raise HTTPException(status_code=400, detail="La password attuale non e corretta")
+
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="La nuova password deve avere almeno 8 caratteri")
+
+    await db.users.update_one(
+        {"_id": ObjectId(user["id"])},
+        {"$set": {"password_hash": hash_password(req.new_password)}}
+    )
+    return {"message": "Password aggiornata con successo"}
+
+# ========================
+# REFERENCE DATA
+# ========================
+
+@api_router.get("/countries")
+async def get_countries():
+    return EU_COUNTRIES
+
+@api_router.get("/document-categories")
+async def get_document_categories():
+    return DOCUMENT_CATEGORIES
+
 # ========================
 # PRACTICES ENDPOINTS
 # ========================
-
-PRACTICE_TYPES = {
-    "vat_registration": "Apertura Partita IVA",
-    "vat_closure": "Chiusura Partita IVA",
-    "tax_declaration": "Dichiarazione dei Redditi",
-    "f24_payment": "Versamento F24",
-    "inps_registration": "Iscrizione INPS",
-    "other": "Altra Pratica"
-}
 
 @api_router.post("/practices")
 async def create_practice(practice: PracticeCreate, user: dict = Depends(get_current_user)):
@@ -265,28 +456,25 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "client_type_label": CLIENT_TYPES.get(practice.client_type, practice.client_type),
         "fiscal_code": practice.fiscal_code,
         "vat_number": practice.vat_number if practice.client_type in ["freelancer", "company"] else None,
+        "country": practice.country or user.get("country", "IT"),
         "additional_data": practice.additional_data or {},
         "status": "pending",
         "status_label": "In Attesa",
         "documents": [],
         "agent_logs": [],
+        "orchestration_result": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
-    
+
     await db.practices.insert_one(practice_doc)
-    
-    # Log activity
     await log_activity(user["id"], "practice", "practice_created", {
         "practice_id": practice_doc["id"],
         "practice_type": practice.practice_type
     })
-    
-    # Create notification
-    await create_notification(user["id"], "Nuova Pratica Creata", 
-        f"La pratica '{PRACTICE_TYPES.get(practice.practice_type, practice.practice_type)}' per {practice.client_name} è stata creata.", "success")
-    
-    # Return without _id
+    await create_notification(user["id"], "Nuova Pratica Creata",
+        f"La pratica '{PRACTICE_TYPES.get(practice.practice_type, practice.practice_type)}' per {practice.client_name} e stata creata.", "success")
+
     practice_doc.pop("_id", None)
     return practice_doc
 
@@ -307,7 +495,7 @@ async def update_practice(practice_id: str, update: PracticeUpdate, user: dict =
     practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]})
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
-    
+
     update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
     if update.description:
         update_data["description"] = update.description
@@ -317,11 +505,10 @@ async def update_practice(practice_id: str, update: PracticeUpdate, user: dict =
         update_data["status_label"] = status_labels.get(update.status, update.status)
     if update.additional_data:
         update_data["additional_data"] = {**practice.get("additional_data", {}), **update.additional_data}
-    
+
     await db.practices.update_one({"id": practice_id}, {"$set": update_data})
-    
     await log_activity(user["id"], "practice", "practice_updated", {"practice_id": practice_id, "changes": list(update_data.keys())})
-    
+
     updated = await db.practices.find_one({"id": practice_id}, {"_id": 0})
     return updated
 
@@ -330,7 +517,6 @@ async def delete_practice(practice_id: str, user: dict = Depends(get_current_use
     result = await db.practices.delete_one({"id": practice_id, "user_id": user["id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
-    
     await log_activity(user["id"], "practice", "practice_deleted", {"practice_id": practice_id})
     return {"message": "Pratica eliminata"}
 
@@ -347,46 +533,43 @@ MIME_TYPES = {
 }
 
 @api_router.post("/documents/upload/{practice_id}")
-async def upload_document(practice_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+async def upload_document(practice_id: str, file: UploadFile = File(...), category: str = "other", user: dict = Depends(get_current_user)):
     practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]})
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
-    
+
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else "bin"
     file_id = str(uuid.uuid4())
     path = f"{APP_NAME}/uploads/{user['id']}/{file_id}.{ext}"
-    
+
     data = await file.read()
     content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
-    
+
     result = put_object(path, data, content_type)
-    
+
     doc_record = {
         "id": file_id,
         "storage_path": result["path"],
         "original_filename": file.filename,
         "content_type": content_type,
         "size": result.get("size", len(data)),
+        "category": category,
         "practice_id": practice_id,
         "user_id": user["id"],
         "is_deleted": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
+
     await db.documents.insert_one(doc_record)
-    
-    # Add to practice documents list
     await db.practices.update_one(
         {"id": practice_id},
-        {"$push": {"documents": {"id": file_id, "filename": file.filename, "uploaded_at": doc_record["created_at"]}}}
+        {"$push": {"documents": {"id": file_id, "filename": file.filename, "category": category, "uploaded_at": doc_record["created_at"]}}}
     )
-    
+
     await log_activity(user["id"], "document", "document_uploaded", {
-        "document_id": file_id,
-        "practice_id": practice_id,
-        "filename": file.filename
+        "document_id": file_id, "practice_id": practice_id, "filename": file.filename, "category": category
     })
-    
+
     doc_record.pop("_id", None)
     return doc_record
 
@@ -395,7 +578,6 @@ async def get_document(document_id: str, user: dict = Depends(get_current_user))
     doc = await db.documents.find_one({"id": document_id, "user_id": user["id"], "is_deleted": False})
     if not doc:
         raise HTTPException(status_code=404, detail="Documento non trovato")
-    
     data, content_type = get_object(doc["storage_path"])
     return Response(content=data, media_type=doc.get("content_type", content_type))
 
@@ -417,8 +599,9 @@ AGENT_DESCRIPTIONS = {
     "analysis": {
         "name": "Agente di Analisi",
         "description": "Analizza la situazione dell'utente e determina la pratica fiscale necessaria.",
-        "system_message": """Sei l'Agente di Analisi di Herion - Assistente AI.
-Il tuo compito è analizzare la situazione fiscale dell'utente e determinare quale pratica è necessaria.
+        "step": 1,
+        "system_message": """Sei l'Agente di Analisi di Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e analizzare la situazione fiscale dell'utente e determinare quale pratica e necessaria.
 Rispondi SEMPRE in italiano.
 Sii chiaro, trasparente e spiega ogni passaggio del tuo ragionamento.
 Format della risposta:
@@ -431,8 +614,9 @@ Format della risposta:
     "validation": {
         "name": "Agente di Validazione",
         "description": "Verifica la completezza e correttezza dei dati inseriti.",
-        "system_message": """Sei l'Agente di Validazione di Herion - Assistente AI.
-Il tuo compito è verificare che i dati inseriti siano completi e corretti.
+        "step": 2,
+        "system_message": """Sei l'Agente di Validazione di Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e verificare che i dati inseriti siano completi e corretti.
 Rispondi SEMPRE in italiano.
 Identifica eventuali errori o dati mancanti.
 Format della risposta:
@@ -442,30 +626,48 @@ Format della risposta:
 - Dati mancanti (se presenti)
 - Suggerimenti"""
     },
+    "compliance": {
+        "name": "Agente di Conformita",
+        "description": "Verifica la conformita alle normative fiscali del paese selezionato.",
+        "step": 3,
+        "system_message": """Sei l'Agente di Conformita di Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e verificare che la pratica sia conforme alle normative fiscali applicabili.
+Rispondi SEMPRE in italiano.
+Considera il paese di riferimento e le normative specifiche.
+Format della risposta:
+- Normative applicabili
+- Verifica conformita
+- Rischi identificati
+- Adempimenti necessari
+- Raccomandazioni"""
+    },
     "document": {
         "name": "Agente Documenti",
         "description": "Estrae dati strutturati dai documenti e genera bozze.",
-        "system_message": """Sei l'Agente Documenti di Herion - Assistente AI.
-Il tuo compito è analizzare i documenti caricati ed estrarre informazioni strutturate.
+        "step": 4,
+        "system_message": """Sei l'Agente Documenti di Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e analizzare i documenti ed estrarre informazioni strutturate, creando report e sintesi.
 Rispondi SEMPRE in italiano.
 Format della risposta:
 - Documento analizzato
 - Dati estratti
-- Informazioni chiave
+- Sintesi strutturata
 - Note aggiuntive"""
     },
     "communication": {
         "name": "Agente Comunicazione",
-        "description": "Spiega chiaramente all'utente cosa sta succedendo.",
-        "system_message": """Sei l'Agente Comunicazione di Herion - Assistente AI.
-Il tuo compito è spiegare in modo chiaro e semplice all'utente lo stato della pratica.
+        "description": "Spiega chiaramente all'utente cosa sta succedendo con linguaggio semplice.",
+        "step": 5,
+        "system_message": """Sei l'Agente Comunicazione di Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e spiegare in modo chiaro e semplice all'utente lo stato della pratica e i risultati dell'analisi.
 Rispondi SEMPRE in italiano, usando un linguaggio semplice e accessibile.
 Evita termini tecnici quando possibile.
 Format della risposta:
 - Stato attuale
-- Cosa è stato fatto
-- Cosa succederà
-- Tempistiche stimate"""
+- Cosa e stato fatto
+- Cosa succedera
+- Tempistiche stimate
+- Consigli pratici"""
     }
 }
 
@@ -473,19 +675,18 @@ Format della risposta:
 async def execute_agent(action: AgentAction, user: dict = Depends(get_current_user)):
     if action.agent_type not in AGENT_DESCRIPTIONS:
         raise HTTPException(status_code=400, detail="Tipo di agente non valido")
-    
+
     practice = await db.practices.find_one({"id": action.practice_id, "user_id": user["id"]})
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
-    
+
     agent_config = AGENT_DESCRIPTIONS[action.agent_type]
-    
-    # Log the agent invocation (input transparency)
     agent_log_id = str(uuid.uuid4())
     agent_log = {
         "id": agent_log_id,
         "agent_type": action.agent_type,
         "agent_name": agent_config["name"],
+        "step": agent_config["step"],
         "input_data": action.input_data,
         "output_data": None,
         "status": "processing",
@@ -493,112 +694,190 @@ async def execute_agent(action: AgentAction, user: dict = Depends(get_current_us
         "completed_at": None,
         "explanation": f"Invocazione dell'agente '{agent_config['name']}' con i dati forniti."
     }
-    
+
     await log_activity(user["id"], "agent", "agent_invoked", {
-        "agent_type": action.agent_type,
-        "practice_id": action.practice_id,
-        "input_data": action.input_data
+        "agent_type": action.agent_type, "practice_id": action.practice_id, "input_data": action.input_data
     })
-    
+
     try:
-        # Initialize LLM Chat
         chat = LlmChat(
             api_key=EMERGENT_KEY,
             session_id=f"agent-{action.agent_type}-{action.practice_id}-{agent_log_id}",
             system_message=agent_config["system_message"]
         ).with_model("openai", "gpt-5.2")
-        
-        # Prepare the message with practice context
+
         practice_context = {
             "tipo_pratica": practice.get("practice_type_label"),
             "cliente": practice.get("client_name"),
             "descrizione": practice.get("description"),
             "codice_fiscale": practice.get("fiscal_code"),
             "partita_iva": practice.get("vat_number"),
+            "paese": practice.get("country", "IT"),
             "stato": practice.get("status_label"),
             "dati_aggiuntivi": practice.get("additional_data", {})
         }
-        
+
         user_input = action.input_data.get("query", "Analizza questa pratica")
-        full_message = f"""Contesto della pratica:
-{practice_context}
+        full_message = f"""Contesto della pratica:\n{practice_context}\n\nRichiesta utente:\n{user_input}\n\nDati aggiuntivi forniti:\n{action.input_data}"""
 
-Richiesta utente:
-{user_input}
-
-Dati aggiuntivi forniti:
-{action.input_data}"""
-        
         user_message = UserMessage(text=full_message)
         response = await chat.send_message(user_message)
-        
-        # Update agent log with output
+
         agent_log["output_data"] = response
         agent_log["status"] = "completed"
         agent_log["completed_at"] = datetime.now(timezone.utc).isoformat()
-        
-        # Add to practice agent_logs
-        await db.practices.update_one(
-            {"id": action.practice_id},
-            {"$push": {"agent_logs": agent_log}}
-        )
-        
-        # Log the completion (output transparency)
+
+        await db.practices.update_one({"id": action.practice_id}, {"$push": {"agent_logs": agent_log}})
         await log_activity(user["id"], "agent", "agent_completed", {
-            "agent_type": action.agent_type,
-            "practice_id": action.practice_id,
-            "log_id": agent_log_id
+            "agent_type": action.agent_type, "practice_id": action.practice_id, "log_id": agent_log_id
         })
-        
+
         return {
             "agent": agent_config["name"],
+            "step": agent_config["step"],
             "input": action.input_data,
             "output": response,
             "log_id": agent_log_id,
             "explanation": f"L'agente '{agent_config['name']}' ha elaborato la richiesta. Tutti i passaggi sono registrati nel log."
         }
-        
+
     except Exception as e:
         logger.error(f"Agent error: {str(e)}")
         agent_log["status"] = "error"
         agent_log["output_data"] = str(e)
         agent_log["completed_at"] = datetime.now(timezone.utc).isoformat()
-        
-        await db.practices.update_one(
-            {"id": action.practice_id},
-            {"$push": {"agent_logs": agent_log}}
-        )
-        
+        await db.practices.update_one({"id": action.practice_id}, {"$push": {"agent_logs": agent_log}})
         await log_activity(user["id"], "agent", "agent_error", {
-            "agent_type": action.agent_type,
-            "practice_id": action.practice_id,
-            "error": str(e)
+            "agent_type": action.agent_type, "practice_id": action.practice_id, "error": str(e)
         })
-        
         raise HTTPException(status_code=500, detail=f"Errore nell'esecuzione dell'agente: {str(e)}")
 
 @api_router.get("/agents/info")
 async def get_agents_info():
-    """Get information about all available agents (public endpoint for transparency)"""
     return {
         "agents": [
             {
                 "type": agent_type,
                 "name": config["name"],
                 "description": config["description"],
+                "step": config["step"],
                 "system_prompt": config["system_message"]
             }
             for agent_type, config in AGENT_DESCRIPTIONS.items()
         ],
+        "workflow_steps": ["analysis", "validation", "compliance", "document", "communication"],
         "transparency_note": "Tutti gli agenti AI sono completamente trasparenti. Ogni azione viene registrata con input e output completi."
     }
+
+@api_router.post("/agents/orchestrate")
+async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get_current_user)):
+    practice = await db.practices.find_one({"id": req.practice_id, "user_id": user["id"]})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    orchestration_id = str(uuid.uuid4())
+    workflow_steps = ["analysis", "validation", "compliance", "document", "communication"]
+    results = []
+    previous_output = ""
+
+    await log_activity(user["id"], "orchestration", "orchestration_started", {
+        "orchestration_id": orchestration_id, "practice_id": req.practice_id
+    })
+
+    for step_type in workflow_steps:
+        agent_config = AGENT_DESCRIPTIONS[step_type]
+        agent_log_id = str(uuid.uuid4())
+
+        step_result = {
+            "id": agent_log_id,
+            "agent_type": step_type,
+            "agent_name": agent_config["name"],
+            "step": agent_config["step"],
+            "status": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "input_summary": None,
+            "output_data": None,
+            "completed_at": None
+        }
+
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_KEY,
+                session_id=f"orch-{orchestration_id}-{step_type}-{agent_log_id}",
+                system_message=agent_config["system_message"]
+            ).with_model("openai", "gpt-5.2")
+
+            practice_context = {
+                "tipo_pratica": practice.get("practice_type_label"),
+                "cliente": practice.get("client_name"),
+                "descrizione": practice.get("description"),
+                "codice_fiscale": practice.get("fiscal_code"),
+                "partita_iva": practice.get("vat_number"),
+                "paese": practice.get("country", "IT"),
+                "stato": practice.get("status_label"),
+            }
+
+            context_msg = f"Contesto pratica:\n{practice_context}\n\nRichiesta: {req.query}"
+            if previous_output:
+                context_msg += f"\n\nOutput dell'agente precedente:\n{previous_output}"
+
+            step_result["input_summary"] = context_msg[:200]
+
+            user_message = UserMessage(text=context_msg)
+            response = await chat.send_message(user_message)
+
+            step_result["output_data"] = response
+            step_result["status"] = "completed"
+            step_result["completed_at"] = datetime.now(timezone.utc).isoformat()
+            previous_output = response
+
+        except Exception as e:
+            logger.error(f"Orchestration step {step_type} error: {str(e)}")
+            step_result["output_data"] = f"Errore: {str(e)}"
+            step_result["status"] = "failed"
+            step_result["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+        results.append(step_result)
+
+    orchestration_result = {
+        "id": orchestration_id,
+        "steps": results,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "agents_used": [r["agent_name"] for r in results],
+        "final_status": "completed" if all(r["status"] == "completed" for r in results) else "partial"
+    }
+
+    await db.practices.update_one(
+        {"id": req.practice_id},
+        {"$set": {"orchestration_result": orchestration_result, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    for r in results:
+        agent_log_entry = {
+            "id": r["id"],
+            "agent_type": r["agent_type"],
+            "agent_name": r["agent_name"],
+            "step": r["step"],
+            "input_data": {"orchestration_id": orchestration_id, "query": req.query},
+            "output_data": r["output_data"],
+            "status": r["status"],
+            "started_at": r["started_at"],
+            "completed_at": r["completed_at"],
+            "explanation": f"Orchestrazione automatica - Step {r['step']}: {r['agent_name']}"
+        }
+        await db.practices.update_one({"id": req.practice_id}, {"$push": {"agent_logs": agent_log_entry}})
+
+    await log_activity(user["id"], "orchestration", "orchestration_completed", {
+        "orchestration_id": orchestration_id, "practice_id": req.practice_id, "final_status": orchestration_result["final_status"]
+    })
+
+    return orchestration_result
 
 # ========================
 # ACTIVITY LOG ENDPOINTS
 # ========================
 
 async def log_activity(user_id: str, category: str, action: str, details: dict):
-    """Log an activity with full transparency"""
     log_entry = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
@@ -616,15 +895,13 @@ async def get_activity_logs(user: dict = Depends(get_current_user), limit: int =
     query = {"user_id": user["id"]}
     if category:
         query["category"] = category
-    
     logs = await db.activity_logs.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
     return logs
 
 @api_router.get("/activity-logs/practice/{practice_id}")
 async def get_practice_activity_logs(practice_id: str, user: dict = Depends(get_current_user)):
     logs = await db.activity_logs.find(
-        {"user_id": user["id"], "details.practice_id": practice_id},
-        {"_id": 0}
+        {"user_id": user["id"], "details.practice_id": practice_id}, {"_id": 0}
     ).sort("timestamp", -1).to_list(100)
     return logs
 
@@ -647,28 +924,19 @@ async def create_notification(user_id: str, title: str, message: str, notificati
 
 @api_router.get("/notifications")
 async def get_notifications(user: dict = Depends(get_current_user)):
-    notifications = await db.notifications.find(
-        {"user_id": user["id"]},
-        {"_id": 0}
-    ).sort("created_at", -1).limit(50).to_list(50)
+    notifications = await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     return notifications
 
 @api_router.put("/notifications/{notification_id}/read")
 async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
-    result = await db.notifications.update_one(
-        {"id": notification_id, "user_id": user["id"]},
-        {"$set": {"read": True}}
-    )
+    result = await db.notifications.update_one({"id": notification_id, "user_id": user["id"]}, {"$set": {"read": True}})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Notifica non trovata")
     return {"message": "Notifica segnata come letta"}
 
 @api_router.put("/notifications/read-all")
 async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
-    await db.notifications.update_many(
-        {"user_id": user["id"], "read": False},
-        {"$set": {"read": True}}
-    )
+    await db.notifications.update_many({"user_id": user["id"], "read": False}, {"$set": {"read": True}})
     return {"message": "Tutte le notifiche segnate come lette"}
 
 # ========================
@@ -682,12 +950,12 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     processing = await db.practices.count_documents({"user_id": user["id"], "status": "processing"})
     completed = await db.practices.count_documents({"user_id": user["id"], "status": "completed"})
     unread_notifications = await db.notifications.count_documents({"user_id": user["id"], "read": False})
-    
+
     recent_practices = await db.practices.find(
         {"user_id": user["id"]},
-        {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status_label": 1, "created_at": 1}
+        {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1, "status_label": 1, "created_at": 1}
     ).sort("created_at", -1).limit(5).to_list(5)
-    
+
     return {
         "total_practices": total_practices,
         "pending": pending,
@@ -701,326 +969,126 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
 # PDF EXPORT
 # ========================
 
-from reportlab.lib import colors
+from reportlab.lib import colors as rl_colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, cm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.enums import TA_CENTER
 from io import BytesIO
 
-# Herion brand colors
-HERION_TEAL = colors.HexColor('#0F4C5C')
-HERION_ACCENT = colors.HexColor('#5DD9C1')
-HERION_GRAY = colors.HexColor('#5C5C59')
-HERION_LIGHT_GRAY = colors.HexColor('#F5F5F4')
-HERION_BORDER = colors.HexColor('#E5E5E3')
+HERION_TEAL = rl_colors.HexColor('#0F4C5C')
+HERION_ACCENT = rl_colors.HexColor('#5DD9C1')
+HERION_GRAY = rl_colors.HexColor('#475569')
+HERION_LIGHT_GRAY = rl_colors.HexColor('#F7FAFC')
+HERION_BORDER = rl_colors.HexColor('#E2E8F0')
 
 def create_herion_logo_drawing(width=50, height=50):
-    """Create Herion logo as reportlab drawing"""
-    from reportlab.graphics.shapes import Drawing, Rect, Line, String
-    from reportlab.graphics import renderPDF
-    
+    from reportlab.graphics.shapes import Drawing, Rect, Line
     d = Drawing(width, height)
-    
-    # Background rectangle with rounded corners (simulated)
     d.add(Rect(2, 2, width-4, height-4, fillColor=HERION_TEAL, strokeColor=None, rx=8, ry=8))
-    
-    # H letter strokes
     stroke_width = 3
-    # Left vertical
     d.add(Line(width*0.3, height*0.75, width*0.3, height*0.25, strokeColor=HERION_ACCENT, strokeWidth=stroke_width))
-    # Right vertical
     d.add(Line(width*0.7, height*0.75, width*0.7, height*0.25, strokeColor=HERION_ACCENT, strokeWidth=stroke_width))
-    # Horizontal
     d.add(Line(width*0.3, height*0.5, width*0.7, height*0.5, strokeColor=HERION_ACCENT, strokeWidth=stroke_width))
-    
     return d
 
 def generate_practice_pdf(practice: dict, user: dict) -> bytes:
-    """Generate a professional PDF report for a practice"""
-    
     buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm
-    )
-    
-    # Custom styles
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     styles = getSampleStyleSheet()
-    
-    # Title style
-    title_style = ParagraphStyle(
-        'HerionTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=HERION_TEAL,
-        spaceAfter=6,
-        fontName='Helvetica-Bold'
-    )
-    
-    # Subtitle style
-    subtitle_style = ParagraphStyle(
-        'HerionSubtitle',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=HERION_GRAY,
-        spaceAfter=20,
-        fontName='Helvetica'
-    )
-    
-    # Section header style
-    section_style = ParagraphStyle(
-        'HerionSection',
-        parent=styles['Heading2'],
-        fontSize=14,
-        textColor=HERION_TEAL,
-        spaceBefore=20,
-        spaceAfter=10,
-        fontName='Helvetica-Bold'
-    )
-    
-    # Body text style
-    body_style = ParagraphStyle(
-        'HerionBody',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.black,
-        spaceAfter=8,
-        fontName='Helvetica',
-        leading=14
-    )
-    
-    # Label style
-    label_style = ParagraphStyle(
-        'HerionLabel',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=HERION_GRAY,
-        fontName='Helvetica-Bold',
-        spaceBefore=6
-    )
-    
-    # Value style
-    value_style = ParagraphStyle(
-        'HerionValue',
-        parent=styles['Normal'],
-        fontSize=11,
-        textColor=colors.black,
-        fontName='Helvetica',
-        spaceAfter=12
-    )
-    
-    # AI response style
-    ai_style = ParagraphStyle(
-        'HerionAI',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.black,
-        fontName='Helvetica',
-        leading=14,
-        leftIndent=10,
-        rightIndent=10,
-        backColor=HERION_LIGHT_GRAY
-    )
-    
+
+    title_style = ParagraphStyle('HerionTitle', parent=styles['Heading1'], fontSize=24, textColor=HERION_TEAL, spaceAfter=6, fontName='Helvetica-Bold')
+    subtitle_style = ParagraphStyle('HerionSubtitle', parent=styles['Normal'], fontSize=10, textColor=HERION_GRAY, spaceAfter=20, fontName='Helvetica')
+    section_style = ParagraphStyle('HerionSection', parent=styles['Heading2'], fontSize=14, textColor=HERION_TEAL, spaceBefore=20, spaceAfter=10, fontName='Helvetica-Bold')
+    body_style = ParagraphStyle('HerionBody', parent=styles['Normal'], fontSize=10, textColor=rl_colors.black, spaceAfter=8, fontName='Helvetica', leading=14)
+    ai_style = ParagraphStyle('HerionAI', parent=styles['Normal'], fontSize=10, textColor=rl_colors.black, fontName='Helvetica', leading=14, leftIndent=10, rightIndent=10, backColor=HERION_LIGHT_GRAY)
+    footer_style = ParagraphStyle('HerionFooter', parent=styles['Normal'], fontSize=8, textColor=HERION_GRAY, alignment=TA_CENTER)
+
     elements = []
-    
-    # Header with branding
-    header_data = [
-        [
-            create_herion_logo_drawing(40, 40),
-            Paragraph('<font size="20" color="#0F4C5C"><b>HERION</b></font><br/><font size="8" color="#5C5C59">Precision. Control. Confidence.</font>', styles['Normal'])
-        ]
-    ]
+
+    header_data = [[create_herion_logo_drawing(40, 40), Paragraph('<font size="20" color="#0F4C5C"><b>HERION</b></font><br/><font size="8" color="#475569">Precision. Control. Confidence.</font>', styles['Normal'])]]
     header_table = Table(header_data, colWidths=[50, 400])
-    header_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (0, 0), 0),
-        ('LEFTPADDING', (1, 0), (1, 0), 10),
-    ]))
+    header_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LEFTPADDING', (0, 0), (0, 0), 0), ('LEFTPADDING', (1, 0), (1, 0), 10)]))
     elements.append(header_table)
     elements.append(Spacer(1, 10))
-    
-    # Horizontal line
     elements.append(HRFlowable(width="100%", thickness=2, color=HERION_ACCENT, spaceBefore=5, spaceAfter=20))
-    
-    # Document title
+
     elements.append(Paragraph("RAPPORTO PRATICA FISCALE", title_style))
     elements.append(Paragraph(f"Documento generato il {datetime.now().strftime('%d/%m/%Y alle %H:%M')}", subtitle_style))
-    
-    # Reference ID box
-    ref_data = [[
-        Paragraph('<font size="8" color="#5C5C59">RIFERIMENTO PRATICA</font>', styles['Normal']),
-        Paragraph(f'<font size="12" color="#0F4C5C"><b>{practice.get("id", "N/A")[:8].upper()}</b></font>', styles['Normal'])
-    ]]
+
+    ref_data = [[Paragraph('<font size="8" color="#475569">RIFERIMENTO PRATICA</font>', styles['Normal']), Paragraph(f'<font size="12" color="#0F4C5C"><b>{practice.get("id", "N/A")[:8].upper()}</b></font>', styles['Normal'])]]
     ref_table = Table(ref_data, colWidths=[120, 350])
-    ref_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), HERION_LIGHT_GRAY),
-        ('BOX', (0, 0), (-1, -1), 1, HERION_BORDER),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 10),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
+    ref_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), HERION_LIGHT_GRAY), ('BOX', (0, 0), (-1, -1), 1, HERION_BORDER), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LEFTPADDING', (0, 0), (-1, -1), 10), ('RIGHTPADDING', (0, 0), (-1, -1), 10), ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8)]))
     elements.append(ref_table)
     elements.append(Spacer(1, 20))
-    
-    # Practice Information Section
+
     elements.append(Paragraph("INFORMAZIONI PRATICA", section_style))
-    
-    # Practice details table
-    client_type_labels = {"private": "Privato", "freelancer": "Libero Professionista", "company": "Azienda"}
-    
     practice_data = [
         ["Tipo Pratica:", practice.get("practice_type_label", "N/A")],
         ["Stato:", practice.get("status_label", "N/A")],
+        ["Paese:", practice.get("country", "IT")],
         ["Data Creazione:", practice.get("created_at", "N/A")[:10] if practice.get("created_at") else "N/A"],
         ["Ultimo Aggiornamento:", practice.get("updated_at", "N/A")[:10] if practice.get("updated_at") else "N/A"],
     ]
-    
     practice_table = Table(practice_data, colWidths=[150, 320])
-    practice_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('TEXTCOLOR', (0, 0), (0, -1), HERION_GRAY),
-        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('LINEBELOW', (0, 0), (-1, -2), 0.5, HERION_BORDER),
-    ]))
+    practice_table.setStyle(TableStyle([('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'), ('FONTNAME', (1, 0), (1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 10), ('TEXTCOLOR', (0, 0), (0, -1), HERION_GRAY), ('TEXTCOLOR', (1, 0), (1, -1), rl_colors.black), ('BOTTOMPADDING', (0, 0), (-1, -1), 8), ('TOPPADDING', (0, 0), (-1, -1), 8), ('LINEBELOW', (0, 0), (-1, -2), 0.5, HERION_BORDER)]))
     elements.append(practice_table)
     elements.append(Spacer(1, 10))
-    
-    # Client Information Section
+
     elements.append(Paragraph("DATI CLIENTE", section_style))
-    
-    client_data = [
-        ["Nome/Ragione Sociale:", practice.get("client_name", "N/A")],
-        ["Tipo Cliente:", client_type_labels.get(practice.get("client_type", ""), practice.get("client_type_label", "N/A"))],
-    ]
-    
+    client_data = [["Nome/Ragione Sociale:", practice.get("client_name", "N/A")], ["Tipo Cliente:", CLIENT_TYPES.get(practice.get("client_type", ""), practice.get("client_type_label", "N/A"))]]
     if practice.get("fiscal_code"):
         client_data.append(["Codice Fiscale:", practice.get("fiscal_code")])
-    
     if practice.get("vat_number"):
         client_data.append(["Partita IVA:", practice.get("vat_number")])
-    
     client_table = Table(client_data, colWidths=[150, 320])
-    client_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('TEXTCOLOR', (0, 0), (0, -1), HERION_GRAY),
-        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('LINEBELOW', (0, 0), (-1, -2), 0.5, HERION_BORDER),
-    ]))
+    client_table.setStyle(TableStyle([('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'), ('FONTNAME', (1, 0), (1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 10), ('TEXTCOLOR', (0, 0), (0, -1), HERION_GRAY), ('TEXTCOLOR', (1, 0), (1, -1), rl_colors.black), ('BOTTOMPADDING', (0, 0), (-1, -1), 8), ('TOPPADDING', (0, 0), (-1, -1), 8), ('LINEBELOW', (0, 0), (-1, -2), 0.5, HERION_BORDER)]))
     elements.append(client_table)
     elements.append(Spacer(1, 10))
-    
-    # Description Section
+
     elements.append(Paragraph("DESCRIZIONE RICHIESTA", section_style))
-    description = practice.get("description", "Nessuna descrizione disponibile.")
-    elements.append(Paragraph(description, body_style))
+    elements.append(Paragraph(practice.get("description", "Nessuna descrizione disponibile."), body_style))
     elements.append(Spacer(1, 10))
-    
-    # AI Analysis Section
+
     agent_logs = practice.get("agent_logs", [])
     if agent_logs:
         elements.append(Paragraph("ANALISI HERION AI", section_style))
-        
         for log in agent_logs:
             if log.get("status") == "completed" and log.get("output_data"):
-                # Agent header
-                agent_header = f'<font color="#0F4C5C"><b>{log.get("agent_name", "Agente")}</b></font>'
-                elements.append(Paragraph(agent_header, body_style))
-                
-                # Agent output in styled box
-                output_text = str(log.get("output_data", ""))[:2000]  # Limit length
-                # Clean and format the output
-                output_text = output_text.replace('\n', '<br/>')
-                
+                elements.append(Paragraph(f'<font color="#0F4C5C"><b>{log.get("agent_name", "Agente")}</b></font>', body_style))
+                output_text = str(log.get("output_data", ""))[:2000].replace('\n', '<br/>')
                 output_data = [[Paragraph(output_text, ai_style)]]
                 output_table = Table(output_data, colWidths=[470])
-                output_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), HERION_LIGHT_GRAY),
-                    ('BOX', (0, 0), (-1, -1), 1, HERION_BORDER),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 12),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-                    ('TOPPADDING', (0, 0), (-1, -1), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-                ]))
+                output_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), HERION_LIGHT_GRAY), ('BOX', (0, 0), (-1, -1), 1, HERION_BORDER), ('LEFTPADDING', (0, 0), (-1, -1), 12), ('RIGHTPADDING', (0, 0), (-1, -1), 12), ('TOPPADDING', (0, 0), (-1, -1), 10), ('BOTTOMPADDING', (0, 0), (-1, -1), 10)]))
                 elements.append(output_table)
                 elements.append(Spacer(1, 15))
-    
-    # Footer
+
     elements.append(Spacer(1, 30))
     elements.append(HRFlowable(width="100%", thickness=1, color=HERION_BORDER, spaceBefore=10, spaceAfter=10))
-    
-    footer_style = ParagraphStyle(
-        'HerionFooter',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=HERION_GRAY,
-        alignment=TA_CENTER
-    )
-    
     elements.append(Paragraph(
         f"Documento generato automaticamente da Herion - Precision. Control. Confidence.<br/>"
-        f"Questo documento è stato creato il {datetime.now().strftime('%d/%m/%Y alle %H:%M')} e ha valore informativo.<br/>"
-        f"Riferimento: {practice.get('id', 'N/A')}",
-        footer_style
-    ))
-    
-    # Build PDF
+        f"Questo documento e stato creato il {datetime.now().strftime('%d/%m/%Y alle %H:%M')} e ha valore informativo.<br/>"
+        f"Riferimento: {practice.get('id', 'N/A')}", footer_style))
+
     doc.build(elements)
     pdf_bytes = buffer.getvalue()
     buffer.close()
-    
     return pdf_bytes
 
 @api_router.get("/practices/{practice_id}/pdf")
 async def download_practice_pdf(practice_id: str, user: dict = Depends(get_current_user)):
-    """Download PDF report for a completed practice"""
-    
     practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
-    
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
-    
     if practice.get("status") != "completed":
-        raise HTTPException(status_code=400, detail="Il PDF è disponibile solo per pratiche completate")
-    
-    # Generate PDF
+        raise HTTPException(status_code=400, detail="Il PDF e disponibile solo per pratiche completate")
+
     try:
         pdf_bytes = generate_practice_pdf(practice, user)
-        
-        # Log activity
-        await log_activity(user["id"], "document", "pdf_downloaded", {
-            "practice_id": practice_id,
-            "practice_type": practice.get("practice_type_label")
-        })
-        
-        # Create filename
+        await log_activity(user["id"], "document", "pdf_downloaded", {"practice_id": practice_id, "practice_type": practice.get("practice_type_label")})
         filename = f"Herion_Pratica_{practice.get('practice_type', 'report')}_{practice_id[:8]}.pdf"
-        
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
-        )
+        return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
     except Exception as e:
         logger.error(f"PDF generation error: {str(e)}")
         raise HTTPException(status_code=500, detail="Errore nella generazione del PDF")
@@ -1031,13 +1099,13 @@ async def download_practice_pdf(practice_id: str, user: dict = Depends(get_curre
 
 @api_router.get("/")
 async def root():
-    return {"message": "Herion API - Precision. Control. Confidence.", "version": "1.0.0"}
+    return {"message": "Herion API - Precision. Control. Confidence.", "version": "2.0.0"}
 
 @api_router.get("/health")
 async def health():
     return {"status": "healthy"}
 
-# Include the router in the main app
+# Include the router
 app.include_router(api_router)
 
 # CORS Middleware
@@ -1052,21 +1120,20 @@ app.add_middleware(
 # Startup event
 @app.on_event("startup")
 async def startup():
-    # Create indexes
     await db.users.create_index("email", unique=True)
     await db.practices.create_index([("user_id", 1), ("created_at", -1)])
     await db.documents.create_index([("practice_id", 1), ("is_deleted", 1)])
     await db.activity_logs.create_index([("user_id", 1), ("timestamp", -1)])
     await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
-    
-    # Initialize storage
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.password_reset_tokens.create_index("token")
+
     try:
         init_storage()
         logger.info("Storage initialized successfully")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
-    
-    # Seed admin
+
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@aic.it")
     admin_password = os.environ.get("ADMIN_PASSWORD", "Admin123!")
     existing = await db.users.find_one({"email": admin_email})
@@ -1075,18 +1142,23 @@ async def startup():
         await db.users.insert_one({
             "email": admin_email,
             "password_hash": hashed,
-            "name": "Amministratore",
+            "first_name": "Admin",
+            "last_name": "Herion",
+            "name": "Admin Herion",
             "role": "admin",
+            "client_type": "private",
+            "country": "IT",
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "consent_given": True,
-            "consent_date": datetime.now(timezone.utc).isoformat()
+            "privacy_consent": True,
+            "privacy_consent_date": datetime.now(timezone.utc).isoformat(),
+            "terms_consent": True,
+            "terms_consent_date": datetime.now(timezone.utc).isoformat()
         })
         logger.info(f"Admin user created: {admin_email}")
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
         logger.info("Admin password updated")
-    
-    # Write test credentials
+
     Path("/app/memory").mkdir(exist_ok=True)
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write(f"""# Test Credentials for Herion
@@ -1101,14 +1173,19 @@ async def startup():
 - POST /api/auth/login - Login
 - POST /api/auth/logout - Logout
 - GET /api/auth/me - Get current user
+- POST /api/auth/forgot-password - Request password reset
+- POST /api/auth/reset-password - Reset password with token
+- GET /api/auth/profile - Get user profile
+- PUT /api/auth/profile - Update user profile
+- PUT /api/auth/change-password - Change password
 
 ## Client Types
 - private: Privato (no VAT number required)
 - freelancer: Libero Professionista (VAT number required)
-- company: Azienda (VAT number required)
+- company: Azienda (VAT number + company name required)
 """)
-    
-    logger.info("Herion - Precision. Control. Confidence. - started successfully")
+
+    logger.info("Herion v2.0 - Precision. Control. Confidence. - started successfully")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

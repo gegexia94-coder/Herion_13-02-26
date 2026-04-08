@@ -2,12 +2,10 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
-
 const API = process.env.REACT_APP_BACKEND_URL;
 
-// Error formatter for FastAPI responses
 function formatApiErrorDetail(detail) {
-  if (detail == null) return "Si è verificato un errore. Riprova.";
+  if (detail == null) return "Si e verificato un errore. Riprova.";
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail))
     return detail.map((e) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e))).filter(Boolean).join(" ");
@@ -16,7 +14,7 @@ function formatApiErrorDetail(detail) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // null = checking, false = not authenticated
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,9 +42,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async (email, password, name) => {
+  const register = async (data) => {
     try {
-      const response = await axios.post(`${API}/api/auth/register`, { email, password, name }, { withCredentials: true });
+      const response = await axios.post(`${API}/api/auth/register`, data, { withCredentials: true });
       setUser(response.data);
       return { success: true };
     } catch (error) {
@@ -58,13 +56,22 @@ export function AuthProvider({ children }) {
     try {
       await axios.post(`${API}/api/auth/logout`, {}, { withCredentials: true });
     } catch {
-      // Ignore errors
+      // Ignore
     }
     setUser(false);
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await axios.get(`${API}/api/auth/me`, { withCredentials: true });
+      setUser(response.data);
+    } catch {
+      // Ignore
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

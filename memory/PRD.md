@@ -1,23 +1,67 @@
-# TaxPilot - Assistente Fiscale Intelligente PRD
+# Herion - Precision. Control. Confidence. PRD
 
 ## Original Problem Statement
-Build a web application called "TaxPilot" (rebranded from "AIC – Artificial Commercialista") that autonomously manages tax practices using controlled AI agents with full transparency.
+Build a premium web application for tax practice management with AI agents, full transparency, and professional UX.
+
+## Brand Identity
+- **Name**: Herion
+- **Tagline**: Precision. Control. Confidence.
+- **Colors**: Deep teal (#0F4C5C), Emerald accent (#5DD9C1)
+- **Style**: Premium, minimal, trustworthy, high-end financial technology
 
 ## User Personas
-1. **Tax Professionals**: Manage multiple client tax practices
-2. **Private Individuals**: Personal tax declarations without VAT
-3. **Freelancers (Libero Professionisti)**: Autonomous workers with VAT
-4. **Companies (Aziende)**: Business entities with VAT
+1. **Private Individuals**: Personal tax declarations without VAT
+2. **Freelancers (Libero Professionisti)**: Autonomous workers with VAT
+3. **Companies (Aziende)**: Business entities with VAT
+4. **Tax Professionals**: Managing multiple client practices
 
-## Core Requirements
-- User authentication (JWT-based)
-- Tax practice management (CRUD)
-- Client types: Private (no VAT), Freelancer (with VAT), Company (with VAT)
-- 4 AI Agents: Analysis, Validation, Document, Communication
-- Document upload and storage
-- Full activity logging (transparency)
-- Notifications system
-- Italian UI interface
+## Core Features Implemented
+
+### Authentication & Registration
+- JWT-based authentication
+- Enhanced registration form with:
+  - First name, Last name
+  - Email (validated), Phone (validated)
+  - Client type (Privato/Professionista/Azienda)
+  - VAT number (conditional - only for Professionista/Azienda)
+  - Fiscal code (validated)
+  - Password with confirmation
+  - Privacy policy consent
+  - Terms of service consent
+
+### Premium UI/UX
+- Floating rounded navbar with scroll show/hide animation
+- Premium rounded components throughout
+- Soft shadows and smooth animations
+- Herion geometric "H" logo
+- Consistent brand colors
+
+### Confirmation System
+All sensitive actions require confirmation:
+- Logout
+- Delete practice
+- Submit new practice
+- Change practice status
+- Execute AI agent
+- Upload documents
+
+### Alert/Notification System
+- Success, Error, Warning, Info alerts
+- Rounded corners, smooth fade animations
+- Toast notifications via Sonner
+
+### Tax Practice Management
+- CRUD operations for practices
+- Client type support
+- Status tracking (pending, processing, completed, rejected)
+- Document upload with object storage
+
+### Herion AI
+4 transparent AI agents:
+1. Analysis Agent - Situation analysis
+2. Validation Agent - Data verification
+3. Document Agent - Data extraction
+4. Communication Agent - Status explanation
 
 ## Tech Stack
 - Frontend: React + Tailwind CSS + shadcn/ui
@@ -25,75 +69,12 @@ Build a web application called "TaxPilot" (rebranded from "AIC – Artificial Co
 - Database: MongoDB
 - AI: OpenAI GPT-5.2 via Emergent Integrations
 - Storage: Emergent Object Storage
-- Auth: JWT with httpOnly cookies
-
-## What's Been Implemented
-
-### Branding (April 7, 2026)
-- Rebranded from "Artificial Commercialista" to "TaxPilot"
-- New tagline: "Assistente Fiscale Intelligente"
-- Modern geometric logo (deep teal #0F4C5C with emerald accent #5DD9C1)
-- Updated all AI references to "TaxPilot AI" / "Agente fiscale intelligente"
-
-### Client Types (April 7, 2026)
-- Private (Privato): No VAT number required
-- Freelancer (Libero Professionista): VAT number required
-- Company (Azienda): VAT number required
-- Dynamic VAT field visibility based on client type
-
-### Backend
-- JWT authentication (login, register, logout, me)
-- Practice CRUD with client type support
-- Document upload with object storage
-- 4 AI Agents with GPT-5.2 integration
-- Activity logging system
-- Notifications system
-- Dashboard stats endpoint
-
-### Frontend
-- Login/Register pages with TaxPilot branding
-- Dashboard with stats cards
-- Practices list with filtering
-- Create practice (3-step wizard with client type selection)
-- Practice detail with AI agent execution
-- Agents page (shows system prompts)
-- Activity log timeline
 
 ## API Endpoints
-- POST /api/auth/register
-- POST /api/auth/login
-- POST /api/auth/logout
-- GET /api/auth/me
-- GET/POST/PUT/DELETE /api/practices
-- POST /api/documents/upload/{practice_id}
-- GET /api/documents/{document_id}
-- POST /api/agents/execute
-- GET /api/agents/info
-- GET /api/activity-logs
-- GET /api/notifications
-- GET /api/dashboard/stats
-
-## Prioritized Backlog
-
-### P0 (Complete)
-- [x] User authentication
-- [x] Practice CRUD with client types
-- [x] AI Agent execution
-- [x] Document upload
-- [x] Activity logging
-- [x] TaxPilot branding
-
-### P1 (Future)
-- [ ] PDF generation for practices
-- [ ] Email notifications
-- [ ] Multi-language support
-
-### P2 (Future)
-- [ ] Calendar integration
-- [ ] Batch document processing
-- [ ] Analytics dashboard
+All endpoints prefixed with /api and return Herion branding
 
 ## Next Tasks
 1. Add PDF export for completed practices
-2. Implement email notifications for status changes
-3. Add automated AI agent workflows (chaining)
+2. Implement email notifications
+3. Add automated AI agent workflow chains
+4. Multi-language support

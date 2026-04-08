@@ -698,6 +698,334 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     }
 
 # ========================
+# PDF EXPORT
+# ========================
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm, cm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
+from io import BytesIO
+
+# Herion brand colors
+HERION_TEAL = colors.HexColor('#0F4C5C')
+HERION_ACCENT = colors.HexColor('#5DD9C1')
+HERION_GRAY = colors.HexColor('#5C5C59')
+HERION_LIGHT_GRAY = colors.HexColor('#F5F5F4')
+HERION_BORDER = colors.HexColor('#E5E5E3')
+
+def create_herion_logo_drawing(width=50, height=50):
+    """Create Herion logo as reportlab drawing"""
+    from reportlab.graphics.shapes import Drawing, Rect, Line, String
+    from reportlab.graphics import renderPDF
+    
+    d = Drawing(width, height)
+    
+    # Background rectangle with rounded corners (simulated)
+    d.add(Rect(2, 2, width-4, height-4, fillColor=HERION_TEAL, strokeColor=None, rx=8, ry=8))
+    
+    # H letter strokes
+    stroke_width = 3
+    # Left vertical
+    d.add(Line(width*0.3, height*0.75, width*0.3, height*0.25, strokeColor=HERION_ACCENT, strokeWidth=stroke_width))
+    # Right vertical
+    d.add(Line(width*0.7, height*0.75, width*0.7, height*0.25, strokeColor=HERION_ACCENT, strokeWidth=stroke_width))
+    # Horizontal
+    d.add(Line(width*0.3, height*0.5, width*0.7, height*0.5, strokeColor=HERION_ACCENT, strokeWidth=stroke_width))
+    
+    return d
+
+def generate_practice_pdf(practice: dict, user: dict) -> bytes:
+    """Generate a professional PDF report for a practice"""
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2*cm,
+        leftMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
+    )
+    
+    # Custom styles
+    styles = getSampleStyleSheet()
+    
+    # Title style
+    title_style = ParagraphStyle(
+        'HerionTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=HERION_TEAL,
+        spaceAfter=6,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Subtitle style
+    subtitle_style = ParagraphStyle(
+        'HerionSubtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=HERION_GRAY,
+        spaceAfter=20,
+        fontName='Helvetica'
+    )
+    
+    # Section header style
+    section_style = ParagraphStyle(
+        'HerionSection',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=HERION_TEAL,
+        spaceBefore=20,
+        spaceAfter=10,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Body text style
+    body_style = ParagraphStyle(
+        'HerionBody',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.black,
+        spaceAfter=8,
+        fontName='Helvetica',
+        leading=14
+    )
+    
+    # Label style
+    label_style = ParagraphStyle(
+        'HerionLabel',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=HERION_GRAY,
+        fontName='Helvetica-Bold',
+        spaceBefore=6
+    )
+    
+    # Value style
+    value_style = ParagraphStyle(
+        'HerionValue',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.black,
+        fontName='Helvetica',
+        spaceAfter=12
+    )
+    
+    # AI response style
+    ai_style = ParagraphStyle(
+        'HerionAI',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.black,
+        fontName='Helvetica',
+        leading=14,
+        leftIndent=10,
+        rightIndent=10,
+        backColor=HERION_LIGHT_GRAY
+    )
+    
+    elements = []
+    
+    # Header with branding
+    header_data = [
+        [
+            create_herion_logo_drawing(40, 40),
+            Paragraph('<font size="20" color="#0F4C5C"><b>HERION</b></font><br/><font size="8" color="#5C5C59">Precision. Control. Confidence.</font>', styles['Normal'])
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[50, 400])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (0, 0), 0),
+        ('LEFTPADDING', (1, 0), (1, 0), 10),
+    ]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 10))
+    
+    # Horizontal line
+    elements.append(HRFlowable(width="100%", thickness=2, color=HERION_ACCENT, spaceBefore=5, spaceAfter=20))
+    
+    # Document title
+    elements.append(Paragraph("RAPPORTO PRATICA FISCALE", title_style))
+    elements.append(Paragraph(f"Documento generato il {datetime.now().strftime('%d/%m/%Y alle %H:%M')}", subtitle_style))
+    
+    # Reference ID box
+    ref_data = [[
+        Paragraph('<font size="8" color="#5C5C59">RIFERIMENTO PRATICA</font>', styles['Normal']),
+        Paragraph(f'<font size="12" color="#0F4C5C"><b>{practice.get("id", "N/A")[:8].upper()}</b></font>', styles['Normal'])
+    ]]
+    ref_table = Table(ref_data, colWidths=[120, 350])
+    ref_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), HERION_LIGHT_GRAY),
+        ('BOX', (0, 0), (-1, -1), 1, HERION_BORDER),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(ref_table)
+    elements.append(Spacer(1, 20))
+    
+    # Practice Information Section
+    elements.append(Paragraph("INFORMAZIONI PRATICA", section_style))
+    
+    # Practice details table
+    client_type_labels = {"private": "Privato", "freelancer": "Libero Professionista", "company": "Azienda"}
+    
+    practice_data = [
+        ["Tipo Pratica:", practice.get("practice_type_label", "N/A")],
+        ["Stato:", practice.get("status_label", "N/A")],
+        ["Data Creazione:", practice.get("created_at", "N/A")[:10] if practice.get("created_at") else "N/A"],
+        ["Ultimo Aggiornamento:", practice.get("updated_at", "N/A")[:10] if practice.get("updated_at") else "N/A"],
+    ]
+    
+    practice_table = Table(practice_data, colWidths=[150, 320])
+    practice_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (0, -1), HERION_GRAY),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, HERION_BORDER),
+    ]))
+    elements.append(practice_table)
+    elements.append(Spacer(1, 10))
+    
+    # Client Information Section
+    elements.append(Paragraph("DATI CLIENTE", section_style))
+    
+    client_data = [
+        ["Nome/Ragione Sociale:", practice.get("client_name", "N/A")],
+        ["Tipo Cliente:", client_type_labels.get(practice.get("client_type", ""), practice.get("client_type_label", "N/A"))],
+    ]
+    
+    if practice.get("fiscal_code"):
+        client_data.append(["Codice Fiscale:", practice.get("fiscal_code")])
+    
+    if practice.get("vat_number"):
+        client_data.append(["Partita IVA:", practice.get("vat_number")])
+    
+    client_table = Table(client_data, colWidths=[150, 320])
+    client_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (0, -1), HERION_GRAY),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, HERION_BORDER),
+    ]))
+    elements.append(client_table)
+    elements.append(Spacer(1, 10))
+    
+    # Description Section
+    elements.append(Paragraph("DESCRIZIONE RICHIESTA", section_style))
+    description = practice.get("description", "Nessuna descrizione disponibile.")
+    elements.append(Paragraph(description, body_style))
+    elements.append(Spacer(1, 10))
+    
+    # AI Analysis Section
+    agent_logs = practice.get("agent_logs", [])
+    if agent_logs:
+        elements.append(Paragraph("ANALISI HERION AI", section_style))
+        
+        for log in agent_logs:
+            if log.get("status") == "completed" and log.get("output_data"):
+                # Agent header
+                agent_header = f'<font color="#0F4C5C"><b>{log.get("agent_name", "Agente")}</b></font>'
+                elements.append(Paragraph(agent_header, body_style))
+                
+                # Agent output in styled box
+                output_text = str(log.get("output_data", ""))[:2000]  # Limit length
+                # Clean and format the output
+                output_text = output_text.replace('\n', '<br/>')
+                
+                output_data = [[Paragraph(output_text, ai_style)]]
+                output_table = Table(output_data, colWidths=[470])
+                output_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), HERION_LIGHT_GRAY),
+                    ('BOX', (0, 0), (-1, -1), 1, HERION_BORDER),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+                    ('TOPPADDING', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ]))
+                elements.append(output_table)
+                elements.append(Spacer(1, 15))
+    
+    # Footer
+    elements.append(Spacer(1, 30))
+    elements.append(HRFlowable(width="100%", thickness=1, color=HERION_BORDER, spaceBefore=10, spaceAfter=10))
+    
+    footer_style = ParagraphStyle(
+        'HerionFooter',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=HERION_GRAY,
+        alignment=TA_CENTER
+    )
+    
+    elements.append(Paragraph(
+        f"Documento generato automaticamente da Herion - Precision. Control. Confidence.<br/>"
+        f"Questo documento è stato creato il {datetime.now().strftime('%d/%m/%Y alle %H:%M')} e ha valore informativo.<br/>"
+        f"Riferimento: {practice.get('id', 'N/A')}",
+        footer_style
+    ))
+    
+    # Build PDF
+    doc.build(elements)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_bytes
+
+@api_router.get("/practices/{practice_id}/pdf")
+async def download_practice_pdf(practice_id: str, user: dict = Depends(get_current_user)):
+    """Download PDF report for a completed practice"""
+    
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    
+    if practice.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Il PDF è disponibile solo per pratiche completate")
+    
+    # Generate PDF
+    try:
+        pdf_bytes = generate_practice_pdf(practice, user)
+        
+        # Log activity
+        await log_activity(user["id"], "document", "pdf_downloaded", {
+            "practice_id": practice_id,
+            "practice_type": practice.get("practice_type_label")
+        })
+        
+        # Create filename
+        filename = f"Herion_Pratica_{practice.get('practice_type', 'report')}_{practice_id[:8]}.pdf"
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except Exception as e:
+        logger.error(f"PDF generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Errore nella generazione del PDF")
+
+# ========================
 # ROOT ENDPOINT
 # ========================
 

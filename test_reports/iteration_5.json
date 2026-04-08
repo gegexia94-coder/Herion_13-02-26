@@ -1,0 +1,121 @@
+{
+  "summary": "Comprehensive testing of Herion v3.0 - Controlled Execution Platform with 9 specialist agents + 1 Admin coordinator. All 20 backend API tests passed (100%). Fixed one bug in approval endpoint (NoneType error when orchestration_result is null). Frontend UI verified: login, dashboard with new status badges, 9-agent pipeline on Agents page, practice detail with approval gate UI, timeline, role-based system prompt visibility.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: Health endpoint returns healthy status",
+    "Backend: Root endpoint shows Herion branding",
+    "Backend: Admin login with admin@aic.it / Admin123! works correctly",
+    "Backend: Invalid credentials return 401",
+    "Backend: GET /api/agents/info returns 9 specialist agents (intake, ledger, compliance, documents, delegate, deadline, flow, monitor, advisor)",
+    "Backend: GET /api/agents/info includes admin_agent info",
+    "Backend: GET /api/agents/info has correct pipeline order",
+    "Backend: GET /api/agents/info total_agents is 10 (9 specialists + 1 admin)",
+    "Backend: Admin user sees system_prompt in agents/info",
+    "Backend: Non-admin user does NOT see system_prompt (role-based visibility working)",
+    "Backend: POST /api/practices creates practice with 'draft' status",
+    "Backend: Practice has new controlled execution fields (orchestration_result, risk_level, delegation_status, approval_snapshot_id, etc.)",
+    "Backend: GET /api/practices/{id}/timeline returns chronological events",
+    "Backend: Timeline has practice_created event on creation",
+    "Backend: POST /api/practices/{id}/approve endpoint exists and validates status",
+    "Backend: Approval requires 'waiting_approval' status",
+    "Backend: Can manually update status to waiting_approval",
+    "Backend: Full approval flow works: waiting_approval -> approved -> submitted -> completed",
+    "Backend: All new status values accepted (draft, in_progress, waiting_approval, blocked, escalated)",
+    "Backend: Old 'pending' status still works for backward compatibility",
+    "Frontend: Login page loads with Herion branding and Italian text",
+    "Frontend: Login with admin credentials redirects to dashboard",
+    "Frontend: Dashboard shows stats cards with new status counts",
+    "Frontend: Dashboard shows practices with various statuses (In Attesa, Escalation, Completata, In Attesa di Approvazione, Bozza)",
+    "Frontend: Agents page shows 'Piattaforma di Esecuzione Controllata' title",
+    "Frontend: Agents page shows 9 agent cards with correct pipeline order",
+    "Frontend: Agents page shows approval gate indicator at end of pipeline",
+    "Frontend: Agents page shows Herion Admin card",
+    "Frontend: Admin user sees 'Istruzioni di Sistema (Admin)' section with system prompt",
+    "Frontend: Practice detail page shows 9-agent execution section",
+    "Frontend: Practice detail page shows timeline (Cronologia)",
+    "Frontend: Practice detail page shows 'Chiedi a Herion' chat section",
+    "Frontend: All UI text in Italian"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_herion_v3_controlled_execution.py",
+    "/app/test_reports/pytest/pytest_results_v3.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/server.py (fixed NoneType error in approve_practice endpoint line 1351)",
+    "/app/backend/tests/test_herion_v3_controlled_execution.py (new test file)"
+  ],
+
+  "success_rate": {
+    "backend": "100% (20/20 tests passed)",
+    "frontend": "100% (all major features working)"
+  },
+
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!",
+    "test_user": "Any new email like test@herion.it / TestPass123!"
+  },
+
+  "seed_data_creation": "Admin user auto-created on startup with credentials from .env",
+
+  "retest_needed": false,
+
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Herion v3.0 Controlled Execution Platform is fully functional. Backend has 9 specialist agents (intake, ledger, compliance, documents, delegate, deadline, flow, monitor, advisor) + Herion Admin coordinator. New status model: draft, in_progress, waiting_approval, approved, submitted, completed, blocked, escalated. Approval flow creates approval_snapshot and transitions through approved->submitted->completed. Timeline endpoint returns chronological events. Role-based visibility: system prompts only visible to admin users. All LLM calls use Emergent LLM Key for GPT-5.2 (orchestration runs 10 LLM calls sequentially, may take 30-60 seconds).",
+
+  "mocked_apis": {
+    "email_sending": "Password reset email is MOCKED - reset link logged to backend console",
+    "llm_calls": "NOT MOCKED - All LLM calls use real Emergent LLM Key for GPT-5.2"
+  },
+
+  "bug_fixed": {
+    "issue": "AttributeError: 'NoneType' object has no attribute 'get' in approve_practice endpoint",
+    "location": "/app/backend/server.py line 1351",
+    "root_cause": "practice.get('orchestration_result', {}) returns None when field is explicitly set to null in MongoDB, not an empty dict",
+    "fix": "Changed to: orchestration = practice.get('orchestration_result') or {}",
+    "verification": "All 20 backend tests pass including approval flow test"
+  },
+
+  "features_verified": {
+    "agents": {
+      "count": "9 specialist agents + 1 admin coordinator = 10 total",
+      "pipeline_order": ["intake", "ledger", "compliance", "documents", "delegate", "deadline", "flow", "monitor", "advisor"],
+      "role_based_visibility": "system_prompt visible only to admin users"
+    },
+    "status_model": {
+      "new_statuses": ["draft", "in_progress", "waiting_approval", "approved", "submitted", "completed", "blocked", "escalated"],
+      "backward_compatible": "pending status still works"
+    },
+    "approval_flow": {
+      "endpoint": "POST /api/practices/{id}/approve",
+      "transitions": ["waiting_approval", "approved", "submitted", "completed"],
+      "creates_snapshot": true
+    },
+    "timeline": {
+      "endpoint": "GET /api/practices/{id}/timeline",
+      "events": "Chronological list of all practice events"
+    },
+    "ui": {
+      "language": "Italian",
+      "agents_page": "9-step pipeline with approval gate indicator",
+      "practice_detail": "Approval gate UI when status is waiting_approval with orchestration_result"
+    }
+  }
+}

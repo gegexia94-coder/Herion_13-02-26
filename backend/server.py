@@ -471,16 +471,28 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "vat_number": practice.vat_number if practice.client_type in ["freelancer", "company"] else None,
         "country": practice.country or user.get("country", "IT"),
         "additional_data": practice.additional_data or {},
-        "status": "pending",
-        "status_label": "In Attesa",
+        "status": "draft",
+        "status_label": "Bozza",
         "documents": [],
         "agent_logs": [],
         "orchestration_result": None,
+        "risk_level": None,
+        "delegation_status": None,
+        "approval_snapshot_id": None,
+        "approved_at": None,
+        "submitted_at": None,
+        "completed_at": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
 
     await db.practices.insert_one(practice_doc)
+
+    await add_timeline_event(practice_doc["id"], user["id"], "practice_created", {
+        "practice_type": practice.practice_type,
+        "client_name": practice.client_name
+    })
+
     await log_activity(user["id"], "practice", "practice_created", {
         "practice_id": practice_doc["id"],
         "practice_type": practice.practice_type
@@ -514,8 +526,7 @@ async def update_practice(practice_id: str, update: PracticeUpdate, user: dict =
         update_data["description"] = update.description
     if update.status:
         update_data["status"] = update.status
-        status_labels = {"pending": "In Attesa", "processing": "In Elaborazione", "completed": "Completata", "rejected": "Rifiutata"}
-        update_data["status_label"] = status_labels.get(update.status, update.status)
+        update_data["status_label"] = STATUS_LABELS.get(update.status, update.status)
     if update.additional_data:
         update_data["additional_data"] = {**practice.get("additional_data", {}), **update.additional_data}
 
@@ -732,12 +743,41 @@ Format:
 - Canali disponibili
 - Azione richiesta"""
     },
+    "deadline": {
+        "name": "Scadenze e Tempistiche",
+        "branded_name": "Herion Deadline",
+        "icon_key": "deadline",
+        "description": "Monitora scadenze, finestre di presentazione, tempistiche procedurali e rischi legati al tempo.",
+        "step": 6,
+        "system_message": """Sei Herion Deadline, l'agente di monitoraggio scadenze della piattaforma Herion.
+Il tuo compito e monitorare tutte le scadenze e tempistiche rilevanti per la pratica.
+Devi determinare:
+1. Scadenze legali o procedurali applicabili
+2. Finestre di presentazione disponibili
+3. Tempistiche raccomandate
+4. Rischi legati a ritardi
+5. Promemoria necessari
+
+Distingui sempre tra:
+- SCADENZE RIGIDE: conseguenze, sanzioni o invalidita se mancate
+- PROMEMORIA SOFT: suggerimenti organizzativi senza conseguenze dirette
+- SCADENZE OPERATIVE: attese del sistema (approvazione, documenti, deleghe)
+
+Rispondi SEMPRE in italiano.
+Format:
+- Scadenze identificate (con livello di certezza)
+- Urgenza (lontana/prossima/urgente/scaduta)
+- Azioni richieste prima della scadenza
+- Rischi in caso di ritardo
+- Promemoria raccomandati
+- Stato temporale complessivo"""
+    },
     "flow": {
         "name": "Gestione Flusso",
         "branded_name": "Herion Flow",
         "icon_key": "flow",
         "description": "Gestisce la progressione del flusso di lavoro, identifica blocchi e determina i prossimi passi.",
-        "step": 6,
+        "step": 7,
         "system_message": """Sei Herion Flow, l'agente di gestione flusso della piattaforma Herion.
 Il tuo compito e gestire la progressione della pratica.
 Devi determinare:
@@ -767,7 +807,7 @@ Format:
         "branded_name": "Herion Monitor",
         "icon_key": "monitor",
         "description": "Traccia lo stato, genera promemoria, identifica scadenze e suggerisce le prossime azioni.",
-        "step": 7,
+        "step": 8,
         "system_message": """Sei Herion Monitor, l'agente di monitoraggio della piattaforma Herion.
 Il tuo compito e tracciare lo stato della pratica e generare promemoria.
 Devi:
@@ -790,7 +830,7 @@ Format:
         "branded_name": "Herion Advisor",
         "icon_key": "advisor",
         "description": "Spiega chiaramente all'utente il risultato, lo stato e i prossimi passi con linguaggio semplice.",
-        "step": 8,
+        "step": 9,
         "system_message": """Sei Herion Advisor, l'agente di comunicazione della piattaforma Herion.
 Il tuo compito e spiegare all'utente in modo chiaro e semplice.
 La tua risposta DEVE includere:
@@ -808,50 +848,73 @@ Evita termini tecnici quando possibile. Sii rassicurante ma preciso."""
 }
 
 HERION_ADMIN_PROMPT = """Sei Herion Admin, il coordinatore centrale della piattaforma Herion.
-Gestisci un team di 8 agenti specializzati:
-- Herion Intake: comprensione del caso
+Gestisci un team di 9 agenti specializzati:
+- Herion Intake: comprensione e classificazione del caso
 - Herion Ledger: dati contabili e finanziari
 - Herion Compliance: conformita normativa
-- Herion Documents: preparazione documenti
+- Herion Documents: preparazione e verifica documenti
 - Herion Delegate: delega e autorizzazioni
+- Herion Deadline: scadenze e tempistiche
 - Herion Flow: gestione flusso di lavoro
 - Herion Monitor: monitoraggio e promemoria
 - Herion Advisor: spiegazione finale all'utente
 
 Il tuo ruolo:
-1. Decidi quali agenti attivare e in quale ordine
-2. Coordina lo scambio di informazioni tra agenti
-3. Valuta il livello di rischio complessivo
-4. Blocca l'esecuzione se il rischio e troppo alto
-5. Richiedi approvazione esplicita prima di procedere
+1. Coordina lo scambio di informazioni tra agenti
+2. Valuta il livello di rischio complessivo (basso/medio/alto)
+3. Determina lo stato della delega
+4. Identifica dati o documenti mancanti
+5. Prepara il riepilogo per l'approvazione dell'utente
+6. Blocca l'esecuzione se il rischio e troppo alto o mancano elementi critici
 
 Regole:
-- MAI eseguire senza approvazione dell'utente
+- MAI eseguire senza approvazione esplicita dell'utente
 - Ogni decisione deve essere trasparente e motivata
 - Se il caso e incompleto, ambiguo, multi-paese o ad alto rischio: prepara checklist ed escalation
 - Se il caso e standard, documentato e a basso rischio: guida l'utente al completamento
 
-Rispondi SEMPRE in italiano con tono professionale e rassicurante.
-Indica sempre quale agente ha gestito quale parte.
+Nella tua risposta finale, DEVI includere queste sezioni strutturate:
 
-Format per ogni risposta operativa:
-- Problema compreso
-- Tipo procedura
-- Dati/documenti mancanti
-- Flusso passo-passo
-- Errori da evitare
-- Esito
-- Riepilogo con livello di rischio"""
+## RIEPILOGO PRATICA
+[Riassunto del caso]
 
-# Workflow and delegation constants
-WORKFLOW_READINESS = {
-    "ready": "Pronto a continuare",
-    "blocked": "Bloccato",
-    "waiting_document": "In attesa documento",
-    "waiting_input": "In attesa input esterno",
-    "waiting_authorization": "In attesa autorizzazione",
-    "waiting_approval": "In attesa approvazione utente",
-    "completed": "Completato"
+## LIVELLO DI RISCHIO
+[basso/medio/alto] - [motivazione]
+
+## STATO DELEGA
+[autorizzato/parzialmente autorizzato/delega mancante/non necessaria]
+
+## DATI E DOCUMENTI
+[Presenti / Mancanti]
+
+## DESTINATARIO
+[A chi verra presentata la pratica]
+
+## AZIONE RACCOMANDATA
+[Cosa succede dopo l'approvazione]
+
+## AVVERTENZE
+[Rischi, scadenze critiche, note importanti]
+
+IMPORTANTE: Includi OBBLIGATORIAMENTE questi tag nel testo:
+- Per il rischio: [RISCHIO_BASSO] oppure [RISCHIO_MEDIO] oppure [RISCHIO_ALTO]
+- Per la delega: [DELEGA_AUTORIZZATA] oppure [DELEGA_PARZIALE] oppure [DELEGA_MANCANTE] oppure [DELEGA_NON_NECESSARIA]
+
+Rispondi SEMPRE in italiano con tono professionale e rassicurante."""
+
+# Status model for controlled execution platform
+STATUS_LABELS = {
+    "draft": "Bozza",
+    "pending": "In Attesa",
+    "in_progress": "In Elaborazione",
+    "processing": "In Elaborazione",
+    "waiting_approval": "In Attesa di Approvazione",
+    "approved": "Approvata",
+    "submitted": "Inviata",
+    "completed": "Completata",
+    "blocked": "Bloccata",
+    "escalated": "Escalation",
+    "rejected": "Rifiutata",
 }
 
 DELEGATION_STATUS = {
@@ -868,6 +931,48 @@ RISK_LEVELS = {
     "medium": {"label": "Medio", "color": "amber", "action": "review"},
     "high": {"label": "Alto", "color": "red", "action": "escalate"}
 }
+
+# Ordered specialist pipeline for controlled execution
+SPECIALIST_PIPELINE = ["intake", "ledger", "compliance", "documents", "delegate", "deadline", "flow", "monitor", "advisor"]
+
+# Timeline event types
+TIMELINE_EVENTS = {
+    "practice_created": "Pratica creata",
+    "orchestration_started": "Analisi avviata",
+    "intake_completed": "Raccolta completata",
+    "ledger_completed": "Analisi contabile completata",
+    "compliance_completed": "Verifica conformita completata",
+    "documents_completed": "Verifica documenti completata",
+    "delegate_completed": "Verifica delega completata",
+    "deadline_completed": "Analisi scadenze completata",
+    "flow_completed": "Analisi flusso completata",
+    "monitor_completed": "Monitoraggio completato",
+    "advisor_completed": "Spiegazione finale completata",
+    "draft_prepared": "Bozza preparata",
+    "risk_evaluated": "Rischio valutato",
+    "documents_requested": "Documenti richiesti",
+    "documents_uploaded": "Documenti caricati",
+    "waiting_approval": "In attesa di approvazione",
+    "approved": "Approvata dall'utente",
+    "submitted": "Inviata",
+    "completed": "Completata",
+    "blocked": "Bloccata",
+    "escalated": "Escalation attivata",
+    "status_changed": "Stato aggiornato",
+}
+
+async def add_timeline_event(practice_id: str, user_id: str, event_type: str, details: dict = None):
+    event = {
+        "id": str(uuid.uuid4()),
+        "practice_id": practice_id,
+        "user_id": user_id,
+        "event_type": event_type,
+        "event_label": TIMELINE_EVENTS.get(event_type, event_type),
+        "details": details or {},
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await db.practice_timeline.insert_one(event)
+    return event
 
 @api_router.post("/agents/execute")
 async def execute_agent(action: AgentAction, user: dict = Depends(get_current_user)):
@@ -955,28 +1060,39 @@ async def execute_agent(action: AgentAction, user: dict = Depends(get_current_us
         raise HTTPException(status_code=500, detail=f"Errore nell'esecuzione dell'agente: {str(e)}")
 
 @api_router.get("/agents/info")
-async def get_agents_info():
-    return {
-        "agents": [
-            {
-                "type": agent_type,
-                "name": config["name"],
-                "branded_name": config["branded_name"],
-                "icon_key": config["icon_key"],
-                "description": config["description"],
-                "step": config["step"],
-                "system_prompt": config["system_message"]
-            }
-            for agent_type, config in AGENT_DESCRIPTIONS.items()
-        ],
+async def get_agents_info(user: dict = Depends(get_current_user)):
+    is_admin = user.get("role") == "admin"
+
+    agents = []
+    for agent_type, config in AGENT_DESCRIPTIONS.items():
+        agent_info = {
+            "type": agent_type,
+            "name": config["name"],
+            "branded_name": config["branded_name"],
+            "icon_key": config["icon_key"],
+            "description": config["description"],
+            "step": config["step"],
+        }
+        if is_admin:
+            agent_info["system_prompt"] = config["system_message"]
+        agents.append(agent_info)
+
+    result = {
+        "agents": agents,
         "admin_agent": {
             "name": "Herion Admin",
             "icon_key": "admin",
-            "description": "Coordinatore centrale: riassume la situazione, spiega cosa e successo e indica i prossimi passi."
+            "description": "Coordinatore centrale: gestisce il team di 9 agenti, valuta il rischio, e prepara il riepilogo per l'approvazione."
         },
-        "workflow_steps": ["analysis", "validation", "compliance", "document", "communication"],
-        "transparency_note": "Tutti gli agenti AI sono completamente trasparenti. Ogni azione viene registrata con input e output completi."
+        "workflow_steps": SPECIALIST_PIPELINE,
+        "total_agents": len(AGENT_DESCRIPTIONS) + 1,
+        "transparency_note": "Tutti gli agenti AI operano in modo trasparente all'interno della piattaforma di esecuzione controllata. Ogni azione viene registrata nel registro della pratica."
     }
+
+    if is_admin:
+        result["admin_prompt"] = HERION_ADMIN_PROMPT
+
+    return result
 
 @api_router.post("/agents/orchestrate")
 async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get_current_user)):
@@ -984,22 +1100,34 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
 
+    if practice.get("status") in ["approved", "submitted", "completed"]:
+        raise HTTPException(status_code=400, detail="Questa pratica e gia stata approvata o completata")
+
     orchestration_id = str(uuid.uuid4())
-    workflow_steps = ["analysis", "validation", "compliance", "document", "communication"]
     results = []
-    previous_output = ""
+    previous_outputs = {}
+
+    await db.practices.update_one(
+        {"id": req.practice_id},
+        {"$set": {"status": "in_progress", "status_label": "In Elaborazione", "agent_logs": [], "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    await add_timeline_event(req.practice_id, user["id"], "orchestration_started", {
+        "orchestration_id": orchestration_id,
+        "agents_planned": SPECIALIST_PIPELINE
+    })
 
     await log_activity(user["id"], "orchestration", "orchestration_started", {
         "orchestration_id": orchestration_id, "practice_id": req.practice_id
     })
 
-    for step_type in workflow_steps:
-        agent_config = AGENT_DESCRIPTIONS[step_type]
+    for agent_type in SPECIALIST_PIPELINE:
+        agent_config = AGENT_DESCRIPTIONS[agent_type]
         agent_log_id = str(uuid.uuid4())
 
         step_result = {
             "id": agent_log_id,
-            "agent_type": step_type,
+            "agent_type": agent_type,
             "agent_name": agent_config["name"],
             "branded_name": agent_config["branded_name"],
             "icon_key": agent_config["icon_key"],
@@ -1014,25 +1142,29 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
         try:
             chat = LlmChat(
                 api_key=EMERGENT_KEY,
-                session_id=f"orch-{orchestration_id}-{step_type}-{agent_log_id}",
+                session_id=f"orch-{orchestration_id}-{agent_type}-{agent_log_id}",
                 system_message=agent_config["system_message"]
             ).with_model("openai", "gpt-5.2")
 
             practice_context = {
                 "tipo_pratica": practice.get("practice_type_label"),
                 "cliente": practice.get("client_name"),
+                "tipo_cliente": CLIENT_TYPES.get(practice.get("client_type", ""), ""),
                 "descrizione": practice.get("description"),
                 "codice_fiscale": practice.get("fiscal_code"),
                 "partita_iva": practice.get("vat_number"),
                 "paese": practice.get("country", "IT"),
-                "stato": practice.get("status_label"),
+                "documenti_caricati": len(practice.get("documents", [])),
+                "dati_aggiuntivi": practice.get("additional_data", {}),
             }
 
             context_msg = f"Contesto pratica:\n{practice_context}\n\nRichiesta: {req.query}"
-            if previous_output:
-                context_msg += f"\n\nOutput dell'agente precedente:\n{previous_output}"
 
-            step_result["input_summary"] = context_msg[:200]
+            if previous_outputs:
+                prev_summary = "\n".join([f"- {k}: {v[:500]}" for k, v in previous_outputs.items()])
+                context_msg += f"\n\nOutput agenti precedenti:\n{prev_summary}"
+
+            step_result["input_summary"] = context_msg[:300]
 
             user_message = UserMessage(text=context_msg)
             response = await chat.send_message(user_message)
@@ -1040,27 +1172,141 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
             step_result["output_data"] = response
             step_result["status"] = "completed"
             step_result["completed_at"] = datetime.now(timezone.utc).isoformat()
-            previous_output = response
+            previous_outputs[agent_config["branded_name"]] = response
+
+            await add_timeline_event(req.practice_id, user["id"], f"{agent_type}_completed", {
+                "orchestration_id": orchestration_id,
+                "agent": agent_config["branded_name"],
+                "step": agent_config["step"]
+            })
 
         except Exception as e:
-            logger.error(f"Orchestration step {step_type} error: {str(e)}")
+            logger.error(f"Orchestration step {agent_type} error: {str(e)}")
             step_result["output_data"] = f"Errore: {str(e)}"
             step_result["status"] = "failed"
             step_result["completed_at"] = datetime.now(timezone.utc).isoformat()
 
         results.append(step_result)
 
+    # Herion Admin coordination and risk assessment
+    admin_summary = ""
+    risk_level = "medium"
+    delegation_status = "not_required"
+    intended_recipient = "Non specificato"
+    expected_outcome = ""
+
+    try:
+        admin_chat = LlmChat(
+            api_key=EMERGENT_KEY,
+            session_id=f"orch-{orchestration_id}-admin",
+            system_message=HERION_ADMIN_PROMPT
+        ).with_model("openai", "gpt-5.2")
+
+        all_outputs = "\n\n".join([
+            f"### {r['branded_name']} (Step {r['step']}):\n{r.get('output_data', 'Nessun output')}"
+            for r in results
+        ])
+
+        admin_message = f"""Tutti i 9 agenti specializzati hanno completato la loro analisi.
+
+Contesto pratica:
+- Tipo: {practice.get('practice_type_label')}
+- Cliente: {practice.get('client_name')}
+- Tipo cliente: {CLIENT_TYPES.get(practice.get('client_type', ''), '')}
+- Paese: {practice.get('country', 'IT')}
+- Documenti caricati: {len(practice.get('documents', []))}
+- Codice Fiscale: {practice.get('fiscal_code', 'Non fornito')}
+- Partita IVA: {practice.get('vat_number', 'Non fornita')}
+
+Output di tutti gli agenti:
+{all_outputs}
+
+Prepara il tuo riepilogo coordinato completo per l'approvazione dell'utente."""
+
+        admin_response = await admin_chat.send_message(UserMessage(text=admin_message))
+        admin_summary = admin_response
+
+        if "[RISCHIO_ALTO]" in admin_response:
+            risk_level = "high"
+        elif "[RISCHIO_BASSO]" in admin_response:
+            risk_level = "low"
+        else:
+            risk_level = "medium"
+
+        if "[DELEGA_AUTORIZZATA]" in admin_response:
+            delegation_status = "authorized"
+        elif "[DELEGA_PARZIALE]" in admin_response:
+            delegation_status = "partially_authorized"
+        elif "[DELEGA_MANCANTE]" in admin_response:
+            delegation_status = "missing_delegation"
+        else:
+            delegation_status = "not_required"
+
+    except Exception as e:
+        logger.error(f"Admin coordination error: {str(e)}")
+        admin_summary = f"Errore nella coordinazione: {str(e)}"
+
+    await add_timeline_event(req.practice_id, user["id"], "risk_evaluated", {
+        "risk_level": risk_level,
+        "delegation_status": delegation_status
+    })
+
+    all_completed = all(r["status"] == "completed" for r in results)
+
+    if risk_level == "high":
+        final_status = "escalated"
+        final_label = STATUS_LABELS["escalated"]
+        await add_timeline_event(req.practice_id, user["id"], "escalated", {
+            "reason": "Livello di rischio alto",
+            "risk_level": risk_level
+        })
+    elif not all_completed:
+        final_status = "blocked"
+        final_label = STATUS_LABELS["blocked"]
+        failed_agents = [r["branded_name"] for r in results if r["status"] != "completed"]
+        await add_timeline_event(req.practice_id, user["id"], "blocked", {
+            "reason": "Agenti con errori",
+            "failed_agents": failed_agents
+        })
+    elif delegation_status == "missing_delegation":
+        final_status = "blocked"
+        final_label = STATUS_LABELS["blocked"]
+        await add_timeline_event(req.practice_id, user["id"], "blocked", {
+            "reason": "Delega mancante"
+        })
+    else:
+        final_status = "waiting_approval"
+        final_label = STATUS_LABELS["waiting_approval"]
+        await add_timeline_event(req.practice_id, user["id"], "waiting_approval", {
+            "risk_level": risk_level,
+            "delegation_status": delegation_status
+        })
+
     orchestration_result = {
         "id": orchestration_id,
         "steps": results,
+        "admin_summary": admin_summary,
+        "risk_level": risk_level,
+        "risk_label": RISK_LEVELS.get(risk_level, {}).get("label", risk_level),
+        "delegation_status": delegation_status,
+        "delegation_label": DELEGATION_STATUS.get(delegation_status, delegation_status),
+        "intended_recipient": intended_recipient,
+        "expected_outcome": expected_outcome,
         "completed_at": datetime.now(timezone.utc).isoformat(),
-        "agents_used": [r["agent_name"] for r in results],
-        "final_status": "completed" if all(r["status"] == "completed" for r in results) else "partial"
+        "agents_used": [r["branded_name"] for r in results],
+        "final_status": final_status,
     }
 
     await db.practices.update_one(
         {"id": req.practice_id},
-        {"$set": {"orchestration_result": orchestration_result, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "orchestration_result": orchestration_result,
+            "status": final_status,
+            "status_label": final_label,
+            "risk_level": risk_level,
+            "delegation_status": delegation_status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
     )
 
     for r in results:
@@ -1076,15 +1322,139 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
             "status": r["status"],
             "started_at": r["started_at"],
             "completed_at": r["completed_at"],
-            "explanation": f"Orchestrazione automatica - Step {r['step']}: {r['branded_name']}"
+            "explanation": f"Esecuzione controllata - Step {r['step']}: {r['branded_name']}"
         }
         await db.practices.update_one({"id": req.practice_id}, {"$push": {"agent_logs": agent_log_entry}})
 
     await log_activity(user["id"], "orchestration", "orchestration_completed", {
-        "orchestration_id": orchestration_id, "practice_id": req.practice_id, "final_status": orchestration_result["final_status"]
+        "orchestration_id": orchestration_id,
+        "practice_id": req.practice_id,
+        "final_status": final_status,
+        "risk_level": risk_level
     })
 
     return orchestration_result
+
+# ========================
+# PRACTICE APPROVAL
+# ========================
+
+@api_router.post("/practices/{practice_id}/approve")
+async def approve_practice(practice_id: str, user: dict = Depends(get_current_user)):
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    if practice.get("status") != "waiting_approval":
+        raise HTTPException(status_code=400, detail="La pratica non e in attesa di approvazione")
+
+    orchestration = practice.get("orchestration_result") or {}
+    now = datetime.now(timezone.utc).isoformat()
+
+    approval_snapshot = {
+        "id": str(uuid.uuid4()),
+        "practice_id": practice_id,
+        "user_id": user["id"],
+        "summary_shown": orchestration.get("admin_summary", ""),
+        "risk_level": orchestration.get("risk_level", "unknown"),
+        "delegation_status": orchestration.get("delegation_status", "unknown"),
+        "data_used": {
+            "practice_type": practice.get("practice_type_label"),
+            "client_name": practice.get("client_name"),
+            "client_type": practice.get("client_type_label"),
+            "fiscal_code": practice.get("fiscal_code"),
+            "vat_number": practice.get("vat_number"),
+            "country": practice.get("country"),
+            "description": practice.get("description"),
+        },
+        "documents_included": practice.get("documents", []),
+        "intended_recipient": orchestration.get("intended_recipient", "Non specificato"),
+        "expected_outcome": orchestration.get("expected_outcome", ""),
+        "agents_executed": orchestration.get("agents_used", []),
+        "approved_at": now,
+        "approval_action": "explicit_user_approval",
+        "approval_metadata": {
+            "user_email": user.get("email"),
+            "user_name": user.get("name"),
+        }
+    }
+
+    await db.approval_snapshots.insert_one(approval_snapshot)
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {
+            "status": "approved",
+            "status_label": STATUS_LABELS["approved"],
+            "approval_snapshot_id": approval_snapshot["id"],
+            "approved_at": now,
+            "updated_at": now
+        }}
+    )
+    await add_timeline_event(practice_id, user["id"], "approved", {
+        "approval_snapshot_id": approval_snapshot["id"],
+        "risk_level": orchestration.get("risk_level")
+    })
+
+    submitted_at = datetime.now(timezone.utc).isoformat()
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {
+            "status": "submitted",
+            "status_label": STATUS_LABELS["submitted"],
+            "submitted_at": submitted_at,
+            "updated_at": submitted_at
+        }}
+    )
+    await add_timeline_event(practice_id, user["id"], "submitted", {
+        "submission_type": "simulated",
+        "note": "Invio simulato dalla piattaforma"
+    })
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {
+            "status": "completed",
+            "status_label": STATUS_LABELS["completed"],
+            "completed_at": completed_at,
+            "updated_at": completed_at
+        }}
+    )
+    await add_timeline_event(practice_id, user["id"], "completed", {
+        "note": "Pratica completata con successo"
+    })
+
+    await log_activity(user["id"], "practice", "practice_approved", {
+        "practice_id": practice_id,
+        "approval_snapshot_id": approval_snapshot["id"]
+    })
+
+    await create_notification(user["id"], "Pratica Approvata e Completata",
+        f"La pratica '{practice.get('practice_type_label')}' e stata approvata, inviata e completata con successo.", "success")
+
+    approval_snapshot.pop("_id", None)
+    return {
+        "message": "Pratica approvata, inviata e completata con successo",
+        "approval_snapshot": approval_snapshot,
+        "final_status": "completed",
+        "transitions": ["waiting_approval", "approved", "submitted", "completed"]
+    }
+
+# ========================
+# PRACTICE TIMELINE
+# ========================
+
+@api_router.get("/practices/{practice_id}/timeline")
+async def get_practice_timeline(practice_id: str, user: dict = Depends(get_current_user)):
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    events = await db.practice_timeline.find(
+        {"practice_id": practice_id},
+        {"_id": 0}
+    ).sort("timestamp", 1).to_list(200)
+    return events
 
 # ========================
 # ACTIVITY LOG ENDPOINTS
@@ -1159,9 +1529,11 @@ async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     total_practices = await db.practices.count_documents({"user_id": user["id"]})
-    pending = await db.practices.count_documents({"user_id": user["id"], "status": "pending"})
-    processing = await db.practices.count_documents({"user_id": user["id"], "status": "processing"})
+    pending = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["pending", "draft"]}})
+    processing = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["processing", "in_progress"]}})
+    waiting_approval = await db.practices.count_documents({"user_id": user["id"], "status": "waiting_approval"})
     completed = await db.practices.count_documents({"user_id": user["id"], "status": "completed"})
+    blocked = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["blocked", "escalated"]}})
     unread_notifications = await db.notifications.count_documents({"user_id": user["id"], "read": False})
 
     recent_practices = await db.practices.find(
@@ -1173,7 +1545,9 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "total_practices": total_practices,
         "pending": pending,
         "processing": processing,
+        "waiting_approval": waiting_approval,
         "completed": completed,
+        "blocked": blocked,
         "unread_notifications": unread_notifications,
         "recent_practices": recent_practices
     }
@@ -1499,6 +1873,8 @@ async def startup():
     await db.password_reset_tokens.create_index("token")
     await db.practice_chats.create_index([("practice_id", 1), ("timestamp", -1)])
     await db.reminders.create_index([("active", 1), ("priority_order", 1)])
+    await db.practice_timeline.create_index([("practice_id", 1), ("timestamp", 1)])
+    await db.approval_snapshots.create_index([("practice_id", 1)])
 
     try:
         init_storage()
@@ -1566,7 +1942,7 @@ async def startup():
             {"id": str(uuid.uuid4()), "title": "Dichiarazione IVA Trimestrale", "content": "Ricorda di preparare e inviare la dichiarazione IVA trimestrale entro la scadenza prevista dal tuo paese.", "category": "vat_reminders", "category_label": "Promemoria IVA", "country": None, "priority": "high", "priority_order": 2, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
             {"id": str(uuid.uuid4()), "title": "Organizza i Documenti Fiscali", "content": "Mantieni in ordine fatture, ricevute e documenti contabili. Una buona organizzazione semplifica ogni adempimento.", "category": "document_preparation", "category_label": "Preparazione Documenti", "country": None, "priority": "normal", "priority_order": 3, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
             {"id": str(uuid.uuid4()), "title": "Verifica Conformita Aziendale", "content": "Controlla che la tua attivita rispetti tutti i requisiti di conformita fiscale e amministrativa previsti.", "category": "declarations", "category_label": "Dichiarazioni", "country": None, "priority": "normal", "priority_order": 3, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
-            {"id": str(uuid.uuid4()), "title": "Herion AI: Analisi Completa Disponibile", "content": "Usa l'analisi completa a 5 agenti per ogni pratica. Herion Compass, Shield, Rules, Docs e Voice lavorano insieme per te.", "category": "platform_updates", "category_label": "Aggiornamenti Piattaforma", "country": None, "priority": "low", "priority_order": 4, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "title": "Herion AI: Piattaforma di Esecuzione Controllata", "content": "Usa l'analisi completa a 9 agenti specializzati per ogni pratica. Herion Admin coordina Intake, Ledger, Compliance, Documents, Delegate, Deadline, Flow, Monitor e Advisor per un controllo totale.", "category": "platform_updates", "category_label": "Aggiornamenti Piattaforma", "country": None, "priority": "low", "priority_order": 4, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         await db.reminders.insert_many(default_reminders)
         logger.info("Default reminders seeded")

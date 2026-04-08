@@ -39,6 +39,10 @@ export const executeAgent = (agentType, practiceId, inputData) =>
 export const getAgentsInfo = () => api.get('/agents/info');
 export const orchestrateAgents = (practiceId, query) =>
   api.post('/agents/orchestrate', { practice_id: practiceId, query });
+export const approvePractice = (practiceId) =>
+  api.post(`/practices/${practiceId}/approve`);
+export const getPracticeTimeline = (practiceId) =>
+  api.get(`/practices/${practiceId}/timeline`);
 
 // Practice Q&A Chat
 export const sendPracticeChat = (practiceId, question) =>

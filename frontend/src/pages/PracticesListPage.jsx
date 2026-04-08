@@ -103,12 +103,19 @@ export default function PracticesListPage() {
 
   const getStatusBadge = (status, label) => {
     const variants = {
+      'draft': 'bg-slate-50 text-slate-700 border-slate-200',
       'pending': 'bg-amber-50 text-amber-700 border-amber-200',
+      'in_progress': 'bg-sky-50 text-sky-700 border-sky-200',
       'processing': 'bg-sky-50 text-sky-700 border-sky-200',
+      'waiting_approval': 'bg-[#0F4C5C]/5 text-[#0F4C5C] border-[#0F4C5C]/20',
+      'approved': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      'submitted': 'bg-blue-50 text-blue-700 border-blue-200',
       'completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      'blocked': 'bg-red-50 text-red-700 border-red-200',
+      'escalated': 'bg-red-50 text-red-700 border-red-200',
       'rejected': 'bg-red-50 text-red-700 border-red-200'
     };
-    return <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${variants[status] || variants.pending}`}>{label}</span>;
+    return <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${variants[status] || variants.draft}`}>{label}</span>;
   };
 
   if (loading) {

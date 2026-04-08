@@ -4,13 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield } from 'lucide-react';
 
 const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/practices', label: 'Pratiche', icon: FolderOpen },
-  { path: '/agents', label: 'Herion AI', icon: Bot },
-  { path: '/activity-log', label: 'Attivita', icon: History },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+  { path: '/practices', label: 'Pratiche', icon: FolderOpen, adminOnly: false },
+  { path: '/agents', label: 'Herion AI', icon: Bot, adminOnly: false },
+  { path: '/activity-log', label: 'Attivita', icon: History, adminOnly: false },
 ];
 
 export default function Layout() {

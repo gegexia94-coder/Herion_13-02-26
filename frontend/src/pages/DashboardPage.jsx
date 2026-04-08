@@ -41,8 +41,8 @@ export default function DashboardPage() {
   const nextReminder = () => { clearInterval(timerRef.current); setCurrentReminder(c => (c + 1) % reminders.length); };
 
   const statusBadge = (status) => {
-    const v = { 'In Attesa': 'bg-amber-50 text-amber-700 border-amber-200', 'In Elaborazione': 'bg-sky-50 text-sky-700 border-sky-200', 'Completata': 'bg-emerald-50 text-emerald-700 border-emerald-200', 'Rifiutata': 'bg-red-50 text-red-700 border-red-200' };
-    return <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${v[status] || v['In Attesa']}`}>{status}</span>;
+    const v = { 'Bozza': 'bg-slate-50 text-slate-700 border-slate-200', 'In Attesa': 'bg-amber-50 text-amber-700 border-amber-200', 'In Elaborazione': 'bg-sky-50 text-sky-700 border-sky-200', 'In Attesa di Approvazione': 'bg-[#0F4C5C]/5 text-[#0F4C5C] border-[#0F4C5C]/20', 'Approvata': 'bg-emerald-50 text-emerald-700 border-emerald-200', 'Inviata': 'bg-blue-50 text-blue-700 border-blue-200', 'Completata': 'bg-emerald-50 text-emerald-700 border-emerald-200', 'Bloccata': 'bg-red-50 text-red-700 border-red-200', 'Escalation': 'bg-red-50 text-red-700 border-red-200', 'Rifiutata': 'bg-red-50 text-red-700 border-red-200' };
+    return <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${v[status] || v['Bozza']}`}>{status}</span>;
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;

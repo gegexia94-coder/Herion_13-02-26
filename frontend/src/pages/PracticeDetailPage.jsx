@@ -1,23 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, Compass, ShieldCheck, Scale, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const BRANDED_AGENTS = [
-  { type: 'analysis', branded: 'Herion Compass', name: 'Analisi', icon: Compass, step: 1, color: 'text-sky-600', bg: 'bg-sky-50' },
-  { type: 'validation', branded: 'Herion Shield', name: 'Validazione', icon: ShieldCheck, step: 2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { type: 'compliance', branded: 'Herion Rules', name: 'Conformita', icon: Scale, step: 3, color: 'text-[#C6A96B]', bg: 'bg-[#C6A96B]/10' },
-  { type: 'document', branded: 'Herion Docs', name: 'Documenti', icon: FileText, step: 4, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { type: 'communication', branded: 'Herion Voice', name: 'Comunicazione', icon: MessageCircle, step: 5, color: 'text-violet-600', bg: 'bg-violet-50' },
+  { type: 'intake', branded: 'Herion Intake', name: 'Raccolta', icon: ClipboardList, step: 1, color: 'text-sky-600', bg: 'bg-sky-50' },
+  { type: 'ledger', branded: 'Herion Ledger', name: 'Contabilita', icon: Calculator, step: 2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { type: 'compliance', branded: 'Herion Compliance', name: 'Conformita', icon: ShieldCheck, step: 3, color: 'text-amber-600', bg: 'bg-amber-50' },
+  { type: 'documents', branded: 'Herion Documents', name: 'Documenti', icon: FileText, step: 4, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { type: 'delegate', branded: 'Herion Delegate', name: 'Delega', icon: KeyRound, step: 5, color: 'text-violet-600', bg: 'bg-violet-50' },
+  { type: 'deadline', branded: 'Herion Deadline', name: 'Scadenze', icon: Timer, step: 6, color: 'text-rose-600', bg: 'bg-rose-50' },
+  { type: 'flow', branded: 'Herion Flow', name: 'Flusso', icon: GitBranch, step: 7, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  { type: 'monitor', branded: 'Herion Monitor', name: 'Monitoraggio', icon: Activity, step: 8, color: 'text-orange-600', bg: 'bg-orange-50' },
+  { type: 'advisor', branded: 'Herion Advisor', name: 'Spiegazione', icon: MessageCircle, step: 9, color: 'text-purple-600', bg: 'bg-purple-50' },
 ];
 
 const DOC_CATEGORIES = [
@@ -28,25 +33,65 @@ const DOC_CATEGORIES = [
   { key: 'activity', label: 'Attivita' }, { key: 'other', label: 'Altro' },
 ];
 
+const STATUS_CONFIG = {
+  draft: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', label: 'Bozza' },
+  pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'In Attesa' },
+  in_progress: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'In Elaborazione' },
+  processing: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'In Elaborazione' },
+  waiting_approval: { bg: 'bg-[#0F4C5C]/5', text: 'text-[#0F4C5C]', border: 'border-[#0F4C5C]/20', label: 'In Attesa di Approvazione' },
+  approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Approvata' },
+  submitted: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Inviata' },
+  completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Completata' },
+  blocked: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Bloccata' },
+  escalated: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Escalation' },
+  rejected: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Rifiutata' },
+};
+
+const TIMELINE_ICONS = {
+  practice_created: CircleDot,
+  orchestration_started: Play,
+  intake_completed: ClipboardList,
+  ledger_completed: Calculator,
+  compliance_completed: ShieldCheck,
+  documents_completed: FileText,
+  delegate_completed: KeyRound,
+  deadline_completed: Timer,
+  flow_completed: GitBranch,
+  monitor_completed: Activity,
+  advisor_completed: MessageCircle,
+  risk_evaluated: ShieldAlert,
+  waiting_approval: Lock,
+  approved: CheckCircle2,
+  submitted: ArrowRight,
+  completed: CheckCircle,
+  blocked: XCircle,
+  escalated: AlertTriangle,
+  status_changed: CircleDot,
+};
+
 export default function PracticeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const chatEndRef = useRef(null);
   const [practice, setPractice] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
+  const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState('analysis');
+  const [selectedAgent, setSelectedAgent] = useState('intake');
   const [agentQuery, setAgentQuery] = useState('');
   const [agentLoading, setAgentLoading] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState({ open: false, status: '' });
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   const [uploadCategory, setUploadCategory] = useState('other');
   const [orchestrating, setOrchestrating] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -54,8 +99,15 @@ export default function PracticeDetailPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [p, d, l, c] = await Promise.all([getPractice(id), getPracticeDocuments(id), getPracticeActivityLogs(id), getPracticeChatHistory(id)]);
-      setPractice(p.data); setDocuments(d.data); setActivityLogs(l.data); setChatHistory(c.data.reverse());
+      const [p, d, l, c, t] = await Promise.all([
+        getPractice(id), getPracticeDocuments(id), getPracticeActivityLogs(id),
+        getPracticeChatHistory(id), getPracticeTimeline(id)
+      ]);
+      setPractice(p.data);
+      setDocuments(d.data);
+      setActivityLogs(l.data);
+      setChatHistory(c.data.reverse());
+      setTimeline(t.data);
     } catch { toast.error('Errore nel caricamento'); }
     finally { setLoading(false); }
   }, [id]);
@@ -90,16 +142,24 @@ export default function PracticeDetailPage() {
     finally { setOrchestrating(false); }
   };
 
+  const handleApprove = async () => {
+    setShowApprovalDialog(false); setApproving(true);
+    try {
+      await approvePractice(id);
+      toast.success('Pratica approvata e completata con successo');
+      loadData();
+    } catch (e) { toast.error("Errore nell'approvazione", { description: e.response?.data?.detail }); }
+    finally { setApproving(false); }
+  };
+
   const handlePdfDownload = async () => {
     setPdfLoading(true);
     try {
       const response = await downloadPracticePdf(id);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement('a'); a.href = url;
-      a.download = `Herion_Pratica_${id.slice(0, 8)}.pdf`;
-      document.body.appendChild(a); a.click(); a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('PDF scaricato');
+      a.download = `Herion_Pratica_${id.slice(0, 8)}.pdf`; document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url); toast.success('PDF scaricato');
     } catch (e) { toast.error(e.response?.data?.detail || 'Errore nel download PDF'); }
     finally { setPdfLoading(false); }
   };
@@ -118,12 +178,23 @@ export default function PracticeDetailPage() {
 
   const toggleLog = (logId) => setExpandedLogs(prev => ({ ...prev, [logId]: !prev[logId] }));
 
+  const getAgentConfig = (type) => BRANDED_AGENTS.find(a => a.type === type) || BRANDED_AGENTS[0];
+
   const statusBadge = (status, label) => {
-    const v = { pending: 'bg-amber-50 text-amber-700 border-amber-200', processing: 'bg-sky-50 text-sky-700 border-sky-200', completed: 'bg-emerald-50 text-emerald-700 border-emerald-200', rejected: 'bg-red-50 text-red-700 border-red-200' };
-    return <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${v[status] || v.pending}`}>{label}</span>;
+    const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+    return <span data-testid="practice-status-badge" className={`text-xs px-2.5 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.text} ${cfg.border}`}>{label || cfg.label}</span>;
   };
 
-  const getAgentConfig = (type) => BRANDED_AGENTS.find(a => a.type === type) || BRANDED_AGENTS[0];
+  const riskBadge = (level) => {
+    const cfg = { low: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Basso' }, medium: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Medio' }, high: { bg: 'bg-red-50', text: 'text-red-700', label: 'Alto' } };
+    const c = cfg[level] || cfg.medium;
+    return <span data-testid="risk-badge" className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
+  };
+
+  const isAdmin = user?.role === 'admin';
+  const canOrchestrate = practice && !['approved', 'submitted', 'completed'].includes(practice.status);
+  const isWaitingApproval = practice?.status === 'waiting_approval';
+  const orchestration = practice?.orchestration_result;
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
   if (!practice) return <div className="text-center py-16"><p className="text-[#475569]">Pratica non trovata</p><Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-xl">Torna alle pratiche</Button></div>;
@@ -139,22 +210,97 @@ export default function PracticeDetailPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {statusBadge(practice.status, practice.status_label)}
+          {practice.risk_level && riskBadge(practice.risk_level)}
           {practice.status === 'completed' && (
             <Button onClick={handlePdfDownload} disabled={pdfLoading} variant="outline" className="rounded-full border-[#E2E8F0] text-sm h-9 px-4" data-testid="download-pdf-btn">
               {pdfLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1.5" />}Scarica PDF
             </Button>
           )}
-          <Select value={practice.status} onValueChange={(v) => setShowStatusDialog({ open: true, status: v })}>
-            <SelectTrigger className="w-40 rounded-full border-[#E2E8F0] h-9 text-xs" data-testid="status-select"><SelectValue /></SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="pending">In Attesa</SelectItem>
-              <SelectItem value="processing">In Elaborazione</SelectItem>
-              <SelectItem value="completed">Completata</SelectItem>
-              <SelectItem value="rejected">Rifiutata</SelectItem>
-            </SelectContent>
-          </Select>
+          {isAdmin && (
+            <Select value={practice.status} onValueChange={(v) => setShowStatusDialog({ open: true, status: v })}>
+              <SelectTrigger className="w-44 rounded-full border-[#E2E8F0] h-9 text-xs" data-testid="status-select"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="draft">Bozza</SelectItem>
+                <SelectItem value="in_progress">In Elaborazione</SelectItem>
+                <SelectItem value="waiting_approval">In Attesa Approvazione</SelectItem>
+                <SelectItem value="completed">Completata</SelectItem>
+                <SelectItem value="blocked">Bloccata</SelectItem>
+                <SelectItem value="rejected">Rifiutata</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
+
+      {/* Approval Gate */}
+      {isWaitingApproval && orchestration && (
+        <div className="bg-white rounded-2xl border-2 border-[#0F4C5C]/20 p-6 shadow-[0_4px_24px_rgba(15,76,92,0.08)]" data-testid="approval-gate">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-11 h-11 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Lock className="w-5 h-5 text-[#5DD9C1]" /></div>
+            <div>
+              <h3 className="text-base font-bold text-[#0F172A]">Approvazione Richiesta</h3>
+              <p className="text-xs text-[#475569]">Verifica il riepilogo e approva per procedere con l'invio</p>
+            </div>
+          </div>
+
+          {/* Risk + Delegation Status */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+            <div className="p-3 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0]">
+              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Rischio</p>
+              {riskBadge(orchestration.risk_level)}
+            </div>
+            <div className="p-3 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0]">
+              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Delega</p>
+              <p className="text-xs font-medium text-[#0F172A]">{orchestration.delegation_label || orchestration.delegation_status}</p>
+            </div>
+            <div className="p-3 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0]">
+              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Agenti</p>
+              <p className="text-xs font-medium text-[#0F172A]">{orchestration.agents_used?.length || 0} completati</p>
+            </div>
+          </div>
+
+          {/* Data being used */}
+          <div className="mb-4">
+            <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Dati della pratica</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div><span className="text-[#475569]">Tipo: </span><span className="text-[#0F172A] font-medium">{practice.practice_type_label}</span></div>
+              <div><span className="text-[#475569]">Cliente: </span><span className="text-[#0F172A] font-medium">{practice.client_name}</span></div>
+              {practice.fiscal_code && <div><span className="text-[#475569]">C.F.: </span><span className="text-[#0F172A] font-mono font-medium">{practice.fiscal_code}</span></div>}
+              {practice.vat_number && <div><span className="text-[#475569]">P.IVA: </span><span className="text-[#0F172A] font-mono font-medium">{practice.vat_number}</span></div>}
+            </div>
+          </div>
+
+          {/* Documents included */}
+          {practice.documents?.length > 0 && (
+            <div className="mb-4">
+              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Documenti inclusi ({practice.documents.length})</p>
+              <div className="flex flex-wrap gap-1.5">
+                {practice.documents.map((doc, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 bg-[#F1F5F9] rounded-md text-[#475569]">{doc.filename}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Admin Summary */}
+          {orchestration.admin_summary && (
+            <div className="mb-5">
+              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Riepilogo Herion Admin</p>
+              <div className="p-4 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0] text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto" data-testid="admin-summary">
+                {orchestration.admin_summary}
+              </div>
+            </div>
+          )}
+
+          {/* Approval Actions */}
+          <div className="flex gap-3 pt-2 border-t border-[#E2E8F0]">
+            <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 h-11 text-sm font-semibold" data-testid="approve-practice-btn">
+              {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approvazione in corso...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Approva e Procedi</>}
+            </Button>
+          </div>
+          <p className="text-[10px] text-[#94A3B8] mt-2 text-center">Approvando, confermi di aver verificato i dati e autorizzi l'invio della pratica</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
@@ -174,7 +320,7 @@ export default function PracticeDetailPage() {
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="agent-activity-panel">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
-              <div><h3 className="text-sm font-bold text-[#0F172A]">Attivita degli Agenti</h3><p className="text-[10px] text-[#475569]">Cronologia trasparente di ogni azione AI su questa pratica</p></div>
+              <div><h3 className="text-sm font-bold text-[#0F172A]">Attivita degli Agenti</h3><p className="text-[10px] text-[#475569]">Cronologia trasparente di ogni azione sulla pratica</p></div>
             </div>
 
             {practice.agent_logs?.length > 0 ? (
@@ -215,36 +361,43 @@ export default function PracticeDetailPage() {
               <div className="border-2 border-dashed border-[#E2E8F0] rounded-xl p-6 text-center">
                 <Sparkles className="w-8 h-8 text-[#CBD5E1] mx-auto mb-2" strokeWidth={1.5} />
                 <p className="text-xs text-[#475569]">Nessun agente ha ancora lavorato su questa pratica</p>
+                {canOrchestrate && <p className="text-[10px] text-[#94A3B8] mt-1">Avvia l'esecuzione controllata per analizzare la pratica</p>}
               </div>
             )}
           </div>
 
           {/* Herion AI - Execute Section */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
-              <div><h3 className="text-sm font-bold text-[#0F172A]">Esegui Herion AI</h3><p className="text-[10px] text-[#475569]">Seleziona un agente o avvia l'analisi completa</p></div>
+          {canOrchestrate && (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
+                <div><h3 className="text-sm font-bold text-[#0F172A]">Esecuzione Controllata</h3><p className="text-[10px] text-[#475569]">9 agenti specializzati coordinati da Herion Admin</p></div>
+              </div>
+              {isAdmin && (
+                <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 mb-3">
+                  {BRANDED_AGENTS.map(a => (
+                    <button key={a.type} onClick={() => setSelectedAgent(a.type)}
+                      className={`p-2 border rounded-xl text-center transition-all ${selectedAgent === a.type ? 'border-[#0F4C5C] bg-[#0F4C5C]/[0.03] ring-1 ring-[#0F4C5C]' : 'border-[#E2E8F0] hover:border-[#0F4C5C]/30'}`}
+                      data-testid={`agent-select-${a.type}`}>
+                      <a.icon className={`w-3.5 h-3.5 mx-auto mb-0.5 ${selectedAgent === a.type ? 'text-[#0F4C5C]' : 'text-[#94A3B8]'}`} strokeWidth={1.5} />
+                      <p className="text-[8px] font-semibold text-[#0F172A] leading-tight">{a.name}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Textarea placeholder="Descrivi cosa vuoi analizzare..." value={agentQuery} onChange={e => setAgentQuery(e.target.value)} className="rounded-xl border-[#E2E8F0] min-h-[60px] resize-none text-sm mb-3" data-testid="agent-query-input" />
+              <div className="flex gap-2">
+                {isAdmin && (
+                  <Button onClick={() => agentQuery.trim() && setShowAgentDialog(true)} disabled={agentLoading || !agentQuery.trim()} variant="outline" className="rounded-xl border-[#E2E8F0] text-xs" data-testid="execute-agent-btn">
+                    {agentLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Elaborazione...</> : <><Play className="w-3.5 h-3.5 mr-1.5" />Singolo Agente</>}
+                  </Button>
+                )}
+                <Button onClick={handleOrchestrate} disabled={orchestrating} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-xs" data-testid="orchestrate-btn">
+                  {orchestrating ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Esecuzione in corso...</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Avvia Esecuzione Controllata</>}
+                </Button>
+              </div>
             </div>
-            <div className="grid grid-cols-5 gap-1.5 mb-3">
-              {BRANDED_AGENTS.map(a => (
-                <button key={a.type} onClick={() => setSelectedAgent(a.type)}
-                  className={`p-2.5 border rounded-xl text-center transition-all ${selectedAgent === a.type ? 'border-[#0F4C5C] bg-[#0F4C5C]/[0.03] ring-1 ring-[#0F4C5C]' : 'border-[#E2E8F0] hover:border-[#0F4C5C]/30'}`}
-                  data-testid={`agent-select-${a.type}`}>
-                  <a.icon className={`w-4 h-4 mx-auto mb-1 ${selectedAgent === a.type ? 'text-[#0F4C5C]' : 'text-[#94A3B8]'}`} strokeWidth={1.5} />
-                  <p className="text-[9px] font-semibold text-[#0F172A]">{a.branded.replace('Herion ', '')}</p>
-                </button>
-              ))}
-            </div>
-            <Textarea placeholder="Descrivi cosa vuoi analizzare..." value={agentQuery} onChange={e => setAgentQuery(e.target.value)} className="rounded-xl border-[#E2E8F0] min-h-[60px] resize-none text-sm mb-3" data-testid="agent-query-input" />
-            <div className="flex gap-2">
-              <Button onClick={() => agentQuery.trim() && setShowAgentDialog(true)} disabled={agentLoading || !agentQuery.trim()} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-xs" data-testid="execute-agent-btn">
-                {agentLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Elaborazione...</> : <><Play className="w-3.5 h-3.5 mr-1.5" />Esegui {BRANDED_AGENTS.find(a => a.type === selectedAgent)?.branded}</>}
-              </Button>
-              <Button onClick={handleOrchestrate} disabled={orchestrating} variant="outline" className="rounded-xl border-[#5DD9C1] text-[#0F4C5C] text-xs hover:bg-[#5DD9C1]/10" data-testid="orchestrate-btn">
-                {orchestrating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}Analisi Completa
-              </Button>
-            </div>
-          </div>
+          )}
 
           {/* Documents */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
@@ -272,16 +425,42 @@ export default function PracticeDetailPage() {
           </div>
         </div>
 
-        {/* Right Column - Q&A Chat + Activity */}
+        {/* Right Column */}
         <div className="space-y-5">
-          {/* Herion Admin Q&A Chat */}
+          {/* Timeline */}
+          {timeline.length > 0 && (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-timeline">
+              <div className="flex items-center gap-2 mb-3"><History className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Cronologia</h3></div>
+              <ScrollArea className="h-[220px]">
+                <div className="relative pl-5">
+                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[#E2E8F0]" />
+                  {timeline.map((event, i) => {
+                    const Icon = TIMELINE_ICONS[event.event_type] || CircleDot;
+                    const isLast = i === timeline.length - 1;
+                    return (
+                      <div key={event.id} className={`relative flex gap-3 ${i < timeline.length - 1 ? 'pb-3' : ''}`}>
+                        <div className={`absolute left-[-13px] w-4 h-4 rounded-full flex items-center justify-center ${isLast ? 'bg-[#0F4C5C]' : 'bg-[#F1F5F9] border border-[#E2E8F0]'}`}>
+                          <Icon className={`w-2.5 h-2.5 ${isLast ? 'text-[#5DD9C1]' : 'text-[#94A3B8]'}`} strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-[10px] font-medium ${isLast ? 'text-[#0F172A]' : 'text-[#475569]'}`}>{event.event_label}</p>
+                          <p className="text-[9px] text-[#94A3B8]">{format(new Date(event.timestamp), 'dd MMM, HH:mm', { locale: it })}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Q&A Chat */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-chat">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
-              <div><h3 className="text-sm font-bold text-[#0F172A]">Chiedi a Herion Admin</h3><p className="text-[10px] text-[#475569]">Domande sulla pratica</p></div>
+              <div><h3 className="text-sm font-bold text-[#0F172A]">Chiedi a Herion</h3><p className="text-[10px] text-[#475569]">Domande sulla pratica</p></div>
             </div>
-
-            <ScrollArea className="h-[280px] mb-3">
+            <ScrollArea className="h-[240px] mb-3">
               <div className="space-y-2.5 pr-2">
                 {chatHistory.length === 0 && !chatLoading && (
                   <div className="text-center py-6">
@@ -313,7 +492,6 @@ export default function PracticeDetailPage() {
                 <div ref={chatEndRef} />
               </div>
             </ScrollArea>
-
             <form onSubmit={handleChat} className="flex gap-2">
               <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Fai una domanda..." className="rounded-xl border-[#E2E8F0] h-9 text-xs flex-1" disabled={chatLoading} data-testid="chat-input" />
               <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl h-9 w-9 p-0" data-testid="chat-send-btn"><Send className="w-3.5 h-3.5" /></Button>
@@ -322,8 +500,8 @@ export default function PracticeDetailPage() {
 
           {/* Activity Log */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center gap-2 mb-3"><History className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Registro Attivita</h3></div>
-            <ScrollArea className="h-[250px]">
+            <div className="flex items-center gap-2 mb-3"><AlertCircle className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Registro Attivita</h3></div>
+            <ScrollArea className="h-[200px]">
               <div className="space-y-1.5">
                 {activityLogs.length > 0 ? activityLogs.map(log => (
                   <div key={log.id} className="p-2 border border-[#E2E8F0] rounded-lg">
@@ -353,10 +531,28 @@ export default function PracticeDetailPage() {
         <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-sm">
           <AlertDialogHeader>
             <div className="w-11 h-11 rounded-xl bg-[#0F4C5C]/10 flex items-center justify-center mx-auto mb-3"><Sparkles className="w-5 h-5 text-[#0F4C5C]" /></div>
-            <AlertDialogTitle className="text-lg font-bold text-center">Esegui Herion AI</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-bold text-center">Esegui Agente</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-[#475569] text-sm">Agente: <span className="font-medium text-[#0F172A]">{BRANDED_AGENTS.find(a => a.type === selectedAgent)?.branded}</span></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleAgentExecute} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-sm">Esegui</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
+        <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-md">
+          <AlertDialogHeader>
+            <div className="w-11 h-11 rounded-xl bg-[#0F4C5C] flex items-center justify-center mx-auto mb-3"><Lock className="w-5 h-5 text-[#5DD9C1]" /></div>
+            <AlertDialogTitle className="text-lg font-bold text-center">Conferma Approvazione</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[#475569] text-sm">
+              Confermando, autorizzi l'invio della pratica <span className="font-semibold text-[#0F172A]">{practice.practice_type_label}</span> per <span className="font-semibold text-[#0F172A]">{practice.client_name}</span>.
+              <br /><br />
+              Questa azione verra registrata e non potra essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApprove} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-sm" data-testid="confirm-approve-btn">Approva e Invia</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

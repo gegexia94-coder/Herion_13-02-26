@@ -40,6 +40,18 @@ export const getAgentsInfo = () => api.get('/agents/info');
 export const orchestrateAgents = (practiceId, query) =>
   api.post('/agents/orchestrate', { practice_id: practiceId, query });
 
+// Practice Q&A Chat
+export const sendPracticeChat = (practiceId, question) =>
+  api.post(`/practices/${practiceId}/chat`, { question });
+export const getPracticeChatHistory = (practiceId) =>
+  api.get(`/practices/${practiceId}/chat`);
+
+// Smart Reminders
+export const getReminders = () => api.get('/reminders');
+export const getReminderCategories = () => api.get('/reminders/categories');
+export const createReminder = (data) => api.post('/reminders', data);
+export const deleteReminder = (id) => api.delete(`/reminders/${id}`);
+
 // Activity Logs
 export const getActivityLogs = (limit = 50, category = null) => {
   const params = { limit };

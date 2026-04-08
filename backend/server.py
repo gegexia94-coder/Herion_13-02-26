@@ -246,6 +246,19 @@ class OrchestrationRequest(BaseModel):
     practice_id: str
     query: Optional[str] = "Analizza questa pratica in modo completo"
 
+class PracticeChatRequest(BaseModel):
+    question: str
+
+class ReminderCreate(BaseModel):
+    title: str
+    content: str
+    category: str = "platform_updates"
+    country: Optional[str] = None
+    priority: str = "normal"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    active: bool = True
+
 # ========================
 # AUTH ENDPOINTS
 # ========================
@@ -598,12 +611,13 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 AGENT_DESCRIPTIONS = {
     "analysis": {
         "name": "Agente di Analisi",
-        "description": "Analizza la situazione dell'utente e determina la pratica fiscale necessaria.",
+        "branded_name": "Herion Compass",
+        "icon_key": "compass",
+        "description": "Analizza la situazione dell'utente ed estrae i fatti rilevanti per determinare la pratica necessaria.",
         "step": 1,
-        "system_message": """Sei l'Agente di Analisi di Herion - Assistente AI per la gestione fiscale europea.
+        "system_message": """Sei Herion Compass, l'agente di analisi della piattaforma Herion - Assistente AI per la gestione fiscale europea.
 Il tuo compito e analizzare la situazione fiscale dell'utente e determinare quale pratica e necessaria.
-Rispondi SEMPRE in italiano.
-Sii chiaro, trasparente e spiega ogni passaggio del tuo ragionamento.
+Rispondi SEMPRE in italiano. Sii chiaro, trasparente e spiega ogni passaggio.
 Format della risposta:
 - Analisi della situazione
 - Pratica consigliata
@@ -613,12 +627,13 @@ Format della risposta:
     },
     "validation": {
         "name": "Agente di Validazione",
-        "description": "Verifica la completezza e correttezza dei dati inseriti.",
+        "branded_name": "Herion Shield",
+        "icon_key": "shield",
+        "description": "Verifica la completezza dei dati, identifica inconsistenze e segnala rischi.",
         "step": 2,
-        "system_message": """Sei l'Agente di Validazione di Herion - Assistente AI per la gestione fiscale europea.
-Il tuo compito e verificare che i dati inseriti siano completi e corretti.
-Rispondi SEMPRE in italiano.
-Identifica eventuali errori o dati mancanti.
+        "system_message": """Sei Herion Shield, l'agente di validazione della piattaforma Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e verificare che i dati inseriti siano completi e corretti, identificando errori e rischi.
+Rispondi SEMPRE in italiano. Identifica eventuali errori o dati mancanti.
 Format della risposta:
 - Dati ricevuti
 - Validazione eseguita
@@ -628,12 +643,13 @@ Format della risposta:
     },
     "compliance": {
         "name": "Agente di Conformita",
+        "branded_name": "Herion Rules",
+        "icon_key": "rules",
         "description": "Verifica la conformita alle normative fiscali del paese selezionato.",
         "step": 3,
-        "system_message": """Sei l'Agente di Conformita di Herion - Assistente AI per la gestione fiscale europea.
+        "system_message": """Sei Herion Rules, l'agente di conformita della piattaforma Herion - Assistente AI per la gestione fiscale europea.
 Il tuo compito e verificare che la pratica sia conforme alle normative fiscali applicabili.
-Rispondi SEMPRE in italiano.
-Considera il paese di riferimento e le normative specifiche.
+Rispondi SEMPRE in italiano. Considera il paese di riferimento.
 Format della risposta:
 - Normative applicabili
 - Verifica conformita
@@ -643,10 +659,12 @@ Format della risposta:
     },
     "document": {
         "name": "Agente Documenti",
-        "description": "Estrae dati strutturati dai documenti e genera bozze.",
+        "branded_name": "Herion Docs",
+        "icon_key": "docs",
+        "description": "Crea report strutturati, sintesi e gestisce la documentazione della pratica.",
         "step": 4,
-        "system_message": """Sei l'Agente Documenti di Herion - Assistente AI per la gestione fiscale europea.
-Il tuo compito e analizzare i documenti ed estrarre informazioni strutturate, creando report e sintesi.
+        "system_message": """Sei Herion Docs, l'agente documenti della piattaforma Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e analizzare i documenti, estrarre informazioni strutturate e creare report e sintesi.
 Rispondi SEMPRE in italiano.
 Format della risposta:
 - Documento analizzato
@@ -656,12 +674,13 @@ Format della risposta:
     },
     "communication": {
         "name": "Agente Comunicazione",
-        "description": "Spiega chiaramente all'utente cosa sta succedendo con linguaggio semplice.",
+        "branded_name": "Herion Voice",
+        "icon_key": "voice",
+        "description": "Spiega chiaramente all'utente il risultato finale con linguaggio semplice.",
         "step": 5,
-        "system_message": """Sei l'Agente Comunicazione di Herion - Assistente AI per la gestione fiscale europea.
-Il tuo compito e spiegare in modo chiaro e semplice all'utente lo stato della pratica e i risultati dell'analisi.
-Rispondi SEMPRE in italiano, usando un linguaggio semplice e accessibile.
-Evita termini tecnici quando possibile.
+        "system_message": """Sei Herion Voice, l'agente comunicazione della piattaforma Herion - Assistente AI per la gestione fiscale europea.
+Il tuo compito e spiegare in modo chiaro e semplice all'utente lo stato della pratica e i risultati.
+Rispondi SEMPRE in italiano, usando un linguaggio semplice e accessibile. Evita termini tecnici.
 Format della risposta:
 - Stato attuale
 - Cosa e stato fatto
@@ -670,6 +689,18 @@ Format della risposta:
 - Consigli pratici"""
     }
 }
+
+HERION_ADMIN_PROMPT = """Sei Herion Admin, il coordinatore centrale della piattaforma Herion - Assistente AI per la gestione fiscale europea.
+Il tuo ruolo e quello di guida e gestore: riassumi la situazione, spiega cosa e successo, indica i prossimi passi.
+Rispondi SEMPRE in italiano con tono professionale, calmo e rassicurante.
+Quando rispondi a domande sulla pratica, usa il contesto fornito per dare risposte precise e trasparenti.
+Indica sempre quale agente ha gestito quale parte dell'analisi.
+Se la domanda non e chiara, chiedi gentilmente un chiarimento.
+Format della risposta per domande:
+- Risposta diretta
+- Dettagli aggiuntivi
+- Agente di riferimento
+- Suggerimento pratico"""
 
 @api_router.post("/agents/execute")
 async def execute_agent(action: AgentAction, user: dict = Depends(get_current_user)):
@@ -686,13 +717,15 @@ async def execute_agent(action: AgentAction, user: dict = Depends(get_current_us
         "id": agent_log_id,
         "agent_type": action.agent_type,
         "agent_name": agent_config["name"],
+        "branded_name": agent_config["branded_name"],
+        "icon_key": agent_config["icon_key"],
         "step": agent_config["step"],
         "input_data": action.input_data,
         "output_data": None,
         "status": "processing",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
-        "explanation": f"Invocazione dell'agente '{agent_config['name']}' con i dati forniti."
+        "explanation": f"{agent_config['branded_name']} sta elaborando la richiesta."
     }
 
     await log_activity(user["id"], "agent", "agent_invoked", {
@@ -734,11 +767,13 @@ async def execute_agent(action: AgentAction, user: dict = Depends(get_current_us
 
         return {
             "agent": agent_config["name"],
+            "branded_name": agent_config["branded_name"],
+            "icon_key": agent_config["icon_key"],
             "step": agent_config["step"],
             "input": action.input_data,
             "output": response,
             "log_id": agent_log_id,
-            "explanation": f"L'agente '{agent_config['name']}' ha elaborato la richiesta. Tutti i passaggi sono registrati nel log."
+            "explanation": f"{agent_config['branded_name']} ha elaborato la richiesta. Tutti i passaggi sono registrati nel log."
         }
 
     except Exception as e:
@@ -759,12 +794,19 @@ async def get_agents_info():
             {
                 "type": agent_type,
                 "name": config["name"],
+                "branded_name": config["branded_name"],
+                "icon_key": config["icon_key"],
                 "description": config["description"],
                 "step": config["step"],
                 "system_prompt": config["system_message"]
             }
             for agent_type, config in AGENT_DESCRIPTIONS.items()
         ],
+        "admin_agent": {
+            "name": "Herion Admin",
+            "icon_key": "admin",
+            "description": "Coordinatore centrale: riassume la situazione, spiega cosa e successo e indica i prossimi passi."
+        },
         "workflow_steps": ["analysis", "validation", "compliance", "document", "communication"],
         "transparency_note": "Tutti gli agenti AI sono completamente trasparenti. Ogni azione viene registrata con input e output completi."
     }
@@ -792,6 +834,8 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
             "id": agent_log_id,
             "agent_type": step_type,
             "agent_name": agent_config["name"],
+            "branded_name": agent_config["branded_name"],
+            "icon_key": agent_config["icon_key"],
             "step": agent_config["step"],
             "status": "running",
             "started_at": datetime.now(timezone.utc).isoformat(),
@@ -857,13 +901,15 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
             "id": r["id"],
             "agent_type": r["agent_type"],
             "agent_name": r["agent_name"],
+            "branded_name": r["branded_name"],
+            "icon_key": r["icon_key"],
             "step": r["step"],
             "input_data": {"orchestration_id": orchestration_id, "query": req.query},
             "output_data": r["output_data"],
             "status": r["status"],
             "started_at": r["started_at"],
             "completed_at": r["completed_at"],
-            "explanation": f"Orchestrazione automatica - Step {r['step']}: {r['agent_name']}"
+            "explanation": f"Orchestrazione automatica - Step {r['step']}: {r['branded_name']}"
         }
         await db.practices.update_one({"id": req.practice_id}, {"$push": {"agent_logs": agent_log_entry}})
 
@@ -1094,6 +1140,163 @@ async def download_practice_pdf(practice_id: str, user: dict = Depends(get_curre
         raise HTTPException(status_code=500, detail="Errore nella generazione del PDF")
 
 # ========================
+# PRACTICE Q&A CHAT
+# ========================
+
+@api_router.post("/practices/{practice_id}/chat")
+async def practice_chat(practice_id: str, req: PracticeChatRequest, user: dict = Depends(get_current_user)):
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    chat_id = str(uuid.uuid4())
+
+    try:
+        practice_context = {
+            "tipo_pratica": practice.get("practice_type_label"),
+            "cliente": practice.get("client_name"),
+            "tipo_cliente": practice.get("client_type_label"),
+            "descrizione": practice.get("description"),
+            "codice_fiscale": practice.get("fiscal_code"),
+            "partita_iva": practice.get("vat_number"),
+            "paese": practice.get("country", "IT"),
+            "stato": practice.get("status_label"),
+            "documenti": len(practice.get("documents", [])),
+            "agenti_eseguiti": [
+                {"agente": log.get("branded_name") or log.get("agent_name"), "stato": log.get("status"), "output": str(log.get("output_data", ""))[:300]}
+                for log in practice.get("agent_logs", [])[-5:]
+            ]
+        }
+
+        orchestration = practice.get("orchestration_result")
+        orch_summary = ""
+        if orchestration and orchestration.get("steps"):
+            orch_summary = "\n".join([
+                f"- {s.get('branded_name', s.get('agent_name'))}: {s.get('status')} - {str(s.get('output_data', ''))[:200]}"
+                for s in orchestration["steps"]
+            ])
+
+        system_msg = f"""{HERION_ADMIN_PROMPT}
+
+Contesto della pratica corrente:
+{practice_context}
+
+Risultati orchestrazione precedente:
+{orch_summary if orch_summary else 'Nessuna orchestrazione eseguita.'}"""
+
+        chat = LlmChat(
+            api_key=EMERGENT_KEY,
+            session_id=f"chat-{practice_id}-{chat_id}",
+            system_message=system_msg
+        ).with_model("openai", "gpt-5.2")
+
+        user_message = UserMessage(text=req.question)
+        response = await chat.send_message(user_message)
+
+        chat_entry = {
+            "id": chat_id,
+            "practice_id": practice_id,
+            "user_id": user["id"],
+            "question": req.question,
+            "answer": response,
+            "answered_by": "Herion Admin",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        await db.practice_chats.insert_one(chat_entry)
+
+        await log_activity(user["id"], "chat", "practice_question", {
+            "practice_id": practice_id, "chat_id": chat_id, "question": req.question[:100]
+        })
+
+        return {
+            "id": chat_id,
+            "question": req.question,
+            "answer": response,
+            "answered_by": "Herion Admin",
+            "timestamp": chat_entry["timestamp"]
+        }
+
+    except Exception as e:
+        logger.error(f"Practice chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Errore nella risposta: {str(e)}")
+
+@api_router.get("/practices/{practice_id}/chat")
+async def get_practice_chat_history(practice_id: str, user: dict = Depends(get_current_user)):
+    chats = await db.practice_chats.find(
+        {"practice_id": practice_id, "user_id": user["id"]},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(20).to_list(20)
+    return chats
+
+# ========================
+# SMART REMINDERS / ANNOUNCEMENTS
+# ========================
+
+REMINDER_CATEGORIES = [
+    {"key": "deadlines", "label": "Scadenze"},
+    {"key": "declarations", "label": "Dichiarazioni"},
+    {"key": "vat_reminders", "label": "Promemoria IVA"},
+    {"key": "document_preparation", "label": "Preparazione Documenti"},
+    {"key": "country_notices", "label": "Avvisi Nazionali"},
+    {"key": "platform_updates", "label": "Aggiornamenti Piattaforma"},
+]
+
+@api_router.get("/reminders")
+async def get_reminders(user: dict = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    user_country = user.get("country", "IT")
+    reminders = await db.reminders.find(
+        {
+            "active": True,
+            "$or": [{"country": None}, {"country": ""}, {"country": user_country}],
+            "$and": [
+                {"$or": [{"start_date": None}, {"start_date": ""}, {"start_date": {"$lte": now}}]},
+                {"$or": [{"end_date": None}, {"end_date": ""}, {"end_date": {"$gte": now}}]},
+            ]
+        },
+        {"_id": 0}
+    ).sort("priority_order", 1).limit(10).to_list(10)
+    return reminders
+
+@api_router.get("/reminders/categories")
+async def get_reminder_categories():
+    return REMINDER_CATEGORIES
+
+@api_router.post("/reminders")
+async def create_reminder(reminder: ReminderCreate, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo gli amministratori possono creare promemoria")
+
+    priority_map = {"urgent": 1, "high": 2, "normal": 3, "low": 4}
+    reminder_doc = {
+        "id": str(uuid.uuid4()),
+        "title": reminder.title,
+        "content": reminder.content,
+        "category": reminder.category,
+        "category_label": next((c["label"] for c in REMINDER_CATEGORIES if c["key"] == reminder.category), reminder.category),
+        "country": reminder.country,
+        "priority": reminder.priority,
+        "priority_order": priority_map.get(reminder.priority, 3),
+        "start_date": reminder.start_date or datetime.now(timezone.utc).isoformat(),
+        "end_date": reminder.end_date,
+        "active": reminder.active,
+        "created_by": user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.reminders.insert_one(reminder_doc)
+    reminder_doc.pop("_id", None)
+    return reminder_doc
+
+@api_router.delete("/reminders/{reminder_id}")
+async def delete_reminder(reminder_id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo gli amministratori possono eliminare promemoria")
+    result = await db.reminders.delete_one({"id": reminder_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Promemoria non trovato")
+    return {"message": "Promemoria eliminato"}
+
+# ========================
 # ROOT ENDPOINT
 # ========================
 
@@ -1127,6 +1330,8 @@ async def startup():
     await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.password_reset_tokens.create_index("token")
+    await db.practice_chats.create_index([("practice_id", 1), ("timestamp", -1)])
+    await db.reminders.create_index([("active", 1), ("priority_order", 1)])
 
     try:
         init_storage()
@@ -1186,6 +1391,18 @@ async def startup():
 """)
 
     logger.info("Herion v2.0 - Precision. Control. Confidence. - started successfully")
+
+    # Seed reminders if empty
+    reminder_count = await db.reminders.count_documents({})
+    if reminder_count == 0:
+        default_reminders = [
+            {"id": str(uuid.uuid4()), "title": "Dichiarazione IVA Trimestrale", "content": "Ricorda di preparare e inviare la dichiarazione IVA trimestrale entro la scadenza prevista dal tuo paese.", "category": "vat_reminders", "category_label": "Promemoria IVA", "country": None, "priority": "high", "priority_order": 2, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "title": "Organizza i Documenti Fiscali", "content": "Mantieni in ordine fatture, ricevute e documenti contabili. Una buona organizzazione semplifica ogni adempimento.", "category": "document_preparation", "category_label": "Preparazione Documenti", "country": None, "priority": "normal", "priority_order": 3, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "title": "Verifica Conformita Aziendale", "content": "Controlla che la tua attivita rispetti tutti i requisiti di conformita fiscale e amministrativa previsti.", "category": "declarations", "category_label": "Dichiarazioni", "country": None, "priority": "normal", "priority_order": 3, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "title": "Herion AI: Analisi Completa Disponibile", "content": "Usa l'analisi completa a 5 agenti per ogni pratica. Herion Compass, Shield, Rules, Docs e Voice lavorano insieme per te.", "category": "platform_updates", "category_label": "Aggiornamenti Piattaforma", "country": None, "priority": "low", "priority_order": 4, "start_date": datetime.now(timezone.utc).isoformat(), "end_date": None, "active": True, "created_by": "system", "created_at": datetime.now(timezone.utc).isoformat()},
+        ]
+        await db.reminders.insert_many(default_reminders)
+        logger.info("Default reminders seeded")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

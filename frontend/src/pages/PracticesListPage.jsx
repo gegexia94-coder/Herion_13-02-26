@@ -124,8 +124,8 @@ export default function PracticesListPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#111110] mb-1">Pratiche</h1>
-          <p className="text-sm text-[#5C5C59]">Gestisci tutte le tue pratiche fiscali</p>
+          <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Pratiche</h1>
+          <p className="text-sm text-[#475569]">Gestisci tutte le tue pratiche fiscali</p>
         </div>
         <Link to="/practices/new">
           <Button className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20" data-testid="create-practice-btn">
@@ -136,7 +136,7 @@ export default function PracticesListPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-4 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A19E]" />

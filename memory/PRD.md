@@ -1,80 +1,90 @@
-# Herion - Precision. Control. Confidence. PRD
+# Herion - European Premium Tax Management Platform
+## Product Requirements Document
 
-## Original Problem Statement
-Build a premium web application for tax practice management with AI agents, full transparency, and professional UX.
+### Original Problem Statement
+Build a transparent, AI-driven tax management web application called "Herion" for the European market. The platform provides:
+- User dashboard for tax practice management (VAT registration, closure, declarations)
+- 5 transparent AI agents (Analysis, Validation, Compliance, Document, Communication) powered by GPT-5.2
+- Full activity audit log with zero hidden logic
+- Document upload with categorized storage
+- Registration with user types (Private, Freelancer, Company)
+- Professional UI with "Herion" branding (Deep Teal #0F4C5C, Emerald #5DD9C1)
+- PDF export for completed practices
+- UI strictly in Italian, codebase in English
+- Europe-ready structure with EU country selector and adaptable fiscal logic
 
-## Brand Identity
-- **Name**: Herion
-- **Tagline**: Precision. Control. Confidence.
-- **Colors**: Deep teal (#0F4C5C), Emerald accent (#5DD9C1)
-- **Style**: Premium, minimal, trustworthy, high-end financial technology
-
-## User Personas
-1. **Private Individuals**: Personal tax declarations without VAT
-2. **Freelancers (Libero Professionisti)**: Autonomous workers with VAT
-3. **Companies (Aziende)**: Business entities with VAT
-4. **Tax Professionals**: Managing multiple client practices
-
-## Core Features Implemented
-
-### Authentication & Registration
-- JWT-based authentication
-- Enhanced registration form with:
-  - First name, Last name
-  - Email (validated), Phone (validated)
-  - Client type (Privato/Professionista/Azienda)
-  - VAT number (conditional - only for Professionista/Azienda)
-  - Fiscal code (validated)
-  - Password with confirmation
-  - Privacy policy consent
-  - Terms of service consent
-
-### Premium UI/UX
-- Floating rounded navbar with scroll show/hide animation
-- Premium rounded components throughout
-- Soft shadows and smooth animations
-- Herion geometric "H" logo
-- Consistent brand colors
-
-### Confirmation System
-All sensitive actions require confirmation:
-- Logout
-- Delete practice
-- Submit new practice
-- Change practice status
-- Execute AI agent
-- Upload documents
-
-### Alert/Notification System
-- Success, Error, Warning, Info alerts
-- Rounded corners, smooth fade animations
-- Toast notifications via Sonner
-
-### Tax Practice Management
-- CRUD operations for practices
-- Client type support
-- Status tracking (pending, processing, completed, rejected)
-- Document upload with object storage
-
-### Herion AI
-4 transparent AI agents:
-1. Analysis Agent - Situation analysis
-2. Validation Agent - Data verification
-3. Document Agent - Data extraction
-4. Communication Agent - Status explanation
-
-## Tech Stack
-- Frontend: React + Tailwind CSS + shadcn/ui
-- Backend: FastAPI
-- Database: MongoDB
-- AI: OpenAI GPT-5.2 via Emergent Integrations
+### Tech Stack
+- Frontend: React 18, Tailwind CSS, Shadcn/UI, Lucide Icons, Manrope font
+- Backend: FastAPI, Python
+- Database: MongoDB (Motor async driver)
+- AI: GPT-5.2 via Emergent LLM Key (emergentintegrations)
+- PDF: ReportLab
+- Auth: JWT (httpOnly cookies) + bcrypt
 - Storage: Emergent Object Storage
 
-## API Endpoints
-All endpoints prefixed with /api and return Herion branding
+### Architecture
+```
+/app/
+├── backend/
+│   ├── server.py              # All API endpoints, AI agents, PDF generation
+│   ├── requirements.txt
+│   └── .env
+├── frontend/
+│   ├── src/
+│   │   ├── index.css           # Global styles, Manrope font, Herion variables
+│   │   ├── App.js              # Routes
+│   │   ├── contexts/AuthContext.js
+│   │   ├── components/
+│   │   │   ├── Layout.jsx      # Floating premium navbar
+│   │   │   ├── ProtectedRoute.jsx
+│   │   │   └── ui/             # Shadcn components
+│   │   ├── pages/
+│   │   │   ├── LoginPage.jsx
+│   │   │   ├── RegisterPage.jsx
+│   │   │   ├── ForgotPasswordPage.jsx
+│   │   │   ├── ResetPasswordPage.jsx
+│   │   │   ├── ProfilePage.jsx
+│   │   │   ├── DashboardPage.jsx
+│   │   │   ├── PracticesListPage.jsx
+│   │   │   ├── CreatePracticePage.jsx
+│   │   │   ├── PracticeDetailPage.jsx
+│   │   │   ├── AgentsPage.jsx
+│   │   │   └── ActivityLogPage.jsx
+│   │   └── services/api.js
+```
 
-## Next Tasks
-1. Add PDF export for completed practices
-2. Implement email notifications
-3. Add automated AI agent workflow chains
-4. Multi-language support
+### What's Been Implemented (v2.0 - Apr 8 2026)
+
+#### P0 - Completed
+- [x] JWT Auth with httpOnly cookies, bcrypt hashing
+- [x] Expanded registration: first_name, last_name, email, phone, DOB, country, city, address, client_type, vat_number, fiscal_code, company_name, password, privacy/terms consent
+- [x] Forgot password flow (MOCKED email - logs reset link to console)
+- [x] Reset password with token-based validation
+- [x] User profile page (view/edit personal info, change password)
+- [x] EU country selector (27 countries with fiscal_id_label, vat_prefix)
+- [x] Document categories (10 types: identity, tax, VAT, invoices, company, accounting, compliance, payroll, activity, other)
+- [x] Public-facing product messaging (dashboard benefits cards, AI banner, footer)
+- [x] Premium Herion branding (Manrope font, teal/emerald palette, floating navbar)
+
+#### P1 - Completed
+- [x] 5 AI agents: Analysis, Validation, Compliance, Document, Communication
+- [x] Agent orchestration endpoint (sequential 5-step pipeline)
+- [x] Agent workflow UI with pipeline visualization
+- [x] PDF download button on completed practices
+- [x] Practice detail with categorized document upload
+- [x] Full activity logging with transparency
+
+#### Features Summary
+- Auth: register, login, logout, forgot-password, reset-password, profile, change-password
+- Practices: CRUD, status management, document upload with categories
+- AI: 5 agents, individual execution, full orchestration pipeline
+- PDF: Herion-branded PDF export for completed practices
+- Reference: 27 EU countries, 10 document categories
+
+### Backlog (P2 - Future)
+- [ ] Real email provider integration (Resend/SendGrid) for password reset
+- [ ] Full country-specific tax rule implementations
+- [ ] 2FA-ready architecture
+- [ ] Email notifications for practice status changes
+- [ ] Multi-language support
+- [ ] Advanced analytics dashboard

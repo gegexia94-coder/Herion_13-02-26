@@ -27,6 +27,7 @@ const CATEGORY_ICONS = {
   practice: FileText,
   document: Upload,
   agent: Bot,
+  orchestration: Bot,
   notification: Bell
 };
 
@@ -35,6 +36,7 @@ const CATEGORY_COLORS = {
   practice: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
   document: { bg: 'bg-amber-50', text: 'text-amber-600' },
   agent: { bg: 'bg-sky-50', text: 'text-sky-600' },
+  orchestration: { bg: 'bg-[#0F4C5C]/10', text: 'text-[#0F4C5C]' },
   notification: { bg: 'bg-red-50', text: 'text-red-600' }
 };
 
@@ -43,6 +45,7 @@ const CATEGORY_LABELS = {
   practice: 'Pratiche',
   document: 'Documenti',
   agent: 'Herion AI',
+  orchestration: 'Orchestrazione AI',
   notification: 'Notifiche'
 };
 

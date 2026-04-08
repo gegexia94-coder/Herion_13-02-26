@@ -1,94 +1,110 @@
 {
   "theme": "light",
-  "archetype": "4 (Swiss & High-Contrast)",
-  "design_context": "SaaS App / Dashboard",
-  "emotional_tone": "Trustworthy, transparent, precise, effortless.",
+  "archetype": "1 (Organic & Earthy / Trust) with 5 (Jewel & Luxury) influence",
+  "brand_name": "Herion",
+  "language": "it",
   "typography": {
-    "heading_font": "Cabinet Grotesk",
-    "body_font": "IBM Plex Sans",
-    "mono_font": "IBM Plex Mono",
-    "hierarchy": {
-      "h1": "text-4xl sm:text-5xl tracking-tight leading-none font-bold text-[#111110]",
-      "h2": "text-2xl sm:text-3xl tracking-tight font-semibold text-[#111110]",
-      "h3": "text-xl sm:text-2xl font-medium text-[#111110]",
-      "h4": "text-lg sm:text-xl font-medium text-[#111110]",
-      "body": "text-sm sm:text-base leading-relaxed text-[#5C5C59]",
-      "label": "text-xs tracking-[0.2em] uppercase font-semibold text-[#5C5C59]"
+    "font_family_primary": "Manrope",
+    "font_family_secondary": "Manrope",
+    "headings": {
+      "font_weight": "700",
+      "letter_spacing": "tracking-tight",
+      "color": "text-slate-900"
+    },
+    "body": {
+      "font_weight": "400",
+      "color": "text-slate-600",
+      "line_height": "leading-relaxed"
     }
   },
   "colors": {
-    "background": {
-      "primary": "#F9F9F8",
-      "secondary": "#FFFFFF",
-      "tertiary": "#F0F0EE"
-    },
-    "text": {
-      "primary": "#111110",
-      "secondary": "#5C5C59",
-      "disabled": "#A1A19E"
-    },
-    "border": {
-      "default": "#E5E5E3",
-      "focus": "#001F54"
-    },
-    "brand": {
-      "primary": "#001F54",
-      "secondary": "#1A4331"
-    },
-    "status": {
-      "success": "#1A4331",
-      "warning": "#D4A373",
-      "error": "#E63946",
-      "info": "#002FA7"
-    }
+    "primary": "#0F4C5C",
+    "accent": "#5DD9C1",
+    "accent_gold": "#C6A96B",
+    "background": "#F7FAFC",
+    "surface": "#FFFFFF",
+    "text_main": "#0F172A",
+    "text_secondary": "#475569",
+    "border": "#E2E8F0"
   },
   "spacing_and_layout": {
-    "base_spacing": "Use p-6 or p-8 for standard padding. Generous whitespace to avoid clutter.",
-    "container_borders": "1px solid border-[#E5E5E3], sharp corners (rounded-sm or rounded-none). No heavy shadows.",
-    "grid_system": "The 'Control Room' Grid pattern. grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6.",
-    "alignment": "Strict left-alignment for text. Right-aligned for metrics/numbers in tables."
-  },
-  "components": {
-    "buttons": "Flat background, sharp edges (rounded-sm), text-xs uppercase tracking-wider font-semibold. Primary: bg-[#001F54] text-white hover:bg-[#001F54]/90.",
-    "cards": "bg-white border border-[#E5E5E3] rounded-sm p-6. No drop shadows unless interacting (hover:-translate-y-1 hover:shadow-md transition-all duration-200).",
-    "inputs": "Shadcn based. border border-[#E5E5E3] focus:ring-1 focus:ring-[#001F54] rounded-sm. Use standard form wrappers.",
-    "navigation": "Sidebar navigation with white background, 1px right border. Links should have subtle hover states (bg-[#F0F0EE] text-[#111110]).",
-    "tables": "Minimalist. No vertical borders. 1px bottom border per row (`border-b border-[#E5E5E3]`). Hover effect on rows (`hover:bg-[#F9F9F8]`).",
-    "activity_log": "Vertical timeline layout (Thread System). Left border for the thread line, dot indicators for agent nodes. Use mono font for AI raw data.",
-    "status_tags": "text-xs uppercase tracking-wider px-2 py-1 rounded-sm border border-current font-medium."
+    "container_padding": "p-8 md:p-12",
+    "gap": "gap-6 md:gap-8",
+    "border_radius": "rounded-2xl",
+    "shadows": {
+      "default": "shadow-[0_4px_20px_rgba(15,23,42,0.05)]",
+      "hover": "shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
+    },
+    "navbar": "sticky top-4 mx-4 md:mx-auto max-w-6xl rounded-full backdrop-blur-xl bg-white/80 border border-slate-200/50 shadow-sm z-50",
+    "general": "Spacious layout, clear hierarchy, minimal visual noise, generous white space."
   },
   "motion": {
-    "hover": "transition-all duration-200 ease-in-out",
-    "click": "active:scale-95 transition-transform",
-    "entrance": "Staggered fade-up for list items.",
-    "progress": "Smooth width transitions for progress bars."
+    "hover": "transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg",
+    "entrance": "animate-fade-in-up",
+    "page_transition": "animate-fade-in"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#0F4C5C] text-white hover:bg-[#0b3844] rounded-full px-6 py-2.5 font-medium transition-all shadow-sm hover:shadow-md",
+      "secondary": "bg-white text-[#0F172A] border border-[#E2E8F0] hover:border-[#0F4C5C] hover:text-[#0F4C5C] rounded-full px-6 py-2.5 font-medium transition-all",
+      "accent": "bg-[#5DD9C1] text-[#0F4C5C] hover:bg-[#4bc2ab] rounded-full px-6 py-2.5 font-semibold transition-all shadow-sm"
+    },
+    "cards": {
+      "base": "bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
+    },
+    "inputs": {
+      "base": "w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none transition-all"
+    }
   },
   "media": {
-    "images": {
-      "user_avatar": {
-        "url": "https://images.unsplash.com/photo-1762522926157-bcc04bf0b10a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGNsZWFuJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzU2MDA4MDl8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Professional Italian user avatar."
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1771678040857-51d00a11be7a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMG1vZGVybiUyMG9mZmljZSUyMGludGVyaW9yfGVufDB8fHx8MTc3NTYzNjk1MHww&ixlib=rb-4.1.0&q=85",
+        "description": "Modern white interior with large windows and columns",
+        "category": "auth_background",
+        "usage": "Use as the background image for Login, Register, Forgot/Reset Password pages. Add a white/70 backdrop-blur overlay for readability."
       },
-      "abstract_texture": {
-        "url": "https://images.unsplash.com/photo-1761481755390-83999d790b95?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGNsZWFuJTIwd2hpdGUlMjBwYXBlciUyMHRleHR1cmV8ZW58MHx8fHwxNzc1NjAwODI2fDA&ixlib=rb-4.1.0&q=85",
-        "description": "Abstract white paper texture for dashboard headers or empty states."
+      {
+        "url": "https://images.unsplash.com/photo-1769398425402-d13820fe474b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2ODh8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHRlYWwlMjB3YXZlc3xlbnwwfHx8fDE3NzU2MzY5NDR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract wavy lines in muted earth tones and blues",
+        "category": "ai_banner",
+        "usage": "Use as the background or decorative element for the AI feature banner in the Dashboard."
+      },
+      {
+        "url": "https://images.pexels.com/photos/36645466/pexels-photo-36645466.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "A confident businessman posing and smiling in a modern office corridor.",
+        "category": "user_avatar",
+        "usage": "Use as the user profile image in the navbar and Profile page."
       }
-    },
-    "icons_library": "lucide-react"
+    ]
   },
-  "accessibility_and_testing": {
-    "contrast": "Ensure text contrast meets APCA/WCAG standards. Do not use light gray text on white backgrounds.",
-    "test_attributes": "All interactive elements MUST have `data-testid` attribute (e.g., `data-testid='crea-pratica-button'`)."
+  "pages_and_features": {
+    "auth": {
+      "login": "Minimalist form on the right, premium architectural image on the left. Italian text.",
+      "register": "Multi-step or grid-based form (Nome, Cognome, Email, Telefono, Data di Nascita, Nazione, Città, Indirizzo, Tipo di Cliente, P.IVA, Codice Fiscale, Ragione Sociale).",
+      "forgot_password": "Clean, reassuring UI to request reset link.",
+      "reset_password": "Secure input for new password."
+    },
+    "dashboard": {
+      "layout": "Grid layout with stats cards (Pratiche, Messaggi, etc.), quick actions, recent practices table.",
+      "ai_banner": "Visually distinct block introducing the AI assistant, featuring the abstract teal waves image."
+    },
+    "practice_management": {
+      "list": "Elegant data table with filters, status badges (using primary/accent colors).",
+      "detail": "Comprehensive view with tabs. Categorized documents grid, Activity log timeline. PDF download prominent CTA.",
+      "workflow": "5-step AI pipeline visualization: Analisi -> Validazione -> Conformità -> Documento -> Comunicazione. Use horizontal or vertical progression with active states."
+    },
+    "profile": "Clean settings layout to view/edit personal info, change password."
   },
   "instructions_to_main_agent": [
-    "Build the UI entirely in Italian as per the problem statement (e.g., 'AIC – Artificial Commercialista', 'Nuova Pratica', 'Agenti AI', 'Carica Documenti').",
-    "Design for a SaaS App / Dashboard layout. Implement the 'Control Room' grid pattern (dense and functional).",
-    "The AI Activity Log is critical. Design it as a sophisticated vertical timeline or thread UI. Use `font-mono` (`IBM Plex Mono` or default monospace) for the agent outputs to give a technical, transparent feel.",
-    "Keep borders sharp (`rounded-sm` or `rounded-none`). No soft, large radii or glassmorphism.",
-    "Use standard `.js` and `.jsx` extensions (not `.tsx`).",
-    "Ensure the primary CTA ('Crea Pratica') uses the deep navy brand color (`#001F54`).",
-    "Include an 'Agenti AI' view with 4 distinct agents: Analysis, Validation, Document, Communication.",
-    "Add an upload zone for tax documents ('Carica Documenti') with a clean dashed border and neutral background.",
-    "Always apply `data-testid` attributes to critical functional elements for automated testing."
+    "Use Italian language for ALL UI text (e.g., 'Accedi', 'Registrati', 'Dashboard', 'Pratiche', 'Profilo', 'Esci').",
+    "Use Manrope font for all text. Import it from Google Fonts.",
+    "Implement the floating premium navbar. It should be sticky, rounded-full, with backdrop-blur and a subtle border.",
+    "Do NOT use generic blue/purple gradients. Stick strictly to the defined teal (#0F4C5C), emerald (#5DD9C1), and gold (#C6A96B) palette.",
+    "Avoid the 'playful startup' look. The UI must feel like an exclusive European financial tool (Swiss/Milan design influence).",
+    "Add 'data-testid' attributes to all interactive and key informational elements (e.g., data-testid='login-submit-btn').",
+    "Use lucide-react or @phosphor-icons/react for premium-looking icons. Keep stroke width thin (e.g., 1.5) for elegance.",
+    "Ensure generous padding inside cards and form elements (e.g., p-6 or p-8).",
+    "Build the 5-agent pipeline visualization using clean CSS/Tailwind steps, utilizing the gold or emerald accent for completed/active steps."
   ]
 }

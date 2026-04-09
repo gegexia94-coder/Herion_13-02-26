@@ -36,10 +36,10 @@ Also: blocked, escalated, rejected
 
 ### What's Implemented (as of Feb 2026)
 - [x] Public Welcome/Landing page with warm Italian copy
-- [x] Protected Creator bootstrap (gegexia94@gmail.com)
+- [x] Protected Creator bootstrap (gegexia94@gmail.com) — password via env var only (no hardcoded fallback)
 - [x] Creator Control Room with system overview
 - [x] Creator vs Admin vs User role separation
-- [x] JWT Auth with role-based access
+- [x] JWT Auth with role-based access (cookie-based)
 - [x] 12-agent system (Father + 11 specialists)
 - [x] Controlled execution with approval gate
 - [x] Approval snapshot persistence
@@ -55,25 +55,28 @@ Also: blocked, escalated, rejected
 - [x] Profile/Settings page with password change
 - [x] Extended registration (EU, client types)
 - [x] Mock password reset flow
+- [x] **User-facing Practice Catalog Page** (/catalog) with search, filters (risk, user type), expandable detail cards
+- [x] **Step-by-step Practice State Visualization** (WorkflowStepper) on Practice Detail page — 6 steps with timestamps and agent info
+- [x] **User/Client Identity Card** on Practice Detail page — shows client name, type, country, fiscal code, creation date
+- [x] **Personal Dashboard Greeting** — "Ciao, [name]"
+- [x] **Catalogo nav item** in navigation bar
 
 ### What's NOT Yet Implemented
-- [ ] Real email provider integration
+- [ ] Deadline Dashboard (operational command center)
+- [ ] Real email provider integration (replace mock)
 - [ ] Email templates and sending
 - [ ] Submission Center
-- [ ] Deadline Dashboard (operational command center)
 - [ ] Document Matrix per practice
-- [ ] Step-by-step practice state visualization
 - [ ] Father Agent autonomous recovery logic
 - [ ] Herion Update agent (change monitoring)
 - [ ] Creator strategic notifications + email alerts
 - [ ] Alert system (inactivity, suspicious behavior)
 - [ ] Catalog expansion to 120+ practices
 - [ ] Creator profit/growth dashboard
-- [ ] User-facing Practice Catalog page
 - [ ] 2FA, multi-language, advanced analytics
 
 ### Key DB Collections
-- users: {email, password_hash, role, is_creator, creator_uuid, ...}
+- users: {email, password_hash, role, is_creator, creator_uuid, first_name, last_name, ...}
 - practices: {user_id, type, status, orchestration_result, risk_level, delegation_status, ...}
 - practice_timeline: {practice_id, event_type, event_label, timestamp, details}
 - approval_snapshots: {practice_id, user_id, summary_shown, risk_level, data_used, ...}
@@ -81,5 +84,12 @@ Also: blocked, escalated, rejected
 - authority_registry: {registry_id, name, destination_type, country, portal_url, ...}
 - activity_logs, documents, reminders, notifications, practice_chats
 
+### Creator Security Rules
+- Creator password comes ONLY from CREATOR_PASSWORD env var
+- No hardcoded fallback password in code
+- Bootstrap fails safely if env var missing (logs error, skips creation)
+- Creator recognized via: protected email + role=creator + is_creator=true + creator_uuid
+
 ### 3rd Party Integrations
 - OpenAI GPT-5.2 via Emergent LLM Key (for agent orchestration + Q&A)
+- Email: MOCKED (to be replaced in Task 4)

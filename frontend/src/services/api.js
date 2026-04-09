@@ -93,4 +93,11 @@ export const submitPractice = (practiceId) => api.post(`/practices/${practiceId}
 // Deadline Dashboard
 export const getDeadlines = () => api.get('/deadlines');
 
+// Governance
+export const getGovernanceCheck = (practiceId, action = 'submit') => api.get(`/governance/check/${practiceId}?action=${action}`);
+export const getGovernanceAudit = (params = {}) => api.get('/governance/audit', { params });
+export const getPracticeGovernanceAudit = (practiceId) => api.get(`/governance/audit/${practiceId}`);
+export const getGovernanceDashboard = () => api.get('/governance/dashboard');
+export const getPermissions = () => api.get('/governance/permissions');
+
 export default api;

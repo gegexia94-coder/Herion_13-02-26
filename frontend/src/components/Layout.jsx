@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings, BookOpen, Clock, Send } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings, BookOpen, Clock, Send, ShieldCheck } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/catalog', label: 'Catalogo', icon: BookOpen, adminOnly: false },
   { path: '/submissions', label: 'Centro Invii', icon: Send, adminOnly: false },
   { path: '/deadlines', label: 'Scadenze', icon: Clock, adminOnly: false },
+  { path: '/governance', label: 'Governance', icon: ShieldCheck, adminOnly: true },
   { path: '/agents', label: 'Herion AI', icon: Bot, adminOnly: false },
   { path: '/activity-log', label: 'Attivita', icon: History, adminOnly: false },
   { path: '/creator', label: 'Control Room', icon: Shield, creatorOnly: true },
@@ -56,6 +57,7 @@ export default function Layout() {
             <div className="hidden md:flex items-center gap-0.5 bg-[#F1F5F9] rounded-full p-1">
               {navItems.filter(item => {
                 if (item.creatorOnly && !user?.is_creator) return false;
+                if (item.adminOnly && !['admin', 'creator'].includes(user?.role)) return false;
                 return true;
               }).map(item => (
                 <NavLink key={item.path} to={item.path}
@@ -103,6 +105,7 @@ export default function Layout() {
             <div className="md:hidden border-t border-[#E2E8F0]/60 py-2 px-2 animate-fade-in">
               {navItems.filter(item => {
                 if (item.creatorOnly && !user?.is_creator) return false;
+                if (item.adminOnly && !['admin', 'creator'].includes(user?.role)) return false;
                 return true;
               }).map(item => (
                 <NavLink key={item.path} to={item.path} onClick={() => setMobileOpen(false)}

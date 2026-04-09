@@ -1488,6 +1488,16 @@ async def approve_practice(practice_id: str, user: dict = Depends(get_current_us
     if practice.get("status") != "waiting_approval":
         raise HTTPException(status_code=400, detail="La pratica non e in attesa di approvazione")
 
+    # Governance check for approval
+    perm = check_permission(user.get("role", "user"), "approve_practice")
+    if not perm["allowed"]:
+        await log_audit_event(user["id"], user.get("role", "user"), "approval_denied_permission", "practice", practice_id,
+            reason=perm["reason"], severity="high", practice_id=practice_id)
+        raise HTTPException(status_code=403, detail=perm["reason"])
+
+    await log_audit_event(user["id"], user.get("role", "user"), "approval_granted", "practice", practice_id,
+        previous_state="waiting_approval", new_state="approved", severity="medium", practice_id=practice_id)
+
     orchestration = practice.get("orchestration_result") or {}
     now = datetime.now(timezone.utc).isoformat()
 
@@ -1743,6 +1753,11 @@ async def update_delegation(practice_id: str, update: DelegationUpdate, user: di
     })
     await log_activity(user["id"], "delegation", event_type, {"practice_id": practice_id})
 
+    # Governance audit for delegation changes
+    await log_audit_event(user["id"], user.get("role", "user"), event_type, "delegation", practice_id,
+        new_state=delegation["status"], severity="medium" if action in ["verify", "reject"] else "info",
+        practice_id=practice_id, details={"delegation_type": delegation.get("delegation_type"), "notes": update.notes})
+
     return {"delegation": delegation, "message": f"Delega aggiornata: {delegation['label']}"}
 
 # ========================
@@ -1814,7 +1829,6 @@ async def calculate_readiness(practice: dict) -> dict:
     routing_clear = True
     if catalog_entry:
         channel = catalog_entry.get("expected_channel", "preparation_only")
-        destination = catalog_entry.get("destination_type", "internal")
         if channel == "official_portal":
             registry_entry = await db.authority_registry.find_one(
                 {"related_practices": practice_type}, {"_id": 0}
@@ -1833,7 +1847,6 @@ async def calculate_readiness(practice: dict) -> dict:
 
     # Determine readiness state
     is_blocked = len(blockers) > 0
-    has_warnings = len(warnings) > 0
 
     if status in ["completed", "submitted"]:
         readiness_state = "completed" if status == "completed" else "submitted"
@@ -1955,7 +1968,7 @@ async def get_submission_center(user: dict = Depends(get_current_user)):
 
 @api_router.post("/practices/{practice_id}/submit")
 async def submit_practice(practice_id: str, user: dict = Depends(get_current_user)):
-    """Execute submission with pre-checks."""
+    """Execute submission with governance pre-checks."""
     # Admin/creator can submit any practice
     is_admin = user.get("role") in ["admin", "creator"]
     query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
@@ -1963,8 +1976,32 @@ async def submit_practice(practice_id: str, user: dict = Depends(get_current_use
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
 
-    readiness = await calculate_readiness(practice)
+    # Run governance call
+    gov = await governance_call(practice_id, user["id"], user.get("role", "user"), "submit")
+    if gov["final_decision"] == "blocked":
+        await log_audit_event(user["id"], user.get("role", "user"), "submission_blocked_by_governance", "practice", practice_id,
+            reason=gov["blocking_reason"], severity="high", practice_id=practice_id)
+        return {
+            "success": False,
+            "message": gov["blocking_reason"] or "Invio bloccato dalla governance",
+            "blockers": [w for w in gov["governance_warnings"]],
+            "missing_items": gov["missing_items"],
+            "readiness_state": gov["readiness"]["readiness_state"],
+            "governance_decision": gov["final_decision"],
+        }
+    if gov["final_decision"] == "escalation_required":
+        await log_audit_event(user["id"], user.get("role", "user"), "submission_escalated_by_governance", "practice", practice_id,
+            reason="Escalation richiesta dalla governance", severity="high", practice_id=practice_id)
+        return {
+            "success": False,
+            "message": "Invio richiede escalation: " + (gov["governance_warnings"][0] if gov["governance_warnings"] else "revisione necessaria"),
+            "blockers": gov["governance_warnings"],
+            "missing_items": gov["missing_items"],
+            "readiness_state": gov["readiness"]["readiness_state"],
+            "governance_decision": gov["final_decision"],
+        }
 
+    readiness = gov["readiness"]
     if not readiness["is_ready"]:
         return {
             "success": False,
@@ -2110,6 +2147,413 @@ async def get_deadline_dashboard(user: dict = Depends(get_current_user)):
         urgency = "critical"
 
     return {"sections": sections, "counts": counts, "urgency": urgency}
+
+# ========================
+# GOVERNANCE LAYER
+# ========================
+
+# --- Non-Negotiable Rules ---
+NON_NEGOTIABLE_RULES = [
+    {"id": "NNR-001", "rule": "never_submit_unsupported", "description": "Mai inviare pratiche non supportate", "severity": "critical"},
+    {"id": "NNR-002", "rule": "never_submit_missing_documents", "description": "Mai inviare con documenti critici mancanti", "severity": "critical"},
+    {"id": "NNR-003", "rule": "never_proceed_invalid_delegation", "description": "Mai procedere con delega invalida o mancante quando richiesta", "severity": "critical"},
+    {"id": "NNR-004", "rule": "never_proceed_missing_approval", "description": "Mai procedere senza approvazione quando richiesta", "severity": "critical"},
+    {"id": "NNR-005", "rule": "never_proceed_unclear_routing", "description": "Mai procedere con routing non chiaro", "severity": "high"},
+    {"id": "NNR-006", "rule": "never_proceed_missing_destination", "description": "Mai procedere senza destinazione valida", "severity": "high"},
+    {"id": "NNR-007", "rule": "never_present_uncertain_as_certain", "description": "Mai presentare informazioni incerte come certe", "severity": "high"},
+    {"id": "NNR-008", "rule": "never_override_high_risk_silently", "description": "Mai ignorare blocchi ad alto rischio silenziosamente", "severity": "critical"},
+    {"id": "NNR-009", "rule": "never_hidden_strategic_changes", "description": "Mai modifiche strategiche nascoste", "severity": "critical"},
+    {"id": "NNR-010", "rule": "never_exceed_role_permissions", "description": "Mai superare i permessi del ruolo", "severity": "critical"},
+]
+
+# --- Permissions Matrix ---
+PERMISSIONS_MATRIX = {
+    "view_own_practices": {"user": True, "admin": True, "creator": True},
+    "view_all_practices": {"user": False, "admin": True, "creator": True},
+    "edit_own_practices": {"user": True, "admin": True, "creator": True},
+    "edit_all_practices": {"user": False, "admin": True, "creator": True},
+    "request_missing_items": {"user": True, "admin": True, "creator": True},
+    "request_delegation": {"user": True, "admin": True, "creator": True},
+    "verify_delegation": {"user": False, "admin": True, "creator": True},
+    "reject_delegation": {"user": False, "admin": True, "creator": True},
+    "request_approval": {"user": True, "admin": True, "creator": True},
+    "approve_practice": {"user": True, "admin": True, "creator": True},
+    "submit_practice": {"user": True, "admin": True, "creator": True},
+    "retry_submission": {"user": True, "admin": True, "creator": True},
+    "escalate_practice": {"user": False, "admin": True, "creator": True},
+    "change_routing_settings": {"user": False, "admin": False, "creator": True},
+    "change_governance_settings": {"user": False, "admin": False, "creator": True},
+    "change_registry_entries": {"user": False, "admin": False, "creator": True},
+    "access_hidden_logs": {"user": False, "admin": False, "creator": True},
+    "access_creator_tools": {"user": False, "admin": False, "creator": True},
+    "access_system_prompts": {"user": False, "admin": True, "creator": True},
+    "delete_practice": {"user": True, "admin": True, "creator": True},
+    "view_governance_dashboard": {"user": False, "admin": True, "creator": True},
+    "view_full_audit": {"user": False, "admin": True, "creator": True},
+    "view_fail_safe_details": {"user": False, "admin": True, "creator": True},
+}
+
+FAIL_SAFE_TRIGGERS = {
+    "source_conflict": {"stop_level": "high", "description": "Conflitto tra fonti rilevato"},
+    "routing_unclear": {"stop_level": "high", "description": "Routing non chiaro o non risolvibile"},
+    "delegation_invalid": {"stop_level": "critical", "description": "Delega invalida o scaduta"},
+    "approval_missing": {"stop_level": "critical", "description": "Approvazione mancante per azione critica"},
+    "documents_critically_incomplete": {"stop_level": "critical", "description": "Documenti critici mancanti"},
+    "agent_contradiction": {"stop_level": "high", "description": "Agenti restituiscono risultati contraddittori"},
+    "repeated_submission_failure": {"stop_level": "high", "description": "Invio fallito ripetutamente"},
+    "state_inconsistency": {"stop_level": "warning", "description": "Stato della pratica inconsistente"},
+    "high_risk_unsupported": {"stop_level": "critical", "description": "Pratica ad alto rischio non supportata"},
+    "security_anomaly": {"stop_level": "critical", "description": "Anomalia di sicurezza rilevata"},
+}
+
+AUDIT_SEVERITY = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+
+async def log_audit_event(
+    actor_id: str, actor_role: str, action: str, target_type: str,
+    target_id: str = None, previous_state: str = None, new_state: str = None,
+    reason: str = None, severity: str = "info", practice_id: str = None,
+    details: dict = None
+):
+    """Enhanced audit log with full traceability."""
+    event = {
+        "id": str(uuid.uuid4()),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "actor_id": actor_id,
+        "actor_role": actor_role,
+        "action": action,
+        "target_type": target_type,
+        "target_id": target_id,
+        "previous_state": previous_state,
+        "new_state": new_state,
+        "reason": reason,
+        "severity": severity,
+        "severity_level": AUDIT_SEVERITY.get(severity, 0),
+        "practice_id": practice_id,
+        "details": details or {},
+    }
+    await db.governance_audit.insert_one(event)
+    return event
+
+def check_permission(actor_role: str, action: str) -> dict:
+    """Check if a role has permission for an action."""
+    perm = PERMISSIONS_MATRIX.get(action)
+    if not perm:
+        return {"allowed": False, "actor": actor_role, "action": action, "target": action, "reason": "Permesso non definito"}
+    role = actor_role if actor_role in perm else "user"
+    allowed = perm.get(role, False)
+    return {
+        "allowed": allowed,
+        "actor": actor_role,
+        "action": action,
+        "target": action,
+        "reason": None if allowed else f"Ruolo '{role}' non autorizzato per '{action}'"
+    }
+
+async def check_non_negotiable_rules(practice: dict, action: str, readiness: dict = None) -> list:
+    """Check all non-negotiable rules and return violations."""
+    violations = []
+
+    if not readiness:
+        readiness = await calculate_readiness(practice)
+
+    # NNR-001: Never submit unsupported
+    if action == "submit" and readiness.get("support_level") == "not_supported":
+        violations.append({"rule_id": "NNR-001", "severity": "critical", "reason": "Pratica non supportata dalla piattaforma"})
+
+    # NNR-002: Never submit with missing critical documents
+    if action == "submit" and readiness.get("blockers"):
+        doc_blockers = [b for b in readiness["blockers"] if "Documento" in b or "documento" in b]
+        if doc_blockers:
+            violations.append({"rule_id": "NNR-002", "severity": "critical", "reason": f"Documenti mancanti: {', '.join(doc_blockers)}"})
+
+    # NNR-003: Never proceed with invalid delegation
+    if action in ["submit", "approve"] and readiness.get("delegation_required") and not readiness.get("delegation_valid"):
+        violations.append({"rule_id": "NNR-003", "severity": "critical", "reason": f"Delega: {readiness.get('delegation_status', 'mancante')}"})
+
+    # NNR-004: Never proceed without approval
+    if action == "submit" and readiness.get("approval_required") and readiness.get("approval_status") not in ["approved", "not_required"]:
+        violations.append({"rule_id": "NNR-004", "severity": "critical", "reason": "Approvazione richiesta ma non concessa"})
+
+    # NNR-005: Never proceed with unclear routing
+    if action == "submit" and not readiness.get("routing_clear"):
+        violations.append({"rule_id": "NNR-005", "severity": "high", "reason": "Routing non chiaro o destinazione non trovata"})
+
+    # NNR-006: Missing destination
+    if action == "submit" and readiness.get("channel") == "unknown":
+        violations.append({"rule_id": "NNR-006", "severity": "high", "reason": "Canale di invio non determinato"})
+
+    # NNR-008: Never override high-risk silently
+    if action == "submit" and readiness.get("risk_level") == "high" and practice.get("status") != "approved":
+        violations.append({"rule_id": "NNR-008", "severity": "critical", "reason": "Pratica ad alto rischio richiede approvazione esplicita"})
+
+    return violations
+
+async def check_fail_safe(practice: dict, action: str, readiness: dict = None) -> dict:
+    """Evaluate fail-safe conditions."""
+    if not readiness:
+        readiness = await calculate_readiness(practice)
+
+    triggers = []
+    stop_levels = []
+
+    # Check delegation validity
+    if readiness.get("delegation_required") and readiness.get("delegation_status") in ["expired", "rejected", "blocked"]:
+        t = FAIL_SAFE_TRIGGERS["delegation_invalid"]
+        triggers.append({"trigger": "delegation_invalid", **t})
+        stop_levels.append(t["stop_level"])
+
+    # Check approval for submission
+    if action == "submit" and readiness.get("approval_required") and readiness.get("approval_status") not in ["approved", "not_required"]:
+        t = FAIL_SAFE_TRIGGERS["approval_missing"]
+        triggers.append({"trigger": "approval_missing", **t})
+        stop_levels.append(t["stop_level"])
+
+    # Check documents
+    doc_blockers = [b for b in (readiness.get("blockers") or []) if "Documento" in b or "documento" in b]
+    if doc_blockers and action in ["submit", "approve"]:
+        t = FAIL_SAFE_TRIGGERS["documents_critically_incomplete"]
+        triggers.append({"trigger": "documents_critically_incomplete", **t})
+        stop_levels.append(t["stop_level"])
+
+    # Check routing
+    if action == "submit" and not readiness.get("routing_clear"):
+        t = FAIL_SAFE_TRIGGERS["routing_unclear"]
+        triggers.append({"trigger": "routing_unclear", **t})
+        stop_levels.append(t["stop_level"])
+
+    # Check support level
+    if readiness.get("support_level") == "not_supported":
+        t = FAIL_SAFE_TRIGGERS["high_risk_unsupported"]
+        triggers.append({"trigger": "high_risk_unsupported", **t})
+        stop_levels.append(t["stop_level"])
+
+    # Check repeated submission failures
+    if action == "submit":
+        fail_count = await db.submission_records.count_documents({"practice_id": practice["id"], "status": "failed"})
+        if fail_count >= 2:
+            t = FAIL_SAFE_TRIGGERS["repeated_submission_failure"]
+            triggers.append({"trigger": "repeated_submission_failure", **t, "failure_count": fail_count})
+            stop_levels.append(t["stop_level"])
+
+    # Determine highest stop level
+    level_order = {"info": 0, "warning": 1, "high": 2, "critical": 3}
+    max_level = max((level_order.get(lv, 0) for lv in stop_levels), default=-1)
+    stop_level = {0: "info", 1: "warning", 2: "high", 3: "critical"}.get(max_level, "info")
+
+    safe = len(triggers) == 0
+
+    # Determine next safe action
+    next_safe = "Nessuna azione richiesta"
+    if not safe:
+        if any(t["trigger"] == "documents_critically_incomplete" for t in triggers):
+            next_safe = "Caricare i documenti mancanti"
+        elif any(t["trigger"] == "delegation_invalid" for t in triggers):
+            next_safe = "Aggiornare o richiedere una nuova delega"
+        elif any(t["trigger"] == "approval_missing" for t in triggers):
+            next_safe = "Completare il processo di approvazione"
+        elif any(t["trigger"] == "routing_unclear" for t in triggers):
+            next_safe = "Verificare il routing e la destinazione"
+        else:
+            next_safe = "Contattare l'amministratore per revisione"
+
+    return {
+        "safe_to_continue": safe,
+        "stop_level": stop_level if not safe else "info",
+        "triggers": triggers,
+        "reason": triggers[0]["description"] if triggers else None,
+        "affected_modules": list(set(t["trigger"] for t in triggers)),
+        "next_safe_action": next_safe,
+    }
+
+async def governance_call(practice_id: str, actor_id: str, actor_role: str, action_requested: str, context: dict = None) -> dict:
+    """Unified Governance Call Method — runs all governance checks before important actions."""
+    practice = await db.practices.find_one({"id": practice_id}, {"_id": 0})
+    if not practice:
+        return {"final_decision": "blocked", "blocking_reason": "Pratica non trovata", "missing_items": [], "governance_warnings": [], "next_safe_action": "Verificare l'ID della pratica", "audit_entries": [], "creator_notification": False, "admin_notification": False}
+
+    readiness = await calculate_readiness(practice)
+
+    # 1. Permission check
+    action_perm_map = {"submit": "submit_practice", "approve": "approve_practice", "delegation": "request_delegation", "escalate": "escalate_practice", "retry": "retry_submission"}
+    perm_action = action_perm_map.get(action_requested, action_requested)
+    perm_result = check_permission(actor_role, perm_action)
+
+    if not perm_result["allowed"]:
+        audit_entry = await log_audit_event(actor_id, actor_role, f"governance_denied_{action_requested}", "practice", practice_id,
+            reason=perm_result["reason"], severity="high", practice_id=practice_id,
+            details={"governance_component": "permissions_matrix"})
+        return {
+            "final_decision": "blocked",
+            "blocking_reason": perm_result["reason"],
+            "missing_items": [],
+            "governance_warnings": [f"Permesso negato: {perm_result['reason']}"],
+            "next_safe_action": "Richiedere i permessi necessari",
+            "audit_entries": [audit_entry["id"]],
+            "creator_notification": actor_role == "admin",
+            "admin_notification": False,
+        }
+
+    # 2. Non-negotiable rules check
+    nnr_violations = await check_non_negotiable_rules(practice, action_requested, readiness)
+
+    # 3. Fail-safe check
+    fail_safe = await check_fail_safe(practice, action_requested, readiness)
+
+    # Combine results
+    has_critical_violation = any(v["severity"] == "critical" for v in nnr_violations)
+    has_high_violation = any(v["severity"] == "high" for v in nnr_violations)
+    fail_safe_blocked = not fail_safe["safe_to_continue"] and fail_safe["stop_level"] in ["high", "critical"]
+
+    if has_critical_violation or fail_safe_blocked:
+        final_decision = "blocked"
+    elif has_high_violation or (not fail_safe["safe_to_continue"] and fail_safe["stop_level"] == "warning"):
+        final_decision = "escalation_required"
+    else:
+        final_decision = "allowed"
+
+    # Build governance warnings
+    warnings = [v["reason"] for v in nnr_violations]
+    if not fail_safe["safe_to_continue"]:
+        warnings.extend([t["description"] for t in fail_safe["triggers"]])
+
+    # Determine notifications
+    creator_notify = has_critical_violation or fail_safe["stop_level"] == "critical"
+    admin_notify = has_high_violation or fail_safe["stop_level"] in ["high", "critical"]
+
+    # Log audit
+    audit_entry = await log_audit_event(
+        actor_id, actor_role, f"governance_check_{action_requested}", "practice", practice_id,
+        reason=f"Decision: {final_decision}" + (f" | {nnr_violations[0]['reason']}" if nnr_violations else ""),
+        severity="critical" if has_critical_violation else "high" if has_high_violation else "info",
+        practice_id=practice_id,
+        details={
+            "governance_component": "governance_call",
+            "action_requested": action_requested,
+            "final_decision": final_decision,
+            "nnr_violations": len(nnr_violations),
+            "fail_safe_triggered": not fail_safe["safe_to_continue"],
+            "readiness_state": readiness.get("readiness_state"),
+        }
+    )
+
+    # Create notification if needed
+    if creator_notify:
+        creator_doc = await db.users.find_one({"is_creator": True})
+        if creator_doc:
+            await create_notification(str(creator_doc["_id"]), "Governance: Blocco Critico",
+                f"Pratica {practice_id[:8]}: {warnings[0] if warnings else 'Blocco governance'}", "warning")
+    if admin_notify:
+        admin_docs = await db.users.find({"role": {"$in": ["admin", "creator"]}}).to_list(10)
+        for a in admin_docs:
+            await create_notification(str(a["_id"]), "Governance: Attenzione Richiesta",
+                f"Pratica {practice_id[:8]}: {warnings[0] if warnings else 'Revisione necessaria'}", "warning")
+
+    next_action = fail_safe["next_safe_action"]
+    if nnr_violations:
+        if any(v["rule_id"] == "NNR-002" for v in nnr_violations):
+            next_action = "Caricare i documenti richiesti"
+        elif any(v["rule_id"] == "NNR-003" for v in nnr_violations):
+            next_action = "Completare il processo di delega"
+        elif any(v["rule_id"] == "NNR-004" for v in nnr_violations):
+            next_action = "Richiedere e ottenere l'approvazione"
+
+    return {
+        "final_decision": final_decision,
+        "blocking_reason": nnr_violations[0]["reason"] if nnr_violations else (fail_safe["reason"] if not fail_safe["safe_to_continue"] else None),
+        "missing_items": readiness.get("missing_items", []),
+        "governance_warnings": warnings,
+        "nnr_violations": nnr_violations,
+        "fail_safe": fail_safe,
+        "readiness": readiness,
+        "permissions": perm_result,
+        "next_safe_action": next_action,
+        "audit_entries": [audit_entry["id"]],
+        "creator_notification": creator_notify,
+        "admin_notification": admin_notify,
+    }
+
+# --- Governance API Endpoints ---
+
+@api_router.get("/governance/check/{practice_id}")
+async def get_governance_check(practice_id: str, action: str = "submit", user: dict = Depends(get_current_user)):
+    """Run full governance check for a practice and action."""
+    result = await governance_call(practice_id, user["id"], user.get("role", "user"), action)
+    return result
+
+@api_router.get("/governance/audit")
+async def get_governance_audit(user: dict = Depends(get_current_user), limit: int = 50, severity: Optional[str] = None, practice_id: Optional[str] = None):
+    """Get governance audit trail."""
+    perm = check_permission(user.get("role", "user"), "view_full_audit")
+    query = {}
+    if not perm["allowed"]:
+        query["actor_id"] = user["id"]
+    if severity:
+        query["severity"] = severity
+    if practice_id:
+        query["practice_id"] = practice_id
+
+    events = await db.governance_audit.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
+    return {"events": events, "total": len(events)}
+
+@api_router.get("/governance/audit/{practice_id}")
+async def get_practice_governance_audit(practice_id: str, user: dict = Depends(get_current_user)):
+    """Get governance audit trail for a specific practice."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    if not is_admin:
+        practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]})
+        if not practice:
+            raise HTTPException(status_code=404, detail="Pratica non trovata")
+    events = await db.governance_audit.find({"practice_id": practice_id}, {"_id": 0}).sort("timestamp", -1).to_list(100)
+    return {"events": events, "practice_id": practice_id}
+
+@api_router.get("/governance/dashboard")
+async def get_governance_dashboard(user: dict = Depends(get_current_user)):
+    """Governance dashboard for Admin/Creator."""
+    perm = check_permission(user.get("role", "user"), "view_governance_dashboard")
+    if not perm["allowed"]:
+        raise HTTPException(status_code=403, detail="Accesso non autorizzato")
+
+    # Recent governance events
+    recent_events = await db.governance_audit.find({}, {"_id": 0}).sort("timestamp", -1).limit(20).to_list(20)
+
+    # Count by severity
+    severity_counts = {}
+    for sev in ["info", "low", "medium", "high", "critical"]:
+        severity_counts[sev] = await db.governance_audit.count_documents({"severity": sev})
+
+    # Count blocked decisions
+    blocked_count = await db.governance_audit.count_documents({"details.final_decision": "blocked"})
+    escalation_count = await db.governance_audit.count_documents({"details.final_decision": "escalation_required"})
+
+    # Count denied permissions
+    denied_count = await db.governance_audit.count_documents({"action": {"$regex": "governance_denied"}})
+
+    # Active fail-safe practices
+    blocked_practices = await db.practices.count_documents({"status": {"$in": ["blocked", "escalated"]}})
+
+    # Permissions matrix for reference
+    permissions_summary = PERMISSIONS_MATRIX
+
+    return {
+        "recent_events": recent_events,
+        "severity_counts": severity_counts,
+        "blocked_decisions": blocked_count,
+        "escalation_decisions": escalation_count,
+        "denied_permissions": denied_count,
+        "blocked_practices": blocked_practices,
+        "non_negotiable_rules": NON_NEGOTIABLE_RULES,
+        "permissions_matrix": permissions_summary,
+        "fail_safe_triggers": FAIL_SAFE_TRIGGERS,
+    }
+
+@api_router.get("/governance/permissions")
+async def get_permissions_for_role(user: dict = Depends(get_current_user)):
+    """Get all permissions for the current user's role."""
+    role = user.get("role", "user")
+    perms = {}
+    for action, roles in PERMISSIONS_MATRIX.items():
+        perms[action] = roles.get(role, False)
+    return {"role": role, "permissions": perms}
 
 # ========================
 # DASHBOARD STATS
@@ -2581,6 +3025,12 @@ async def startup():
 
     # Seed Practice Catalog
     await db.practice_catalog.create_index("practice_id", unique=True)
+
+    # Create governance audit indexes
+    await db.governance_audit.create_index("timestamp")
+    await db.governance_audit.create_index("practice_id")
+    await db.governance_audit.create_index("severity")
+    await db.governance_audit.create_index("actor_id")
     await db.authority_registry.create_index("registry_id", unique=True)
     catalog_count = await db.practice_catalog.count_documents({})
     if catalog_count == 0:

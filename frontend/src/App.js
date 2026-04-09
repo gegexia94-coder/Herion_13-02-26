@@ -20,6 +20,7 @@ import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
 import CatalogPage from "@/pages/CatalogPage";
 import DeadlineDashboardPage from "@/pages/DeadlineDashboardPage";
 import SubmissionCenterPage from "@/pages/SubmissionCenterPage";
+import GovernanceDashboardPage from "@/pages/GovernanceDashboardPage";
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/deadlines" element={<DeadlineDashboardPage />} />
             <Route path="/submissions" element={<SubmissionCenterPage />} />
+            <Route path="/governance" element={<GovernanceDashboardPage />} />
             <Route path="/activity-log" element={<ActivityLogPage />} />
             <Route path="/creator" element={<CreatorControlRoom />} />
             <Route path="/profile" element={<ProfileSettingsPage />} />

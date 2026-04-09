@@ -12,8 +12,8 @@ Build Herion as a premium European operational platform for fiscal and administr
 - **Language**: UI in Italian, codebase in English
 
 ### Role Model
-1. **Creator** (Gege-Xia, HERION-CREATOR-001) - Unique protected founder account, full visibility, Creator Control Room
-2. **Admin** - Operational management, workflow handling, system prompts visible
+1. **Creator** (Gege-Xia, HERION-CREATOR-001) - Unique protected founder, full visibility, Creator Control Room
+2. **Admin** - Operational management, workflow handling, governance visibility
 3. **User** - Simplified practice management, approval, status tracking
 
 ### Agent Architecture (12 Total)
@@ -24,71 +24,72 @@ Intake, Ledger, Compliance, Documents, Delegate, Deadline, Flow, Routing, Resear
 draft -> data_collection -> in_progress -> waiting_approval -> approved -> submitted -> completed
 Also: blocked, escalated, rejected, failed_submission
 
-### What's Implemented (as of Feb 2026)
+### What's Implemented
 
-**Core Platform:**
+**Core Platform (Batch 0):**
 - [x] Public Welcome/Landing page with warm Italian copy
 - [x] JWT Auth with role-based access (cookie-based)
-- [x] Protected Creator bootstrap (password via env var only, no hardcoded fallback)
-- [x] Creator Control Room + Creator vs Admin vs User role separation
-- [x] 12-agent orchestrated system
-- [x] Controlled execution with approval gate + approval snapshot persistence
-- [x] Practice timeline/audit trail
-- [x] Practice CRUD with EU country support
-- [x] Document upload with categories
-- [x] PDF export, Practice Q&A Chat, Smart Reminders
+- [x] Protected Creator bootstrap (password via env var only)
+- [x] Creator Control Room + role separation
+- [x] 12-agent orchestrated system with approval gate
+- [x] Practice CRUD, Document upload, PDF export, Q&A Chat, Reminders
 - [x] Profile/Settings page + extended registration
 - [x] Practice Catalog (20 entries) + Authority Registry (14 entries)
 
 **Batch 1 (Catalog & Visualization):**
-- [x] User-facing Practice Catalog Page (/catalog) with search, filters, expandable detail cards
-- [x] Step-by-step Practice State Visualization (WorkflowStepper) on Practice Detail
+- [x] Practice Catalog Page (/catalog) with search, filters, expandable cards
+- [x] Step-by-step Practice State Visualization (WorkflowStepper)
 - [x] User/Client Identity Card on Practice Detail
 - [x] Personal Dashboard Greeting
 
 **Batch 2 (Operational Core):**
-- [x] **Deadline Dashboard** (/deadlines) — "Centro Operativo" with urgency tracking, sections: Overdue, Blocked, Escalated, Pending Approvals, Waiting Delegation, In Progress, Upcoming Actions
-- [x] **Submission Center** (/submissions) — "Centro Invii" with readiness checks, filter tabs, submit capability, blocker visibility
-- [x] **Delegation System** — Full lifecycle: not_required → requested → under_review → valid/rejected/expired. Actions: request, upload_confirm, verify, reject, reset
-- [x] **Readiness Engine** — Calculates submission readiness checking: documents, delegation, approval, routing, support level. Returns blockers + missing items
-- [x] **Practice Readiness Panel** on Practice Detail — Shows delegation status, approval status, document count, routing/channel, action buttons
-- [x] **Role-based access** for all practice endpoints (admin/creator can see all users' practices)
-- [x] **Submit API** with pre-flight readiness checks + auto-complete for preparation-only practices
+- [x] Deadline Dashboard (/deadlines) with urgency tracking
+- [x] Submission Center (/submissions) with readiness checks, submit capability
+- [x] Delegation System — lifecycle: not_required → requested → under_review → valid/rejected
+- [x] Readiness Engine — checks documents, delegation, approval, routing, support level
+- [x] Practice Readiness Panel on Practice Detail with delegation actions
+
+**Batch 3 (Governance Layer):**
+- [x] **Non-Negotiable Rules** — 10 rules (NNR-001 to NNR-010) that define absolute boundaries
+- [x] **Permissions Matrix** — 23 actions × 3 roles (user/admin/creator) with clear allow/deny
+- [x] **Fail-Safe / Emergency Stop** — 10 triggers, stop levels (info/warning/high/critical), automatic freeze
+- [x] **Enhanced Audit Logging** — governance_audit collection with full traceability: actor, action, target, severity, previous/new state, reason
+- [x] **Governance Call Method** — Unified pre-action check combining rules + permissions + fail-safe + audit. Integrated into submission and approval flows
+- [x] **Governance Dashboard** (/governance) — 4 tabs: Panoramica, Registro Audit, Regole, Permessi. Admin/Creator only
+- [x] **Role-based nav visibility** — Governance link hidden from regular users
 
 ### What's NOT Yet Implemented
-- [ ] Governance Layer (non-negotiable rules, permissions matrix, fail-safe, governance call)
-- [ ] Audit Log Enhancement (complete traceability)
 - [ ] Herion Guard (boundary enforcement, alternative recommendations)
-- [ ] Document Vault / Custody (secure storage, placement rules, visibility control)
+- [ ] Document Vault / Custody (secure storage, placement, visibility)
 - [ ] Real-Time Follow-Up System (post-submission tracking)
 - [ ] Alert Center (prioritized alerts, severity levels)
 - [ ] Security Monitoring (defensive suspicious behavior detection)
-- [ ] Real Email Provider Integration (Resend — user preference confirmed)
-- [ ] Catalog expansion to 120+, country-specific tax rules, 2FA, multi-language, analytics
+- [ ] Real Email Provider Integration (Resend — user preference)
+- [ ] Catalog expansion to 120+, country-specific tax rules, 2FA, multi-language
 
 ### Key DB Collections
 - users, practices, practice_timeline, approval_snapshots
 - practice_catalog, authority_registry
 - documents, activity_logs, reminders, notifications, practice_chats
-- submission_records (NEW)
-
-### Creator Security Rules
-- Password comes ONLY from CREATOR_PASSWORD env var (no fallback)
-- Bootstrap fails safely if env var missing
-- Creator recognized via: email + role=creator + is_creator=true + creator_uuid
+- submission_records, governance_audit (NEW)
 
 ### Key API Endpoints
-- Auth: POST /api/auth/login, /register, /forgot-password, /reset-password, GET /api/auth/me
+- Auth: POST /api/auth/login, /register, GET /api/auth/me
 - Practices: GET/POST /api/practices, GET/PUT/DELETE /api/practices/{id}
 - Catalog: GET /api/catalog, /api/registry
 - Delegation: PUT /api/practices/{id}/delegation
 - Readiness: GET /api/practices/{id}/readiness
 - Submission: GET /api/submission-center, POST /api/practices/{id}/submit
 - Deadlines: GET /api/deadlines
-- Documents: POST /api/documents/upload/{id}, GET /api/documents/practice/{id}
+- Governance: GET /api/governance/check/{id}, /dashboard, /audit, /audit/{id}, /permissions
+- Documents: POST /api/documents/upload/{id}
 - Agents: POST /api/agents/execute, /api/agents/orchestrate
-- Timeline: GET /api/practices/{id}/timeline
+
+### Creator Security Rules
+- Password from CREATOR_PASSWORD env var only (no fallback)
+- Bootstrap fails safely if missing
+- Creator recognized via: email + role=creator + is_creator=true + creator_uuid
 
 ### 3rd Party Integrations
 - OpenAI GPT-5.2 via Emergent LLM Key (agent orchestration + Q&A)
-- Email: MOCKED (Resend selected by user, to be integrated in Batch 5)
+- Email: MOCKED (Resend selected by user, to be integrated later)

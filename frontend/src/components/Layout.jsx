@@ -4,13 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
   { path: '/practices', label: 'Pratiche', icon: FolderOpen, adminOnly: false },
   { path: '/agents', label: 'Herion AI', icon: Bot, adminOnly: false },
   { path: '/activity-log', label: 'Attivita', icon: History, adminOnly: false },
+  { path: '/creator', label: 'Control Room', icon: Shield, creatorOnly: true },
+  { path: '/profile', label: 'Profilo', icon: User, adminOnly: false },
 ];
 
 export default function Layout() {
@@ -49,7 +51,10 @@ export default function Layout() {
             </NavLink>
 
             <div className="hidden md:flex items-center gap-0.5 bg-[#F1F5F9] rounded-full p-1">
-              {navItems.map(item => (
+              {navItems.filter(item => {
+                if (item.creatorOnly && !user?.is_creator) return false;
+                return true;
+              }).map(item => (
                 <NavLink key={item.path} to={item.path}
                   className={({ isActive }) => `flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${isActive ? 'bg-[#0F4C5C] text-white shadow-sm' : 'text-[#475569] hover:text-[#0F172A] hover:bg-white'}`}
                   data-testid={`nav-${item.path.slice(1)}`}>
@@ -93,7 +98,10 @@ export default function Layout() {
 
           {mobileOpen && (
             <div className="md:hidden border-t border-[#E2E8F0]/60 py-2 px-2 animate-fade-in">
-              {navItems.map(item => (
+              {navItems.filter(item => {
+                if (item.creatorOnly && !user?.is_creator) return false;
+                return true;
+              }).map(item => (
                 <NavLink key={item.path} to={item.path} onClick={() => setMobileOpen(false)}
                   className={({ isActive }) => `flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-[#0F4C5C] text-white' : 'text-[#475569] hover:bg-[#F1F5F9]'}`}
                   data-testid={`mobile-nav-${item.path.slice(1)}`}>

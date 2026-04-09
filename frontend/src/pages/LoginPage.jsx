@@ -21,7 +21,11 @@ export default function LoginPage() {
     setLoading(true);
     const result = await login(email, password);
     if (result.success) {
-      navigate('/dashboard');
+      if (result.data?.is_creator) {
+        navigate('/creator');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.error);
     }

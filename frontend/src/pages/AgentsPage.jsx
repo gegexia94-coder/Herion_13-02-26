@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentsInfo } from '@/services/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, KeyRound, Timer, GitBranch, Activity, Eye, Sparkles, ArrowRight, Bot, Lock } from 'lucide-react';
+import { ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, KeyRound, Timer, GitBranch, Activity, Eye, Sparkles, ArrowRight, Bot, Lock, Search, Navigation } from 'lucide-react';
 
 const AGENT_ICONS = {
   intake: ClipboardList, ledger: Calculator, compliance: ShieldCheck, documents: FileText,
-  delegate: KeyRound, deadline: Timer, flow: GitBranch, monitor: Activity, advisor: MessageCircle
+  delegate: KeyRound, deadline: Timer, flow: GitBranch, monitor: Activity, advisor: MessageCircle,
+  research: Search, routing: Navigation
 };
 const AGENT_COLORS = {
   intake: { bg: 'bg-sky-50', text: 'text-sky-600', border: 'border-sky-200' },
@@ -18,6 +19,8 @@ const AGENT_COLORS = {
   flow: { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-200' },
   monitor: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200' },
   advisor: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200' },
+  research: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200' },
+  routing: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200' },
 };
 
 export default function AgentsPage() {
@@ -50,7 +53,7 @@ export default function AgentsPage() {
           <div className="flex items-center gap-3.5 relative z-10">
             <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0"><Bot className="w-6 h-6 text-[#5DD9C1]" /></div>
             <div>
-              <h3 className="font-bold text-sm mb-0.5">Herion Admin</h3>
+              <h3 className="font-bold text-sm mb-0.5">{agentsInfo.admin_agent.name}</h3>
               <p className="text-xs text-white/60">{agentsInfo.admin_agent.description}</p>
             </div>
           </div>

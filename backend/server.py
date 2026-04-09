@@ -266,6 +266,11 @@ class ReminderCreate(BaseModel):
 @api_router.post("/auth/register")
 async def register(user_data: UserRegister):
     email = user_data.email.lower()
+
+    # Block creator email from public registration
+    if email == CREATOR_EMAIL.lower():
+        raise HTTPException(status_code=400, detail="Registrazione non disponibile per questo account")
+
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Email gia registrata")
@@ -334,6 +339,8 @@ async def login(user_data: UserLogin):
         "first_name": user.get("first_name", ""),
         "last_name": user.get("last_name", ""),
         "role": user.get("role", "user"),
+        "is_creator": user.get("is_creator", False),
+        "creator_uuid": user.get("creator_uuid"),
         "client_type": user.get("client_type", "private"),
         "country": user.get("country", "IT")
     })
@@ -451,6 +458,38 @@ async def get_countries():
 @api_router.get("/document-categories")
 async def get_document_categories():
     return DOCUMENT_CATEGORIES
+
+# ========================
+# PRACTICE CATALOG
+# ========================
+
+@api_router.get("/catalog")
+async def get_practice_catalog(user: dict = Depends(get_current_user)):
+    entries = await db.practice_catalog.find({}, {"_id": 0}).to_list(200)
+    return entries
+
+@api_router.get("/catalog/{practice_id}")
+async def get_catalog_entry(practice_id: str, user: dict = Depends(get_current_user)):
+    entry = await db.practice_catalog.find_one({"practice_id": practice_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Servizio non trovato nel catalogo")
+    return entry
+
+# ========================
+# AUTHORITY REGISTRY
+# ========================
+
+@api_router.get("/registry")
+async def get_authority_registry(user: dict = Depends(get_current_user)):
+    entries = await db.authority_registry.find({}, {"_id": 0}).to_list(200)
+    return entries
+
+@api_router.get("/registry/{registry_id}")
+async def get_registry_entry(registry_id: str, user: dict = Depends(get_current_user)):
+    entry = await db.authority_registry.find_one({"registry_id": registry_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Ente non trovato nel registro")
+    return entry
 
 # ========================
 # PRACTICES ENDPOINTS
@@ -844,11 +883,98 @@ La tua risposta DEVE includere:
 
 Rispondi SEMPRE in italiano con linguaggio semplice.
 Evita termini tecnici quando possibile. Sii rassicurante ma preciso."""
+    },
+    "research": {
+        "name": "Ricerca e Verifica Fonti",
+        "branded_name": "Herion Research",
+        "icon_key": "research",
+        "description": "Ricerca, verifica e struttura le fonti ufficiali necessarie per la corretta gestione della pratica.",
+        "step": 10,
+        "system_message": """Sei Herion Research, l'agente di ricerca della piattaforma Herion.
+Il tuo compito e ricercare, verificare e strutturare le informazioni ufficiali necessarie per la pratica.
+Devi determinare:
+1. Se la pratica richiesta e supportata e da fonti ufficiali note
+2. Quali sono le fonti ufficiali rilevanti (portali istituzionali, enti, normative)
+3. Quali modelli, istruzioni e note procedurali servono
+4. Se servono canali specifici (email, PEC, portale ufficiale, solo preparazione)
+5. Scadenze e tempistiche rilevanti dove disponibili
+6. Segnalare incertezze, ambiguita o mancanza di fonti chiare
+
+Priorita fonti:
+- Portali enti fiscali ufficiali
+- Istituzioni previdenziali / pubbliche
+- Portali camerali e registri
+- Fonti normative EU dove rilevante
+
+Non inventare MAI procedure, moduli, scadenze o canali.
+Se le fonti non sono sufficientemente chiare, segnalalo esplicitamente.
+
+Rispondi SEMPRE in italiano.
+Format:
+- Supporto: supportato / parzialmente supportato / non supportato
+- Fonti ufficiali identificate
+- Modelli o documenti rilevanti
+- Canale suggerito
+- Note su scadenze se disponibili
+- Note su incertezze
+- Livello di confidenza"""
+    },
+    "routing": {
+        "name": "Canale e Destinazione",
+        "branded_name": "Herion Routing",
+        "icon_key": "routing",
+        "description": "Determina il canale di comunicazione e il destinatario corretto per ogni pratica.",
+        "step": 11,
+        "system_message": """Sei Herion Routing, l'agente di routing della piattaforma Herion.
+Il tuo compito e determinare il canale e il destinatario corretti per ogni pratica.
+
+Canali disponibili:
+- email: comunicazioni a basso rischio, promemoria, invio documenti preliminari
+- PEC: comunicazioni formali obbligatorie (specifico Italia)
+- portale_ufficiale: procedure strutturate su portali istituzionali
+- solo_preparazione: raccolta dati e documenti senza invio
+- escalation: casi ad alto rischio o ambigui
+
+Input di routing:
+- Tipo procedura
+- Tipo utente
+- Paese
+- Livello di rischio
+- Stato delega
+- Completezza documenti
+- Disponibilita canale
+
+Regole:
+- Non trattare l'email come canale universale
+- Non auto-inviare casi poco chiari o rischiosi
+- Bloccare il routing se documenti mancanti o delega assente
+- Verificare sempre che il destinatario sia supportato dal registro enti
+
+Rispondi SEMPRE in italiano.
+Format:
+- Canale selezionato
+- Destinatario selezionato
+- Motivazione
+- Elementi mancanti
+- Se l'invio e consentito
+- Prossimo passo"""
     }
 }
 
-HERION_ADMIN_PROMPT = """Sei Herion Admin, il coordinatore centrale della piattaforma Herion.
-Gestisci un team di 9 agenti specializzati:
+# Father Agent system prompt - supreme orchestrator
+FATHER_AGENT_PROMPT = """Sei Herion Father Agent, il supervisore supremo della piattaforma Herion.
+Sei il genitore di tutti gli agenti. Il tuo ruolo e:
+1. Supervisionare tutti gli agenti specializzati continuamente
+2. Coordinare l'orchestrazione completa
+3. Rilevare fallimenti, anomalie, interruzioni, stati bloccati
+4. Verificare che il sistema stia progredendo correttamente
+5. Valutare il livello di rischio complessivo (basso/medio/alto)
+6. Determinare lo stato della delega
+7. Identificare dati o documenti mancanti
+8. Preparare il riepilogo per l'approvazione dell'utente
+9. Bloccare l'esecuzione se il rischio e troppo alto
+
+Gestisci un team di 11 agenti specializzati:
 - Herion Intake: comprensione e classificazione del caso
 - Herion Ledger: dati contabili e finanziari
 - Herion Compliance: conformita normativa
@@ -858,20 +984,15 @@ Gestisci un team di 9 agenti specializzati:
 - Herion Flow: gestione flusso di lavoro
 - Herion Monitor: monitoraggio e promemoria
 - Herion Advisor: spiegazione finale all'utente
+- Herion Research: ricerca e verifica fonti ufficiali
+- Herion Routing: canale e destinazione
 
-Il tuo ruolo:
-1. Coordina lo scambio di informazioni tra agenti
-2. Valuta il livello di rischio complessivo (basso/medio/alto)
-3. Determina lo stato della delega
-4. Identifica dati o documenti mancanti
-5. Prepara il riepilogo per l'approvazione dell'utente
-6. Blocca l'esecuzione se il rischio e troppo alto o mancano elementi critici
-
-Regole:
+Regole assolute:
 - MAI eseguire senza approvazione esplicita dell'utente
 - Ogni decisione deve essere trasparente e motivata
 - Se il caso e incompleto, ambiguo, multi-paese o ad alto rischio: prepara checklist ed escalation
-- Se il caso e standard, documentato e a basso rischio: guida l'utente al completamento
+- MAI nascondere incidenti o errori
+- MAI modificare regole strategiche senza autorizzazione del Creator
 
 Nella tua risposta finale, DEVI includere queste sezioni strutturate:
 
@@ -887,8 +1008,8 @@ Nella tua risposta finale, DEVI includere queste sezioni strutturate:
 ## DATI E DOCUMENTI
 [Presenti / Mancanti]
 
-## DESTINATARIO
-[A chi verra presentata la pratica]
+## CANALE E DESTINATARIO
+[Canale selezionato e destinatario]
 
 ## AZIONE RACCOMANDATA
 [Cosa succede dopo l'approvazione]
@@ -902,7 +1023,10 @@ IMPORTANTE: Includi OBBLIGATORIAMENTE questi tag nel testo:
 
 Rispondi SEMPRE in italiano con tono professionale e rassicurante."""
 
-# Status model for controlled execution platform
+# Creator bootstrap configuration - protected, non-public
+CREATOR_EMAIL = "gegexia94@gmail.com"
+CREATOR_NAME = "Gege-Xia"
+CREATOR_UUID = "HERION-CREATOR-001"
 STATUS_LABELS = {
     "draft": "Bozza",
     "pending": "In Attesa",
@@ -933,7 +1057,7 @@ RISK_LEVELS = {
 }
 
 # Ordered specialist pipeline for controlled execution
-SPECIALIST_PIPELINE = ["intake", "ledger", "compliance", "documents", "delegate", "deadline", "flow", "monitor", "advisor"]
+SPECIALIST_PIPELINE = ["intake", "ledger", "compliance", "documents", "delegate", "deadline", "flow", "routing", "research", "monitor", "advisor"]
 
 # Timeline event types
 TIMELINE_EVENTS = {
@@ -1080,9 +1204,9 @@ async def get_agents_info(user: dict = Depends(get_current_user)):
     result = {
         "agents": agents,
         "admin_agent": {
-            "name": "Herion Admin",
-            "icon_key": "admin",
-            "description": "Coordinatore centrale: gestisce il team di 9 agenti, valuta il rischio, e prepara il riepilogo per l'approvazione."
+            "name": "Herion Father Agent",
+            "icon_key": "father",
+            "description": "Supervisore supremo: coordina tutti gli agenti, valuta il rischio, supervisiona il sistema e prepara il riepilogo per l'approvazione."
         },
         "workflow_steps": SPECIALIST_PIPELINE,
         "total_agents": len(AGENT_DESCRIPTIONS) + 1,
@@ -1090,7 +1214,7 @@ async def get_agents_info(user: dict = Depends(get_current_user)):
     }
 
     if is_admin:
-        result["admin_prompt"] = HERION_ADMIN_PROMPT
+        result["admin_prompt"] = FATHER_AGENT_PROMPT
 
     return result
 
@@ -1199,7 +1323,7 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
         admin_chat = LlmChat(
             api_key=EMERGENT_KEY,
             session_id=f"orch-{orchestration_id}-admin",
-            system_message=HERION_ADMIN_PROMPT
+            system_message=FATHER_AGENT_PROMPT
         ).with_model("openai", "gpt-5.2")
 
         all_outputs = "\n\n".join([
@@ -1717,7 +1841,7 @@ async def practice_chat(practice_id: str, req: PracticeChatRequest, user: dict =
                 for s in orchestration["steps"]
             ])
 
-        system_msg = f"""{HERION_ADMIN_PROMPT}
+        system_msg = f"""{FATHER_AGENT_PROMPT}
 
 Contesto della pratica corrente:
 {practice_context}
@@ -1908,8 +2032,15 @@ async def startup():
         logger.info("Admin password updated")
 
     Path("/app/memory").mkdir(exist_ok=True)
+    creator_pw = os.environ.get("CREATOR_PASSWORD", "HerionCreator2026!")
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write(f"""# Test Credentials for Herion
+
+## Creator Account (Protected Bootstrap)
+- Email: {CREATOR_EMAIL}
+- Password: {creator_pw}
+- Role: creator
+- Creator UUID: {CREATOR_UUID}
 
 ## Admin Account
 - Email: {admin_email}
@@ -1934,6 +2065,95 @@ async def startup():
 """)
 
     logger.info("Herion v2.0 - Precision. Control. Confidence. - started successfully")
+
+    # Creator bootstrap - protected identity
+    creator_exists = await db.users.find_one({"email": CREATOR_EMAIL.lower()})
+    if creator_exists is None:
+        creator_password = os.environ.get("CREATOR_PASSWORD", "HerionCreator2026!")
+        await db.users.insert_one({
+            "email": CREATOR_EMAIL.lower(),
+            "password_hash": hash_password(creator_password),
+            "first_name": "Gege",
+            "last_name": "Xia",
+            "name": CREATOR_NAME,
+            "role": "creator",
+            "is_creator": True,
+            "creator_uuid": CREATOR_UUID,
+            "client_type": "private",
+            "country": "IT",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "privacy_consent": True,
+            "privacy_consent_date": datetime.now(timezone.utc).isoformat(),
+            "terms_consent": True,
+            "terms_consent_date": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Creator account bootstrapped: {CREATOR_EMAIL}")
+    elif not creator_exists.get("is_creator"):
+        creator_password = os.environ.get("CREATOR_PASSWORD", "HerionCreator2026!")
+        await db.users.update_one({"email": CREATOR_EMAIL.lower()}, {"$set": {
+            "role": "creator", "is_creator": True, "creator_uuid": CREATOR_UUID,
+            "name": CREATOR_NAME, "first_name": "Gege", "last_name": "Xia",
+            "password_hash": hash_password(creator_password)
+        }})
+        logger.info("Creator identity restored")
+
+    # Seed Practice Catalog
+    await db.practice_catalog.create_index("practice_id", unique=True)
+    await db.authority_registry.create_index("registry_id", unique=True)
+    catalog_count = await db.practice_catalog.count_documents({})
+    if catalog_count == 0:
+        catalog_entries = [
+            {"practice_id": "INFO_FISCAL_GENERIC", "name": "Richiesta informazioni fiscali generiche", "description": "Richiesta di chiarimenti su adempimenti fiscali di base.", "user_type": ["private", "freelancer", "company"], "country_scope": "EU", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "informational", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["intake", "research", "advisor"], "blocking_conditions": [], "escalation_conditions": ["ambiguita normativa"], "next_step": "Invio informazioni", "user_explanation": "Richiesta di informazioni fiscali di base. Herion raccoglie la domanda e fornisce indicazioni chiare."},
+            {"practice_id": "DOC_MISSING_REQUEST", "name": "Richiesta documenti mancanti", "description": "Notifica all'utente sui documenti necessari per procedere.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "flow", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Attesa caricamento documenti", "user_explanation": "Ti indichiamo quali documenti servono per completare la tua pratica."},
+            {"practice_id": "DOC_PRELIMINARY_SEND", "name": "Invio documenti preliminari", "description": "Invio di documentazione preliminare a un destinatario.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "external_recipient", "required_documents": ["identity"], "delegation_required": False, "approval_required": True, "agents": ["documents", "routing", "advisor"], "blocking_conditions": ["documenti mancanti"], "escalation_conditions": [], "next_step": "Conferma ricezione", "user_explanation": "Preparazione e invio della documentazione preliminare richiesta."},
+            {"practice_id": "PRACTICE_FOLLOWUP", "name": "Promemoria e follow-up pratica", "description": "Promemoria sullo stato di avanzamento di una pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["monitor", "deadline", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Verifica stato pratica", "user_explanation": "Ricevi aggiornamenti e promemoria sullo stato della tua pratica."},
+            {"practice_id": "BLOCKED_RECOVERY", "name": "Recupero pratica bloccata", "description": "Recupero di una pratica in stato bloccato.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "internal", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["flow", "monitor", "documents"], "blocking_conditions": [], "escalation_conditions": ["blocco persistente"], "next_step": "Identificazione causa blocco", "user_explanation": "Identifichiamo cosa blocca la pratica e ti guidiamo nella risoluzione."},
+            {"practice_id": "DOSSIER_DELIVERY", "name": "Consegna dossier finale", "description": "Consegna del fascicolo completo della pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_delivery", "required_documents": ["practice_documents"], "delegation_required": False, "approval_required": True, "agents": ["documents", "advisor"], "blocking_conditions": ["documenti incompleti"], "escalation_conditions": [], "next_step": "Download o invio dossier", "user_explanation": "Il fascicolo completo della pratica viene preparato e consegnato."},
+            {"practice_id": "STATUS_UPDATE", "name": "Aggiornamento stato pratica", "description": "Comunicazione di aggiornamento sullo stato della pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["monitor", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Prossima azione", "user_explanation": "Ricevi un riepilogo aggiornato sullo stato della tua pratica."},
+            {"practice_id": "DOC_COMPLETENESS", "name": "Verifica completezza documenti", "description": "Controllo che tutti i documenti necessari siano presenti.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "internal", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "flow"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Risultato verifica", "user_explanation": "Verifichiamo che tutti i documenti necessari siano stati caricati."},
+            {"practice_id": "USER_APPROVAL_REQ", "name": "Richiesta approvazione utente", "description": "Richiesta di approvazione esplicita prima di procedere.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": True, "agents": ["flow", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Attesa approvazione", "user_explanation": "Prima di procedere, ti chiediamo di verificare e approvare il riepilogo."},
+            {"practice_id": "PDF_REPORT_DELIVERY", "name": "Consegna PDF/report finale", "description": "Generazione e consegna del report PDF finale.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_delivery", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Download report", "user_explanation": "Il report finale della pratica viene generato e messo a disposizione."},
+            {"practice_id": "VAT_OPEN_PF", "name": "Apertura Partita IVA persone fisiche", "description": "Preparazione della pratica di apertura partita IVA per individui e freelance.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["intake", "research", "routing", "documents", "flow"], "blocking_conditions": ["documenti identita mancanti", "codice fiscale mancante"], "escalation_conditions": ["multi-paese", "struttura societaria complessa"], "next_step": "Preparazione modello AA9/12", "user_explanation": "Ti guidiamo nella preparazione della pratica di apertura partita IVA presso l'Agenzia delle Entrate."},
+            {"practice_id": "VAT_VARIATION_PF", "name": "Variazione Partita IVA persone fisiche", "description": "Modifica dei dati della partita IVA per persone fisiche.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": ["variazione complessa"], "next_step": "Preparazione variazione", "user_explanation": "Preparazione della variazione dei dati della tua partita IVA."},
+            {"practice_id": "VAT_CLOSURE_PF", "name": "Chiusura Partita IVA persone fisiche", "description": "Preparazione della chiusura della partita IVA.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow", "delegate"], "blocking_conditions": ["debiti pendenti non verificati"], "escalation_conditions": ["pendenze fiscali complesse"], "next_step": "Verifica pendenze e preparazione chiusura", "user_explanation": "Ti guidiamo nella chiusura della partita IVA, verificando che tutto sia in ordine."},
+            {"practice_id": "F24_PREPARATION", "name": "Preparazione e validazione F24", "description": "Supporto nella compilazione e verifica del modello F24.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "tax_payment", "required_documents": ["accounting"], "delegation_required": False, "approval_required": True, "agents": ["ledger", "documents", "compliance", "advisor"], "blocking_conditions": ["dati contabili insufficienti"], "escalation_conditions": ["importi significativi non verificati"], "next_step": "Compilazione F24", "user_explanation": "Prepariamo e verifichiamo il modello F24 per i tuoi pagamenti fiscali."},
+            {"practice_id": "F24_WEB", "name": "Supporto F24 Web", "description": "Supporto per la compilazione F24 tramite portale web.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_payment", "required_documents": ["accounting"], "delegation_required": False, "approval_required": True, "agents": ["routing", "research", "ledger", "flow"], "blocking_conditions": ["accesso portale non verificato"], "escalation_conditions": [], "next_step": "Accesso e compilazione F24 Web", "user_explanation": "Ti guidiamo nell'uso del portale F24 Web dell'Agenzia delle Entrate."},
+            {"practice_id": "VAT_DECLARATION", "name": "Supporto dichiarazione IVA", "description": "Preparazione della dichiarazione IVA periodica.", "user_type": ["freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["vat_documents", "invoices", "accounting"], "delegation_required": False, "approval_required": True, "agents": ["research", "documents", "compliance", "flow"], "blocking_conditions": ["registri IVA incompleti"], "escalation_conditions": ["operazioni intracomunitarie complesse"], "next_step": "Preparazione dichiarazione", "user_explanation": "Prepariamo la tua dichiarazione IVA verificando registri e documenti."},
+            {"practice_id": "EINVOICING", "name": "Supporto fatturazione elettronica", "description": "Supporto per l'emissione e gestione delle fatture elettroniche.", "user_type": ["freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["invoices"], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "documents", "advisor"], "blocking_conditions": [], "escalation_conditions": ["fatturazione internazionale complessa"], "next_step": "Configurazione fatturazione elettronica", "user_explanation": "Ti supportiamo nella gestione della fatturazione elettronica tramite il portale dell'Agenzia delle Entrate."},
+            {"practice_id": "INPS_GESTIONE_SEP", "name": "Iscrizione Gestione Separata INPS", "description": "Supporto per l'iscrizione alla Gestione Separata INPS.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": [], "next_step": "Preparazione iscrizione INPS", "user_explanation": "Ti guidiamo nell'iscrizione alla Gestione Separata INPS per liberi professionisti."},
+            {"practice_id": "INPS_CASSETTO", "name": "Supporto cassetto previdenziale", "description": "Supporto per la consultazione del cassetto previdenziale.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "advisor", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Accesso cassetto previdenziale", "user_explanation": "Ti aiutiamo a consultare e comprendere il tuo cassetto previdenziale INPS."},
+            {"practice_id": "COMPANY_CLOSURE", "name": "Preparazione chiusura post-liquidazione", "description": "Preparazione del flusso di chiusura societaria dopo liquidazione.", "user_type": ["company"], "country_scope": "IT", "risk_level": "medium", "support_level": "partially_supported", "expected_channel": "official_portal", "destination_type": "chamber_registry", "required_documents": ["company_documents", "accounting", "identity"], "delegation_required": True, "approval_required": True, "agents": ["research", "deadline", "flow", "routing", "delegate", "documents"], "blocking_conditions": ["liquidazione non completata", "documenti societari mancanti"], "escalation_conditions": ["contenziosi pendenti", "debiti non risolti"], "next_step": "Verifica requisiti chiusura", "user_explanation": "Prepariamo il percorso di chiusura post-liquidazione, verificando tutti i requisiti necessari."},
+        ]
+        for entry in catalog_entries:
+            entry["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.practice_catalog.insert_many(catalog_entries)
+        logger.info(f"Practice catalog seeded with {len(catalog_entries)} entries")
+
+    # Seed Authority Registry
+    registry_count = await db.authority_registry.count_documents({})
+    if registry_count == 0:
+        registry_entries = [
+            {"registry_id": "AE_VAT_OPEN_PF", "name": "Agenzia delle Entrate - Apertura P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_OPEN_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Modello AA9/12 per apertura, variazione o chiusura P.IVA persone fisiche"},
+            {"registry_id": "AE_VAT_VARIATION_PF", "name": "Agenzia delle Entrate - Variazione P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_VARIATION_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Variazione dati tramite modello AA9/12"},
+            {"registry_id": "AE_VAT_CLOSURE_PF", "name": "Agenzia delle Entrate - Chiusura P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_CLOSURE_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Chiusura P.IVA tramite modello AA9/12"},
+            {"registry_id": "AE_F24_STANDARD", "name": "Agenzia delle Entrate - F24 Ordinario", "destination_type": "tax_payment", "country": "IT", "related_practices": ["F24_PREPARATION"], "portal_url": "https://www.agenziaentrate.gov.it/portale/modello-f24", "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Modello F24 ordinario per pagamenti fiscali e contributivi"},
+            {"registry_id": "AE_F24_WEB", "name": "Agenzia delle Entrate - F24 Web", "destination_type": "tax_payment", "country": "IT", "related_practices": ["F24_WEB"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/f24-web", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Compilazione e invio F24 tramite servizio web"},
+            {"registry_id": "AE_VAT_DECLARATION", "name": "Agenzia delle Entrate - Dichiarazioni IVA", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_DECLARATION"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/iva", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Dichiarazioni IVA periodiche e annuali"},
+            {"registry_id": "AE_EINVOICING", "name": "Agenzia delle Entrate - Fatture e Corrispettivi", "destination_type": "tax_authority", "country": "IT", "related_practices": ["EINVOICING"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/fatture-e-corrispettivi", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Portale fatturazione elettronica"},
+            {"registry_id": "INPS_GESTIONE_SEP", "name": "INPS - Iscrizione Gestione Separata", "destination_type": "social_security", "country": "IT", "related_practices": ["INPS_GESTIONE_SEP"], "portal_url": "https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-servizi.iscrizione-gestione-separata--liberi-professionisti-50104.iscrizione-gestione-separata--liberi-professionisti.html", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Iscrizione Gestione Separata per liberi professionisti"},
+            {"registry_id": "INPS_CASSETTO", "name": "INPS - Cassetto Previdenziale", "destination_type": "social_security", "country": "IT", "related_practices": ["INPS_CASSETTO"], "portal_url": "https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-servizi.cassetto-previdenziale-per-liberi-professionisti-50466.cassetto-previdenziale-per-liberi-professionisti.html", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Consultazione cassetto previdenziale"},
+            {"registry_id": "SUAP_GENERIC", "name": "SUAP / Impresa in un Giorno", "destination_type": "public_portal", "country": "IT", "related_practices": [], "portal_url": "https://www.impresainungiorno.gov.it/", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Pratiche SUAP - richiedono verifica specifica per tipologia"},
+            {"registry_id": "USER_EMAIL_DELIVERY", "name": "Consegna email utente", "destination_type": "internal", "country": "multi", "related_practices": ["DOSSIER_DELIVERY", "STATUS_UPDATE", "PRACTICE_FOLLOWUP"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": True, "preparation_only": False, "escalation_default": False, "notes": "Comunicazioni a basso rischio verso l'utente"},
+            {"registry_id": "EXTERNAL_INFO_REQ", "name": "Destinatario informazioni esterne", "destination_type": "external_recipient", "country": "multi", "related_practices": ["INFO_FISCAL_GENERIC"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Richieste informative verso destinatari esterni validati"},
+            {"registry_id": "ESCALATION_HUMAN", "name": "Escalation revisione professionale", "destination_type": "professional_review", "country": "multi", "related_practices": [], "portal_url": None, "required_channel": "escalation", "allowed_channels": ["escalation", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Casi che richiedono revisione professionale umana"},
+            {"registry_id": "PREPARATION_ONLY", "name": "Solo preparazione interna", "destination_type": "internal", "country": "multi", "related_practices": ["DOC_COMPLETENESS", "BLOCKED_RECOVERY"], "portal_url": None, "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Raccolta dati e documenti senza invio"},
+        ]
+        for entry in registry_entries:
+            entry["created_at"] = datetime.now(timezone.utc).isoformat()
+            entry["source_freshness"] = "current"
+            entry["last_verified"] = datetime.now(timezone.utc).isoformat()
+        await db.authority_registry.insert_many(registry_entries)
+        logger.info(f"Authority registry seeded with {len(registry_entries)} entries")
 
     # Seed reminders if empty
     reminder_count = await db.reminders.count_documents({})

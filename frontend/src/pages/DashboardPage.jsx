@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { getDashboardStats, getNotifications, markAllNotificationsRead, getReminders } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +10,7 @@ const REMINDER_ICONS = { deadlines: Calendar, declarations: FileCheck, vat_remin
 const REMINDER_COLORS = { deadlines: 'text-red-500 bg-red-50', declarations: 'text-amber-600 bg-amber-50', vat_reminders: 'text-orange-500 bg-orange-50', document_preparation: 'text-sky-600 bg-sky-50', country_notices: 'text-violet-600 bg-violet-50', platform_updates: 'text-[#0F4C5C] bg-[#0F4C5C]/5' };
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -51,7 +53,9 @@ export default function DashboardPage() {
     <div className="space-y-6" data-testid="dashboard-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">
+            {user?.first_name ? `Ciao, ${user.first_name}` : user?.name ? `Ciao, ${user.name.split(' ')[0]}` : 'Dashboard'}
+          </h1>
           <p className="text-sm text-[#475569]">Panoramica della tua gestione fiscale</p>
         </div>
         <Link to="/practices/new">

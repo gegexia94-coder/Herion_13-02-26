@@ -17,6 +17,7 @@ import AgentsPage from "@/pages/AgentsPage";
 import ActivityLogPage from "@/pages/ActivityLogPage";
 import CreatorControlRoom from "@/pages/CreatorControlRoom";
 import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
+import CatalogPage from "@/pages/CatalogPage";
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
             <Route path="/practices/new" element={<CreatePracticePage />} />
             <Route path="/practices/:id" element={<PracticeDetailPage />} />
             <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/activity-log" element={<ActivityLogPage />} />
             <Route path="/creator" element={<CreatorControlRoom />} />
             <Route path="/profile" element={<ProfileSettingsPage />} />

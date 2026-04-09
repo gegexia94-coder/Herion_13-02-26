@@ -76,4 +76,10 @@ export const getDashboardStats = () => api.get('/dashboard/stats');
 export const getCountries = () => api.get('/countries');
 export const getDocumentCategories = () => api.get('/document-categories');
 
+// Practice Catalog & Authority Registry
+export const getCatalog = () => api.get('/catalog');
+export const getCatalogEntry = (practiceId) => api.get(`/catalog/${practiceId}`);
+export const getRegistry = () => api.get('/registry');
+export const getRegistryEntry = (registryId) => api.get(`/registry/${registryId}`);
+
 export default api;

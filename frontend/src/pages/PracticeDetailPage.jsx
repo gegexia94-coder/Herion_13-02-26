@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock } from 'lucide-react';
+import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock, Circle } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -68,6 +68,145 @@ const TIMELINE_ICONS = {
   escalated: AlertTriangle,
   status_changed: CircleDot,
 };
+
+// Workflow lifecycle steps
+const WORKFLOW_STEPS = [
+  { key: 'draft', label: 'Dati Ricevuti', icon: ClipboardList, description: 'Pratica creata e dati iniziali inseriti' },
+  { key: 'in_progress', label: 'In Elaborazione', icon: GitBranch, description: 'Agenti in esecuzione sulla pratica' },
+  { key: 'waiting_approval', label: 'Approvazione', icon: Lock, description: 'In attesa della tua approvazione' },
+  { key: 'approved', label: 'Approvata', icon: CheckCircle2, description: 'Approvata e pronta per l\'invio' },
+  { key: 'submitted', label: 'Inviata', icon: ArrowRight, description: 'Pratica inviata al destinatario' },
+  { key: 'completed', label: 'Completata', icon: CheckCircle, description: 'Pratica conclusa con successo' },
+];
+
+const STATUS_ORDER = { draft: 0, pending: 0, data_collection: 0, in_progress: 1, processing: 1, waiting_approval: 2, approved: 3, submitted: 4, completed: 5, blocked: -1, escalated: -1, rejected: -1 };
+
+function WorkflowStepper({ practice, timeline }) {
+  const currentIdx = STATUS_ORDER[practice.status] ?? 0;
+  const isBlocked = practice.status === 'blocked';
+  const isEscalated = practice.status === 'escalated';
+  const isRejected = practice.status === 'rejected';
+  const isAbnormal = isBlocked || isEscalated || isRejected;
+
+  // Find timeline events that correspond to each step
+  const getStepTimestamp = (stepKey) => {
+    const mapping = {
+      draft: ['practice_created'],
+      in_progress: ['orchestration_started', 'intake_completed'],
+      waiting_approval: ['waiting_approval'],
+      approved: ['approved'],
+      submitted: ['submitted'],
+      completed: ['completed'],
+    };
+    const eventTypes = mapping[stepKey] || [];
+    for (const et of eventTypes) {
+      const ev = timeline.find(t => t.event_type === et);
+      if (ev) return ev.timestamp;
+    }
+    return null;
+  };
+
+  const getStepAgents = (stepKey) => {
+    if (stepKey === 'in_progress' && practice.agent_logs?.length > 0) {
+      return practice.agent_logs
+        .filter(l => l.status === 'completed')
+        .map(l => l.branded_name || BRANDED_AGENTS.find(a => a.type === l.agent_type)?.branded || l.agent_type)
+        .slice(0, 3);
+    }
+    return [];
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="workflow-stepper">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center">
+          <GitBranch className="w-4 h-4 text-[#5DD9C1]" strokeWidth={1.5} />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-[#0F172A]">Stato della Pratica</h3>
+          <p className="text-[10px] text-[#475569]">Percorso dalla creazione al completamento</p>
+        </div>
+      </div>
+
+      {/* Abnormal status banner */}
+      {isAbnormal && (
+        <div className={`flex items-center gap-2.5 p-3 rounded-xl mb-4 ${
+          isBlocked ? 'bg-red-50 border border-red-200' :
+          isEscalated ? 'bg-amber-50 border border-amber-200' :
+          'bg-red-50 border border-red-200'
+        }`} data-testid="abnormal-status-banner">
+          {isBlocked && <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
+          {isEscalated && <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />}
+          {isRejected && <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
+          <div>
+            <p className={`text-xs font-semibold ${isEscalated ? 'text-amber-800' : 'text-red-800'}`}>
+              {isBlocked ? 'Pratica Bloccata' : isEscalated ? 'Escalation in Corso' : 'Pratica Rifiutata'}
+            </p>
+            <p className={`text-[10px] ${isEscalated ? 'text-amber-700' : 'text-red-700'}`}>
+              {isBlocked ? 'La pratica richiede intervento per procedere' : isEscalated ? 'La pratica e stata escalata per revisione professionale' : 'La pratica e stata rifiutata'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Stepper */}
+      <div className="relative">
+        {WORKFLOW_STEPS.map((step, idx) => {
+          const isDone = currentIdx > idx;
+          const isCurrent = currentIdx === idx && !isAbnormal;
+          const isPending = currentIdx < idx || isAbnormal;
+          const ts = getStepTimestamp(step.key);
+          const agents = getStepAgents(step.key);
+          const StepIcon = step.icon;
+
+          return (
+            <div key={step.key} className="flex gap-3 relative" data-testid={`step-${step.key}`}>
+              {/* Connector Line */}
+              <div className="flex flex-col items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                  isDone ? 'bg-[#5DD9C1] text-white' :
+                  isCurrent ? 'bg-[#0F4C5C] text-white ring-4 ring-[#0F4C5C]/10' :
+                  'bg-[#F1F5F9] text-[#94A3B8] border border-[#E2E8F0]'
+                }`}>
+                  {isDone ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-3.5 h-3.5" strokeWidth={1.5} />}
+                </div>
+                {idx < WORKFLOW_STEPS.length - 1 && (
+                  <div className={`w-0.5 flex-1 min-h-[24px] transition-colors duration-300 ${
+                    isDone ? 'bg-[#5DD9C1]' : 'bg-[#E2E8F0]'
+                  }`} />
+                )}
+              </div>
+
+              {/* Step Content */}
+              <div className={`pb-5 flex-1 min-w-0 ${idx === WORKFLOW_STEPS.length - 1 ? 'pb-0' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <p className={`text-xs font-semibold ${
+                    isDone ? 'text-[#0F172A]' : isCurrent ? 'text-[#0F4C5C]' : 'text-[#94A3B8]'
+                  }`}>{step.label}</p>
+                  {isCurrent && <span className="text-[8px] px-1.5 py-0.5 bg-[#0F4C5C] text-white rounded-full font-bold uppercase tracking-wider">Attuale</span>}
+                  {isDone && <span className="text-[8px] px-1.5 py-0.5 bg-[#5DD9C1]/20 text-[#0F4C5C] rounded-full font-bold">Fatto</span>}
+                </div>
+                <p className={`text-[10px] mt-0.5 ${isDone || isCurrent ? 'text-[#475569]' : 'text-[#CBD5E1]'}`}>{step.description}</p>
+                {ts && (
+                  <p className="text-[9px] text-[#94A3B8] mt-1">
+                    {format(new Date(ts), 'dd MMM yyyy, HH:mm', { locale: it })}
+                  </p>
+                )}
+                {agents.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {agents.map((a, i) => (
+                      <span key={i} className="text-[8px] px-1.5 py-0.5 bg-[#F1F5F9] text-[#475569] rounded-md">{a}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function PracticeDetailPage() {
   const { id } = useParams();
@@ -301,6 +440,30 @@ export default function PracticeDetailPage() {
           <p className="text-[10px] text-[#94A3B8] mt-2 text-center">Approvando, confermi di aver verificato i dati e autorizzi l'invio della pratica</p>
         </div>
       )}
+
+      {/* Workflow Stepper - Step by step state visualization */}
+      <WorkflowStepper practice={practice} timeline={timeline} />
+
+      {/* User/Client Identity Card */}
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="user-practice-identity">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0F4C5C] to-[#1A6B7C] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+            {practice.client_name?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#0F172A]">{practice.client_name}</p>
+            <p className="text-[10px] text-[#475569]">
+              {practice.client_type_label || practice.client_type} &middot; {practice.country || 'IT'}
+              {practice.fiscal_code && <> &middot; C.F. <span className="font-mono">{practice.fiscal_code}</span></>}
+              {practice.vat_number && <> &middot; P.IVA <span className="font-mono">{practice.vat_number}</span></>}
+            </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-[9px] font-semibold text-[#94A3B8] uppercase tracking-wider">Creata il</p>
+            <p className="text-xs text-[#0F172A] font-medium">{format(new Date(practice.created_at), 'dd MMM yyyy', { locale: it })}</p>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">

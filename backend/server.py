@@ -2030,15 +2030,20 @@ async def startup():
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
         logger.info("Admin password updated")
+    # Ensure admin has required identity fields
+    if existing and not existing.get("first_name"):
+        await db.users.update_one({"email": admin_email}, {"$set": {"first_name": "Admin", "last_name": "Herion", "name": "Admin Herion"}})
 
     Path("/app/memory").mkdir(exist_ok=True)
-    creator_pw = os.environ.get("CREATOR_PASSWORD", "HerionCreator2026!")
+    creator_pw = os.environ.get("CREATOR_PASSWORD")
+    if not creator_pw:
+        logger.error("CREATOR_PASSWORD not set in environment. Creator bootstrap requires a secure password via env var.")
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write(f"""# Test Credentials for Herion
 
 ## Creator Account (Protected Bootstrap)
 - Email: {CREATOR_EMAIL}
-- Password: {creator_pw}
+- Password: {creator_pw or '(SET VIA CREATOR_PASSWORD env var)'}
 - Role: creator
 - Creator UUID: {CREATOR_UUID}
 
@@ -2069,33 +2074,39 @@ async def startup():
     # Creator bootstrap - protected identity
     creator_exists = await db.users.find_one({"email": CREATOR_EMAIL.lower()})
     if creator_exists is None:
-        creator_password = os.environ.get("CREATOR_PASSWORD", "HerionCreator2026!")
-        await db.users.insert_one({
-            "email": CREATOR_EMAIL.lower(),
-            "password_hash": hash_password(creator_password),
-            "first_name": "Gege",
-            "last_name": "Xia",
-            "name": CREATOR_NAME,
-            "role": "creator",
-            "is_creator": True,
-            "creator_uuid": CREATOR_UUID,
-            "client_type": "private",
-            "country": "IT",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "privacy_consent": True,
-            "privacy_consent_date": datetime.now(timezone.utc).isoformat(),
-            "terms_consent": True,
-            "terms_consent_date": datetime.now(timezone.utc).isoformat()
-        })
-        logger.info(f"Creator account bootstrapped: {CREATOR_EMAIL}")
+        creator_password = os.environ.get("CREATOR_PASSWORD")
+        if not creator_password:
+            logger.error("CREATOR_PASSWORD env var not set. Cannot bootstrap Creator account. Set it in backend/.env")
+        else:
+            await db.users.insert_one({
+                "email": CREATOR_EMAIL.lower(),
+                "password_hash": hash_password(creator_password),
+                "first_name": "Gege",
+                "last_name": "Xia",
+                "name": CREATOR_NAME,
+                "role": "creator",
+                "is_creator": True,
+                "creator_uuid": CREATOR_UUID,
+                "client_type": "private",
+                "country": "IT",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "privacy_consent": True,
+                "privacy_consent_date": datetime.now(timezone.utc).isoformat(),
+                "terms_consent": True,
+                "terms_consent_date": datetime.now(timezone.utc).isoformat()
+            })
+            logger.info(f"Creator account bootstrapped: {CREATOR_EMAIL}")
     elif not creator_exists.get("is_creator"):
-        creator_password = os.environ.get("CREATOR_PASSWORD", "HerionCreator2026!")
-        await db.users.update_one({"email": CREATOR_EMAIL.lower()}, {"$set": {
-            "role": "creator", "is_creator": True, "creator_uuid": CREATOR_UUID,
-            "name": CREATOR_NAME, "first_name": "Gege", "last_name": "Xia",
-            "password_hash": hash_password(creator_password)
-        }})
-        logger.info("Creator identity restored")
+        creator_password = os.environ.get("CREATOR_PASSWORD")
+        if not creator_password:
+            logger.error("CREATOR_PASSWORD env var not set. Cannot restore Creator identity.")
+        else:
+            await db.users.update_one({"email": CREATOR_EMAIL.lower()}, {"$set": {
+                "role": "creator", "is_creator": True, "creator_uuid": CREATOR_UUID,
+                "name": CREATOR_NAME, "first_name": "Gege", "last_name": "Xia",
+                "password_hash": hash_password(creator_password)
+            }})
+            logger.info("Creator identity restored")
 
     # Seed Practice Catalog
     await db.practice_catalog.create_index("practice_id", unique=True)

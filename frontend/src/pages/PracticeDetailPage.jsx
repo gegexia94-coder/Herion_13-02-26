@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline } from '@/services/api';
+import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline, updateDelegation, getPracticeReadiness } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock, Circle } from 'lucide-react';
+import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock, Circle, Shield, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -235,6 +235,8 @@ export default function PracticeDetailPage() {
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState({});
+  const [delegationLoading, setDelegationLoading] = useState(false);
+  const [readiness, setReadiness] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -247,6 +249,8 @@ export default function PracticeDetailPage() {
       setActivityLogs(l.data);
       setChatHistory(c.data.reverse());
       setTimeline(t.data);
+      // Load readiness
+      try { const r = await getPracticeReadiness(id); setReadiness(r.data); } catch {}
     } catch { toast.error('Errore nel caricamento'); }
     finally { setLoading(false); }
   }, [id]);
@@ -301,6 +305,16 @@ export default function PracticeDetailPage() {
       window.URL.revokeObjectURL(url); toast.success('PDF scaricato');
     } catch (e) { toast.error(e.response?.data?.detail || 'Errore nel download PDF'); }
     finally { setPdfLoading(false); }
+  };
+
+  const handleDelegation = async (action, notes) => {
+    setDelegationLoading(true);
+    try {
+      await updateDelegation(id, { action, notes });
+      toast.success('Delega aggiornata');
+      loadData();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Errore nella gestione delega'); }
+    finally { setDelegationLoading(false); }
   };
 
   const handleChat = async (e) => {
@@ -590,6 +604,162 @@ export default function PracticeDetailPage() {
 
         {/* Right Column */}
         <div className="space-y-5">
+          {/* Delegation & Readiness Panel */}
+          {readiness && (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="readiness-panel">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-[#5DD9C1]" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0F172A]">Stato di Prontezza</h3>
+                  <p className="text-[10px] text-[#475569]">Delega, approvazione e invio</p>
+                </div>
+              </div>
+
+              {/* Readiness state badge */}
+              <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-3 ${
+                readiness.is_ready ? 'bg-emerald-50 border border-emerald-200' :
+                readiness.readiness_state === 'waiting_approval' ? 'bg-amber-50 border border-amber-200' :
+                readiness.readiness_state === 'completed' || readiness.readiness_state === 'submitted' ? 'bg-[#F0FAF8] border border-[#5DD9C1]/30' :
+                'bg-[#F7FAFC] border border-[#E2E8F0]'
+              }`}>
+                {readiness.is_ready ? <CheckCircle className="w-4 h-4 text-emerald-600" /> :
+                 readiness.readiness_state === 'completed' ? <CheckCircle className="w-4 h-4 text-[#5DD9C1]" /> :
+                 readiness.readiness_state === 'waiting_approval' ? <Lock className="w-4 h-4 text-amber-600" /> :
+                 <Clock className="w-4 h-4 text-[#94A3B8]" />}
+                <div>
+                  <p className={`text-xs font-bold ${
+                    readiness.is_ready ? 'text-emerald-700' :
+                    readiness.readiness_state === 'completed' ? 'text-[#0F4C5C]' :
+                    readiness.readiness_state === 'waiting_approval' ? 'text-amber-700' :
+                    'text-[#475569]'
+                  }`}>{
+                    readiness.is_ready ? 'Pronta per l\'invio' :
+                    readiness.readiness_state === 'completed' ? 'Completata' :
+                    readiness.readiness_state === 'submitted' ? 'Inviata' :
+                    readiness.readiness_state === 'waiting_approval' ? 'In attesa di approvazione' :
+                    readiness.readiness_state === 'in_preparation' ? 'In preparazione' :
+                    'Non pronta'
+                  }</p>
+                </div>
+              </div>
+
+              {/* Status rows */}
+              <div className="space-y-2 mb-3">
+                {/* Delegation */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-3.5 h-3.5 text-violet-500" />
+                    <span className="text-[10px] font-medium text-[#475569]">Delega</span>
+                  </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                    readiness.delegation_status === 'valid' ? 'bg-emerald-50 text-emerald-700' :
+                    readiness.delegation_status === 'not_required' ? 'bg-[#F1F5F9] text-[#94A3B8]' :
+                    readiness.delegation_status === 'rejected' ? 'bg-red-50 text-red-700' :
+                    'bg-violet-50 text-violet-700'
+                  }`}>{
+                    readiness.delegation_status === 'valid' ? 'Valida' :
+                    readiness.delegation_status === 'not_required' ? 'Non richiesta' :
+                    readiness.delegation_status === 'requested' ? 'Richiesta' :
+                    readiness.delegation_status === 'under_review' ? 'In revisione' :
+                    readiness.delegation_status === 'rejected' ? 'Rifiutata' :
+                    readiness.delegation_status === 'incomplete' ? 'Incompleta' :
+                    readiness.delegation_status
+                  }</span>
+                </div>
+
+                {/* Approval */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-[10px] font-medium text-[#475569]">Approvazione</span>
+                  </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                    readiness.approval_status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                    readiness.approval_status === 'not_required' ? 'bg-[#F1F5F9] text-[#94A3B8]' :
+                    readiness.approval_status === 'pending' ? 'bg-amber-50 text-amber-700' :
+                    'bg-[#F1F5F9] text-[#475569]'
+                  }`}>{
+                    readiness.approval_status === 'approved' ? 'Approvata' :
+                    readiness.approval_status === 'not_required' ? 'Non richiesta' :
+                    readiness.approval_status === 'pending' ? 'In attesa' :
+                    readiness.approval_status === 'ready_to_request' ? 'Pronta' :
+                    'Non avviata'
+                  }</span>
+                </div>
+
+                {/* Documents */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-[10px] font-medium text-[#475569]">Documenti</span>
+                  </div>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569]">{readiness.document_count} caricati</span>
+                </div>
+
+                {/* Routing */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                  <div className="flex items-center gap-2">
+                    <ArrowRight className="w-3.5 h-3.5 text-[#0F4C5C]" />
+                    <span className="text-[10px] font-medium text-[#475569]">Canale</span>
+                  </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${readiness.routing_clear ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                    {readiness.channel === 'email' ? 'Email' : readiness.channel === 'official_portal' ? 'Portale' : readiness.channel === 'preparation_only' ? 'Preparazione' : readiness.channel || 'N/D'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Blockers */}
+              {readiness.blockers?.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[9px] font-semibold text-red-600 uppercase tracking-wider mb-1.5">Elementi Bloccanti</p>
+                  {readiness.blockers.map((b, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-[10px] text-red-700 mb-1">
+                      <XCircle className="w-2.5 h-2.5 flex-shrink-0" />{b}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Delegation Actions */}
+              {readiness.delegation_required && readiness.delegation_status !== 'valid' && (
+                <div className="border-t border-[#E2E8F0] pt-3">
+                  <p className="text-[9px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Azioni Delega</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {readiness.delegation_status === 'not_required' || readiness.delegation_status === 'required' ? (
+                      <button onClick={() => handleDelegation('request')} disabled={delegationLoading}
+                        className="text-[10px] px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg font-medium hover:bg-violet-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-request-btn">
+                        {delegationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}Richiedi Delega
+                      </button>
+                    ) : readiness.delegation_status === 'requested' ? (
+                      <button onClick={() => handleDelegation('upload_confirm')} disabled={delegationLoading}
+                        className="text-[10px] px-3 py-1.5 bg-sky-50 text-sky-700 rounded-lg font-medium hover:bg-sky-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-upload-btn">
+                        {delegationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}Conferma Caricamento
+                      </button>
+                    ) : readiness.delegation_status === 'under_review' ? (
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleDelegation('verify')} disabled={delegationLoading}
+                          className="text-[10px] px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg font-medium hover:bg-emerald-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-verify-btn">
+                          <CheckCircle className="w-3 h-3" />Verifica
+                        </button>
+                        <button onClick={() => handleDelegation('reject', 'Documentazione insufficiente')} disabled={delegationLoading}
+                          className="text-[10px] px-3 py-1.5 bg-red-50 text-red-700 rounded-lg font-medium hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-reject-btn">
+                          <XCircle className="w-3 h-3" />Rifiuta
+                        </button>
+                      </div>
+                    ) : readiness.delegation_status === 'rejected' ? (
+                      <button onClick={() => handleDelegation('reset')} disabled={delegationLoading}
+                        className="text-[10px] px-3 py-1.5 bg-[#F1F5F9] text-[#475569] rounded-lg font-medium hover:bg-[#E2E8F0] transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-reset-btn">
+                        <RefreshCw className="w-3 h-3" />Richiedi Nuovamente
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Timeline */}
           {timeline.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-timeline">

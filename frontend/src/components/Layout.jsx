@@ -4,12 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings, BookOpen } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings, BookOpen, Clock, Send } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
   { path: '/practices', label: 'Pratiche', icon: FolderOpen, adminOnly: false },
   { path: '/catalog', label: 'Catalogo', icon: BookOpen, adminOnly: false },
+  { path: '/submissions', label: 'Centro Invii', icon: Send, adminOnly: false },
+  { path: '/deadlines', label: 'Scadenze', icon: Clock, adminOnly: false },
   { path: '/agents', label: 'Herion AI', icon: Bot, adminOnly: false },
   { path: '/activity-log', label: 'Attivita', icon: History, adminOnly: false },
   { path: '/creator', label: 'Control Room', icon: Shield, creatorOnly: true },

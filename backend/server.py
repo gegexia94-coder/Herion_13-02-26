@@ -517,6 +517,7 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "orchestration_result": None,
         "risk_level": None,
         "delegation_status": None,
+        "delegation_info": {"status": "not_required", "label": "Non richiesta"},
         "approval_snapshot_id": None,
         "approved_at": None,
         "submitted_at": None,
@@ -549,14 +550,20 @@ async def get_practices(user: dict = Depends(get_current_user)):
 
 @api_router.get("/practices/{practice_id}")
 async def get_practice(practice_id: str, user: dict = Depends(get_current_user)):
-    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    # Admin/creator can view any practice
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
     return practice
 
 @api_router.put("/practices/{practice_id}")
 async def update_practice(practice_id: str, update: PracticeUpdate, user: dict = Depends(get_current_user)):
-    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]})
+    # Admin/creator can update any practice
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query)
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
 
@@ -646,10 +653,12 @@ async def get_document(document_id: str, user: dict = Depends(get_current_user))
 
 @api_router.get("/documents/practice/{practice_id}")
 async def get_practice_documents(practice_id: str, user: dict = Depends(get_current_user)):
-    docs = await db.documents.find(
-        {"practice_id": practice_id, "user_id": user["id"], "is_deleted": False},
-        {"_id": 0}
-    ).to_list(100)
+    # Admin/creator can view any practice documents
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"practice_id": practice_id, "is_deleted": False}
+    if not is_admin:
+        query["user_id"] = user["id"]
+    docs = await db.documents.find(query, {"_id": 0}).to_list(100)
     return docs
 
 # ========================
@@ -1083,6 +1092,13 @@ TIMELINE_EVENTS = {
     "blocked": "Bloccata",
     "escalated": "Escalation attivata",
     "status_changed": "Stato aggiornato",
+    "delegation_requested": "Delega richiesta",
+    "delegation_uploaded": "Documento delega caricato",
+    "delegation_verified": "Delega verificata",
+    "delegation_rejected": "Delega rifiutata",
+    "delegation_reset": "Delega reimpostata",
+    "submission_failed": "Invio fallito",
+    "submission_retried": "Invio ritentato",
 }
 
 async def add_timeline_event(practice_id: str, user_id: str, event_type: str, details: dict = None):
@@ -1571,7 +1587,10 @@ async def approve_practice(practice_id: str, user: dict = Depends(get_current_us
 
 @api_router.get("/practices/{practice_id}/timeline")
 async def get_practice_timeline(practice_id: str, user: dict = Depends(get_current_user)):
-    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]})
+    # Admin/creator can view any practice timeline
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query)
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
     events = await db.practice_timeline.find(
@@ -1607,9 +1626,12 @@ async def get_activity_logs(user: dict = Depends(get_current_user), limit: int =
 
 @api_router.get("/activity-logs/practice/{practice_id}")
 async def get_practice_activity_logs(practice_id: str, user: dict = Depends(get_current_user)):
-    logs = await db.activity_logs.find(
-        {"user_id": user["id"], "details.practice_id": practice_id}, {"_id": 0}
-    ).sort("timestamp", -1).to_list(100)
+    # Admin/creator can view any practice activity logs
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"details.practice_id": practice_id}
+    if not is_admin:
+        query["user_id"] = user["id"]
+    logs = await db.activity_logs.find(query, {"_id": 0}).sort("timestamp", -1).to_list(100)
     return logs
 
 # ========================
@@ -1645,6 +1667,449 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
 async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     await db.notifications.update_many({"user_id": user["id"], "read": False}, {"$set": {"read": True}})
     return {"message": "Tutte le notifiche segnate come lette"}
+
+# ========================
+# DELEGATION SYSTEM
+# ========================
+
+DELEGATION_STATUSES = {
+    "not_required": "Non richiesta",
+    "required": "Richiesta",
+    "requested": "In attesa di delega",
+    "incomplete": "Incompleta",
+    "under_review": "In revisione",
+    "valid": "Valida",
+    "expired": "Scaduta",
+    "rejected": "Rifiutata",
+    "blocked": "Bloccata"
+}
+
+class DelegationUpdate(BaseModel):
+    action: str  # request, upload_confirm, verify, reject, reset
+    notes: Optional[str] = None
+    delegation_type: Optional[str] = None
+
+@api_router.put("/practices/{practice_id}/delegation")
+async def update_delegation(practice_id: str, update: DelegationUpdate, user: dict = Depends(get_current_user)):
+    # Admin/creator can update any practice delegation
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query)
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    now = datetime.now(timezone.utc).isoformat()
+    delegation = practice.get("delegation_info") or {}
+    action = update.action
+
+    if action == "request":
+        delegation["status"] = "requested"
+        delegation["requested_at"] = now
+        delegation["delegation_type"] = update.delegation_type or delegation.get("delegation_type", "general")
+        event_type = "delegation_requested"
+    elif action == "upload_confirm":
+        delegation["status"] = "under_review"
+        delegation["uploaded_at"] = now
+        event_type = "delegation_uploaded"
+    elif action == "verify":
+        delegation["status"] = "valid"
+        delegation["verified_at"] = now
+        delegation["verified_by"] = user.get("email")
+        event_type = "delegation_verified"
+    elif action == "reject":
+        delegation["status"] = "rejected"
+        delegation["rejected_at"] = now
+        delegation["rejected_by"] = user.get("email")
+        delegation["rejection_reason"] = update.notes
+        event_type = "delegation_rejected"
+    elif action == "reset":
+        delegation["status"] = "required"
+        event_type = "delegation_reset"
+    else:
+        raise HTTPException(status_code=400, detail="Azione di delega non valida")
+
+    delegation["notes"] = update.notes or delegation.get("notes", "")
+    delegation["updated_at"] = now
+    delegation["label"] = DELEGATION_STATUSES.get(delegation["status"], delegation["status"])
+
+    await db.practices.update_one({"id": practice_id}, {"$set": {
+        "delegation_info": delegation,
+        "delegation_status": delegation["status"],
+        "updated_at": now
+    }})
+    await add_timeline_event(practice_id, user["id"], event_type, {
+        "delegation_status": delegation["status"],
+        "notes": update.notes
+    })
+    await log_activity(user["id"], "delegation", event_type, {"practice_id": practice_id})
+
+    return {"delegation": delegation, "message": f"Delega aggiornata: {delegation['label']}"}
+
+# ========================
+# READINESS ENGINE
+# ========================
+
+async def calculate_readiness(practice: dict) -> dict:
+    """Calculate submission readiness for a practice."""
+    blockers = []
+    warnings = []
+    missing_items = []
+
+    practice_type = practice.get("practice_type")
+    status = practice.get("status", "draft")
+
+    # Look up catalog entry for requirements
+    catalog_entry = await db.practice_catalog.find_one(
+        {"practice_id": practice_type}, {"_id": 0}
+    ) if practice_type else None
+
+    # Check required documents
+    docs = await db.documents.find(
+        {"practice_id": practice["id"], "is_deleted": False}, {"_id": 0}
+    ).to_list(50)
+    doc_categories = set(d.get("category") for d in docs)
+
+    if catalog_entry and catalog_entry.get("required_documents"):
+        for req_doc in catalog_entry["required_documents"]:
+            if req_doc not in doc_categories:
+                blockers.append(f"Documento mancante: {req_doc.replace('_', ' ')}")
+                missing_items.append({"type": "document", "key": req_doc, "label": req_doc.replace("_", " ")})
+
+    # Check data completeness
+    if not practice.get("client_name"):
+        blockers.append("Nome cliente mancante")
+        missing_items.append({"type": "data", "key": "client_name", "label": "Nome cliente"})
+    if not practice.get("description"):
+        warnings.append("Descrizione mancante")
+
+    # Check delegation
+    delegation_required = False
+    delegation_valid = True
+    if catalog_entry and catalog_entry.get("delegation_required"):
+        delegation_required = True
+        delegation_info = practice.get("delegation_info") or {}
+        d_status = delegation_info.get("status", "not_required")
+        if d_status not in ["valid", "not_required"]:
+            delegation_valid = False
+            blockers.append(f"Delega: {DELEGATION_STATUSES.get(d_status, d_status)}")
+            missing_items.append({"type": "delegation", "key": "delegation", "label": "Delega valida"})
+
+    # Check approval
+    approval_required = catalog_entry.get("approval_required", False) if catalog_entry else False
+    approval_status = "not_required"
+    if approval_required:
+        if status == "approved":
+            approval_status = "approved"
+        elif status == "waiting_approval":
+            approval_status = "pending"
+            warnings.append("In attesa di approvazione")
+        elif practice.get("orchestration_result"):
+            approval_status = "ready_to_request"
+        else:
+            approval_status = "not_started"
+            blockers.append("Approvazione richiesta ma non ancora avviata")
+            missing_items.append({"type": "approval", "key": "approval", "label": "Approvazione utente"})
+
+    # Check routing
+    routing_clear = True
+    if catalog_entry:
+        channel = catalog_entry.get("expected_channel", "preparation_only")
+        destination = catalog_entry.get("destination_type", "internal")
+        if channel == "official_portal":
+            registry_entry = await db.authority_registry.find_one(
+                {"related_practices": practice_type}, {"_id": 0}
+            )
+            if not registry_entry:
+                routing_clear = False
+                warnings.append("Destinazione nel registro non trovata")
+    else:
+        routing_clear = False
+        warnings.append("Tipo pratica non trovato nel catalogo")
+
+    # Calculate support level
+    support_level = catalog_entry.get("support_level", "unknown") if catalog_entry else "unknown"
+    if support_level == "not_supported":
+        blockers.append("Pratica non supportata dalla piattaforma")
+
+    # Determine readiness state
+    is_blocked = len(blockers) > 0
+    has_warnings = len(warnings) > 0
+
+    if status in ["completed", "submitted"]:
+        readiness_state = "completed" if status == "completed" else "submitted"
+    elif status in ["blocked", "escalated", "rejected"]:
+        readiness_state = status
+    elif is_blocked:
+        readiness_state = "not_ready"
+    elif status == "waiting_approval":
+        readiness_state = "waiting_approval"
+    elif status == "approved":
+        readiness_state = "ready_to_submit"
+    elif practice.get("orchestration_result") and not approval_required:
+        readiness_state = "ready_to_submit"
+    elif practice.get("orchestration_result") and approval_required:
+        readiness_state = "waiting_approval"
+    else:
+        readiness_state = "in_preparation"
+
+    return {
+        "readiness_state": readiness_state,
+        "is_ready": readiness_state == "ready_to_submit",
+        "blockers": blockers,
+        "warnings": warnings,
+        "missing_items": missing_items,
+        "delegation_required": delegation_required,
+        "delegation_valid": delegation_valid,
+        "delegation_status": (practice.get("delegation_info") or {}).get("status", "not_required"),
+        "approval_required": approval_required,
+        "approval_status": approval_status,
+        "routing_clear": routing_clear,
+        "support_level": support_level,
+        "risk_level": practice.get("risk_level") or (catalog_entry.get("risk_level") if catalog_entry else "unknown"),
+        "document_count": len(docs),
+        "channel": catalog_entry.get("expected_channel", "unknown") if catalog_entry else "unknown",
+        "destination_type": catalog_entry.get("destination_type", "unknown") if catalog_entry else "unknown",
+    }
+
+@api_router.get("/practices/{practice_id}/readiness")
+async def get_practice_readiness(practice_id: str, user: dict = Depends(get_current_user)):
+    # Admin/creator can view any practice readiness
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    readiness = await calculate_readiness(practice)
+    return {"practice_id": practice_id, **readiness}
+
+# ========================
+# SUBMISSION CENTER
+# ========================
+
+READINESS_LABELS = {
+    "ready_to_submit": "Pronta per l'invio",
+    "waiting_approval": "In attesa di approvazione",
+    "not_ready": "Non pronta",
+    "in_preparation": "In preparazione",
+    "submitted": "Inviata",
+    "completed": "Completata",
+    "blocked": "Bloccata",
+    "escalated": "Escalation",
+    "rejected": "Rifiutata",
+    "failed_submission": "Invio fallito"
+}
+
+@api_router.get("/submission-center")
+async def get_submission_center(user: dict = Depends(get_current_user)):
+    """Get all practices grouped by submission readiness state."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {} if is_admin else {"user_id": user["id"]}
+    practices = await db.practices.find(query, {"_id": 0}).sort("updated_at", -1).to_list(200)
+
+    sections = {
+        "ready_to_submit": [], "waiting_approval": [], "not_ready": [],
+        "in_preparation": [], "submitted": [], "completed": [],
+        "blocked": [], "escalated": [], "failed_submission": [], "rejected": []
+    }
+
+    for p in practices:
+        readiness = await calculate_readiness(p)
+        state = readiness["readiness_state"]
+        entry = {
+            "id": p["id"],
+            "practice_type": p.get("practice_type"),
+            "practice_type_label": p.get("practice_type_label"),
+            "client_name": p.get("client_name"),
+            "client_type": p.get("client_type"),
+            "client_type_label": p.get("client_type_label"),
+            "country": p.get("country", "IT"),
+            "status": p.get("status"),
+            "status_label": p.get("status_label"),
+            "risk_level": readiness["risk_level"],
+            "support_level": readiness["support_level"],
+            "channel": readiness["channel"],
+            "destination_type": readiness["destination_type"],
+            "approval_status": readiness["approval_status"],
+            "delegation_status": readiness["delegation_status"],
+            "delegation_required": readiness["delegation_required"],
+            "is_ready": readiness["is_ready"],
+            "blockers": readiness["blockers"],
+            "warnings": readiness["warnings"],
+            "missing_items": readiness["missing_items"],
+            "document_count": readiness["document_count"],
+            "readiness_state": state,
+            "readiness_label": READINESS_LABELS.get(state, state),
+            "next_action": readiness["blockers"][0] if readiness["blockers"] else (readiness["warnings"][0] if readiness["warnings"] else "Nessuna azione richiesta"),
+            "updated_at": p.get("updated_at"),
+            "created_at": p.get("created_at"),
+        }
+        if state in sections:
+            sections[state].append(entry)
+        else:
+            sections.setdefault("not_ready", []).append(entry)
+
+    counts = {k: len(v) for k, v in sections.items()}
+    counts["total"] = sum(counts.values())
+
+    return {"sections": sections, "counts": counts}
+
+@api_router.post("/practices/{practice_id}/submit")
+async def submit_practice(practice_id: str, user: dict = Depends(get_current_user)):
+    """Execute submission with pre-checks."""
+    # Admin/creator can submit any practice
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    readiness = await calculate_readiness(practice)
+
+    if not readiness["is_ready"]:
+        return {
+            "success": False,
+            "message": "La pratica non e pronta per l'invio",
+            "blockers": readiness["blockers"],
+            "missing_items": readiness["missing_items"],
+            "readiness_state": readiness["readiness_state"]
+        }
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Record submission
+    submission_record = {
+        "id": str(uuid.uuid4()),
+        "practice_id": practice_id,
+        "user_id": user["id"],
+        "channel": readiness["channel"],
+        "destination_type": readiness["destination_type"],
+        "status": "submitted",
+        "submitted_at": now,
+        "result": None,
+        "receipt": None,
+        "notes": f"Invio tramite {readiness['channel']}",
+    }
+    await db.submission_records.insert_one(submission_record)
+
+    await db.practices.update_one({"id": practice_id}, {"$set": {
+        "status": "submitted",
+        "status_label": STATUS_LABELS.get("submitted", "Inviata"),
+        "submitted_at": now,
+        "updated_at": now,
+        "submission_id": submission_record["id"]
+    }})
+
+    await add_timeline_event(practice_id, user["id"], "submitted", {
+        "channel": readiness["channel"],
+        "destination_type": readiness["destination_type"],
+        "submission_id": submission_record["id"]
+    })
+
+    # Auto-complete for preparation_only and email channels
+    if readiness["channel"] in ["preparation_only", "email"]:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        await db.practices.update_one({"id": practice_id}, {"$set": {
+            "status": "completed",
+            "status_label": STATUS_LABELS.get("completed", "Completata"),
+            "completed_at": completed_at,
+            "updated_at": completed_at
+        }})
+        await add_timeline_event(practice_id, user["id"], "completed", {
+            "note": "Pratica completata con successo"
+        })
+        submission_record["status"] = "completed"
+
+    await log_activity(user["id"], "submission", "practice_submitted", {"practice_id": practice_id})
+    await create_notification(user["id"], "Pratica Inviata",
+        f"La pratica '{practice.get('practice_type_label')}' e stata inviata.", "success")
+
+    submission_record.pop("_id", None)
+    return {
+        "success": True,
+        "message": "Pratica inviata con successo",
+        "submission": submission_record,
+        "final_status": submission_record["status"]
+    }
+
+# ========================
+# DEADLINE DASHBOARD
+# ========================
+
+@api_router.get("/deadlines")
+async def get_deadline_dashboard(user: dict = Depends(get_current_user)):
+    """Aggregated deadline and operational dashboard."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {} if is_admin else {"user_id": user["id"]}
+    practices = await db.practices.find(query, {"_id": 0}).sort("updated_at", -1).to_list(300)
+
+    sections = {
+        "pending_approvals": [],
+        "blocked": [],
+        "escalated": [],
+        "waiting_delegation": [],
+        "in_progress": [],
+        "overdue": [],
+        "upcoming_actions": [],
+    }
+
+    now = datetime.now(timezone.utc)
+
+    for p in practices:
+        status = p.get("status", "draft")
+        created = p.get("created_at", "")
+        updated = p.get("updated_at", "")
+
+        entry = {
+            "id": p["id"],
+            "practice_type_label": p.get("practice_type_label"),
+            "client_name": p.get("client_name"),
+            "client_type_label": p.get("client_type_label"),
+            "country": p.get("country", "IT"),
+            "status": status,
+            "status_label": p.get("status_label"),
+            "risk_level": p.get("risk_level"),
+            "delegation_status": p.get("delegation_status") or (p.get("delegation_info") or {}).get("status", "not_required"),
+            "created_at": created,
+            "updated_at": updated,
+        }
+
+        # Check if overdue (no update in 7+ days for active practices)
+        if updated and status in ["draft", "in_progress", "pending", "waiting_approval"]:
+            try:
+                updated_dt = datetime.fromisoformat(updated.replace("Z", "+00:00")) if isinstance(updated, str) else updated
+                if (now - updated_dt.replace(tzinfo=timezone.utc if updated_dt.tzinfo is None else updated_dt.tzinfo)).days >= 7:
+                    entry["overdue_days"] = (now - updated_dt.replace(tzinfo=timezone.utc if updated_dt.tzinfo is None else updated_dt.tzinfo)).days
+                    sections["overdue"].append(entry)
+                    continue
+            except (ValueError, TypeError):
+                pass
+
+        if status == "waiting_approval":
+            sections["pending_approvals"].append(entry)
+        elif status == "blocked":
+            sections["blocked"].append(entry)
+        elif status == "escalated":
+            sections["escalated"].append(entry)
+        elif p.get("delegation_status") in ["requested", "incomplete", "under_review"] or \
+             (p.get("delegation_info") or {}).get("status") in ["requested", "incomplete", "under_review"]:
+            sections["waiting_delegation"].append(entry)
+        elif status in ["in_progress", "processing"]:
+            sections["in_progress"].append(entry)
+        elif status in ["draft", "pending"]:
+            entry["next_action"] = "Avviare l'esecuzione controllata"
+            sections["upcoming_actions"].append(entry)
+
+    counts = {k: len(v) for k, v in sections.items()}
+    counts["total_active"] = sum(counts.values())
+
+    # Calculate urgency score
+    urgency = "normal"
+    if counts["blocked"] > 0 or counts["escalated"] > 0 or counts["overdue"] > 0:
+        urgency = "high"
+    if counts["blocked"] > 2 or counts["escalated"] > 1 or counts["overdue"] > 3:
+        urgency = "critical"
+
+    return {"sections": sections, "counts": counts, "urgency": urgency}
 
 # ========================
 # DASHBOARD STATS
@@ -1810,7 +2275,10 @@ async def download_practice_pdf(practice_id: str, user: dict = Depends(get_curre
 
 @api_router.post("/practices/{practice_id}/chat")
 async def practice_chat(practice_id: str, req: PracticeChatRequest, user: dict = Depends(get_current_user)):
-    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    # Admin/creator can chat on any practice
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
 
@@ -1887,8 +2355,11 @@ Risultati orchestrazione precedente:
 
 @api_router.get("/practices/{practice_id}/chat")
 async def get_practice_chat_history(practice_id: str, user: dict = Depends(get_current_user)):
+    # Admin/creator can view any practice chat history
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"practice_id": practice_id} if is_admin else {"practice_id": practice_id, "user_id": user["id"]}
     chats = await db.practice_chats.find(
-        {"practice_id": practice_id, "user_id": user["id"]},
+        query,
         {"_id": 0}
     ).sort("timestamp", -1).limit(20).to_list(20)
     return chats

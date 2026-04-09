@@ -82,4 +82,15 @@ export const getCatalogEntry = (practiceId) => api.get(`/catalog/${practiceId}`)
 export const getRegistry = () => api.get('/registry');
 export const getRegistryEntry = (registryId) => api.get(`/registry/${registryId}`);
 
+// Delegation
+export const updateDelegation = (practiceId, data) => api.put(`/practices/${practiceId}/delegation`, data);
+
+// Readiness & Submission
+export const getPracticeReadiness = (practiceId) => api.get(`/practices/${practiceId}/readiness`);
+export const getSubmissionCenter = () => api.get('/submission-center');
+export const submitPractice = (practiceId) => api.post(`/practices/${practiceId}/submit`);
+
+// Deadline Dashboard
+export const getDeadlines = () => api.get('/deadlines');
+
 export default api;

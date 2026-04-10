@@ -1825,6 +1825,522 @@ EMAIL_STATUSES = {
     "blocked": "Bloccata",
 }
 
+# Shared HTML helpers
+_SIG = '<p style="color: #475569; font-size: 13px; line-height: 1.5; margin-top: 20px;">Un caro saluto,<br/><strong style="color: #0F4C5C;">Il team Herion</strong></p><p style="color: #94A3B8; font-size: 11px; margin-top: 16px;">Herion — Gestione fiscale operativa per l\'Italia</p>'
+_BTN = lambda txt, href: f'<div style="text-align:center;margin:24px 0;"><a href="{href}" style="background:#0F4C5C;color:#fff;padding:11px 26px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">{txt}</a></div>'
+
+EMAIL_TEMPLATES = {
+    # ─── A. PRIVATE USERS ───
+    "private_missing_docs": {
+        "id": "private_missing_docs", "group": "private", "group_label": "Privati",
+        "name": "Richiesta documenti mancanti (privato)",
+        "subject": "Herion — Documenti necessari per la tua pratica [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Ciao <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti scriviamo perche per la tua pratica <strong>[nome_pratica]</strong> (codice: [codice_pratica]) risultano ancora alcuni documenti necessari per poter proseguire.</p><p style="color:#475569;font-size:14px;line-height:1.6;"><strong>Documenti mancanti:</strong></p><div style="background:#F7FAFC;border-radius:8px;padding:14px;margin:12px 0;">[elenco_documenti]</div><p style="color:#475569;font-size:14px;line-height:1.6;">Puoi caricarli direttamente dalla piattaforma accedendo alla tua pratica.</p>' + _BTN("Vai alla pratica", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;"><strong>Prossimo passo:</strong> [prossimo_step]</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "codice_pratica", "elenco_documenti", "link_pratica", "prossimo_step"],
+        "user_types": ["private"], "practice_types": [],
+    },
+    "private_status_update": {
+        "id": "private_status_update", "group": "private", "group_label": "Privati",
+        "name": "Aggiornamento stato pratica (privato)",
+        "subject": "Herion — Aggiornamento sulla tua pratica [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Ciao <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti aggiorniamo sullo stato della tua pratica <strong>[nome_pratica]</strong>.</p><div style="background:#F7FAFC;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;"><strong>Stato attuale:</strong> [stato_pratica]</p><p style="margin:6px 0 0;font-size:13px;"><strong>Tipo pratica:</strong> [tipo_pratica]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">[azione_richiesta]</p>' + _BTN("Vai alla pratica", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;"><strong>Prossimo passo:</strong> [prossimo_step]</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "stato_pratica", "tipo_pratica", "azione_richiesta", "link_pratica", "prossimo_step"],
+        "user_types": ["private"], "practice_types": [],
+    },
+    "private_reminder": {
+        "id": "private_reminder", "group": "private", "group_label": "Privati",
+        "name": "Promemoria pratica (privato)",
+        "subject": "Herion — Promemoria: la tua pratica [nome_pratica] richiede attenzione",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Ciao <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti ricordiamo che la pratica <strong>[nome_pratica]</strong> e in attesa di un tuo intervento.</p><div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#9A3412;"><strong>Azione richiesta:</strong> [azione_richiesta]</p><p style="margin:6px 0 0;font-size:13px;color:#9A3412;"><strong>Scadenza:</strong> [data_scadenza]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Non ti preoccupare, siamo qui per aiutarti. Accedi alla piattaforma per completare quanto necessario.</p>' + _BTN("Completa ora", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "azione_richiesta", "data_scadenza", "link_pratica"],
+        "user_types": ["private"], "practice_types": [],
+    },
+    "private_blocked": {
+        "id": "private_blocked", "group": "private", "group_label": "Privati",
+        "name": "Pratica bloccata (privato)",
+        "subject": "Herion — La tua pratica [nome_pratica] e momentaneamente sospesa",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Ciao <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti informiamo che la pratica <strong>[nome_pratica]</strong> non puo proseguire al momento.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>Motivo:</strong> [elemento_mancante]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Per sbloccare la situazione, ti chiediamo di: <strong>[azione_richiesta]</strong></p>' + _BTN("Vai alla pratica", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;">Se hai bisogno di aiuto, rispondi a questa email e ti assisteremo.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elemento_mancante", "azione_richiesta", "link_pratica"],
+        "user_types": ["private"], "practice_types": [],
+    },
+    "private_dossier_delivery": {
+        "id": "private_dossier_delivery", "group": "private", "group_label": "Privati",
+        "name": "Consegna dossier finale (privato)",
+        "subject": "Herion — Il dossier della tua pratica [nome_pratica] e pronto",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Ciao <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">siamo lieti di comunicarti che il dossier finale della tua pratica <strong>[nome_pratica]</strong> e stato completato ed e disponibile per il download.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Pratica completata con successo</strong></p><p style="margin:6px 0 0;font-size:13px;color:#065F46;">Tutti i documenti sono stati verificati e archiviati.</p></div>' + _BTN("Scarica il dossier", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;">Ti consigliamo di conservare una copia dei documenti per i tuoi archivi.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private"], "practice_types": [],
+    },
+    # ─── B. FREELANCERS ───
+    "freelancer_vat_missing_docs": {
+        "id": "freelancer_vat_missing_docs", "group": "freelancer", "group_label": "Liberi Professionisti",
+        "name": "Documenti mancanti IVA (libero professionista)",
+        "subject": "Herion — Documenti necessari per la pratica IVA [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">per procedere con la tua pratica <strong>[nome_pratica]</strong> relativa alla Partita IVA, abbiamo bisogno dei seguenti documenti:</p><div style="background:#F7FAFC;border-radius:8px;padding:14px;margin:12px 0;">[elenco_documenti]</div><p style="color:#475569;font-size:14px;line-height:1.6;">Carica i documenti direttamente sulla piattaforma per permetterci di procedere con la verifica.</p>' + _BTN("Carica documenti", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;"><strong>Prossimo passo:</strong> [prossimo_step]</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elenco_documenti", "link_pratica", "prossimo_step"],
+        "user_types": ["freelancer"], "practice_types": ["VAT_OPEN_PF", "VAT_VARIATION_PF", "VAT_CLOSURE_PF"],
+    },
+    "freelancer_f24_update": {
+        "id": "freelancer_f24_update", "group": "freelancer", "group_label": "Liberi Professionisti",
+        "name": "Aggiornamento F24 / supporto fiscale",
+        "subject": "Herion — Aggiornamento sulla tua pratica fiscale [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti aggiorniamo sulla pratica <strong>[nome_pratica]</strong> relativa al supporto fiscale F24.</p><div style="background:#F7FAFC;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;"><strong>Stato:</strong> [stato_pratica]</p><p style="margin:6px 0 0;font-size:13px;"><strong>Tipo:</strong> [tipo_pratica]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">[azione_richiesta]</p>' + _BTN("Vai alla pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "stato_pratica", "tipo_pratica", "azione_richiesta", "link_pratica"],
+        "user_types": ["freelancer"], "practice_types": ["F24_PREPARATION", "F24_WEB"],
+    },
+    "freelancer_approval_request": {
+        "id": "freelancer_approval_request", "group": "freelancer", "group_label": "Liberi Professionisti",
+        "name": "Richiesta approvazione (libero professionista)",
+        "subject": "Herion — La tua approvazione e necessaria per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> e stata analizzata dai nostri agenti ed e pronta per la tua approvazione.</p><p style="color:#475569;font-size:14px;line-height:1.6;">Prima di procedere all\'invio, ti chiediamo di verificare che tutti i dati siano corretti e di confermare con la tua approvazione esplicita.</p>' + _BTN("Rivedi e approva", "[link_pratica]") + '<p style="color:#94A3B8;font-size:12px;">Nessuna azione sara intrapresa senza la tua conferma.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["freelancer"], "practice_types": [],
+    },
+    "freelancer_blocked": {
+        "id": "freelancer_blocked", "group": "freelancer", "group_label": "Liberi Professionisti",
+        "name": "Pratica bloccata (libero professionista)",
+        "subject": "Herion — La pratica [nome_pratica] richiede il tuo intervento",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> non puo proseguire per il seguente motivo:</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>[elemento_mancante]</strong></p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Per risolvere: <strong>[azione_richiesta]</strong></p>' + _BTN("Risolvi ora", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elemento_mancante", "azione_richiesta", "link_pratica"],
+        "user_types": ["freelancer"], "practice_types": [],
+    },
+    "freelancer_delivery": {
+        "id": "freelancer_delivery", "group": "freelancer", "group_label": "Liberi Professionisti",
+        "name": "Consegna documenti finale (libero professionista)",
+        "subject": "Herion — Documenti pronti per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">il pacchetto documentale per <strong>[nome_pratica]</strong> e completo e disponibile.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Documenti verificati e pronti</strong></p></div>' + _BTN("Scarica documenti", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;">Conserva una copia per i tuoi archivi professionali.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["freelancer"], "practice_types": [],
+    },
+    # ─── C. COMPANIES ───
+    "company_status_update": {
+        "id": "company_status_update", "group": "company", "group_label": "Aziende",
+        "name": "Aggiornamento pratica societaria",
+        "subject": "Herion — Aggiornamento pratica [nome_pratica] per [nome_azienda]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile referente di <strong>[nome_azienda]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">le comunichiamo un aggiornamento sulla pratica <strong>[nome_pratica]</strong>.</p><div style="background:#F7FAFC;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;"><strong>Stato:</strong> [stato_pratica]</p><p style="margin:6px 0 0;font-size:13px;"><strong>Codice:</strong> [codice_pratica]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">[azione_richiesta]</p>' + _BTN("Accedi alla pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["nome_azienda", "nome_pratica", "stato_pratica", "codice_pratica", "azione_richiesta", "link_pratica"],
+        "user_types": ["company"], "practice_types": [],
+    },
+    "company_delegation_required": {
+        "id": "company_delegation_required", "group": "company", "group_label": "Aziende",
+        "name": "Delega richiesta (azienda)",
+        "subject": "Herion — Delega necessaria per [nome_pratica] di [nome_azienda]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile referente di <strong>[nome_azienda]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">per procedere con la pratica <strong>[nome_pratica]</strong>, e necessario caricare una delega firmata.</p><div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#9A3412;"><strong>Documento richiesto:</strong> Delega firmata (formato PDF o P7M con firma digitale)</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Senza la delega valida, la pratica non potra essere inoltrata all\'ente competente.</p>' + _BTN("Carica la delega", "[link_pratica]") + _SIG,
+        "placeholders": ["nome_azienda", "nome_pratica", "link_pratica"],
+        "user_types": ["company"], "practice_types": ["COMPANY_CLOSURE"],
+    },
+    "company_signed_doc_required": {
+        "id": "company_signed_doc_required", "group": "company", "group_label": "Aziende",
+        "name": "Documento firmato richiesto (azienda)",
+        "subject": "Herion — Firma digitale necessaria per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile referente di <strong>[nome_azienda]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">per la pratica <strong>[nome_pratica]</strong>, alcuni documenti richiedono la firma digitale (P7M o PAdES).</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>Documenti da firmare:</strong></p><p style="margin:6px 0 0;font-size:13px;color:#991B1B;">[elenco_documenti]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Carica le versioni firmate digitalmente per poter proseguire.</p>' + _BTN("Carica documenti firmati", "[link_pratica]") + _SIG,
+        "placeholders": ["nome_azienda", "nome_pratica", "elenco_documenti", "link_pratica"],
+        "user_types": ["company"], "practice_types": [],
+    },
+    "company_blocked": {
+        "id": "company_blocked", "group": "company", "group_label": "Aziende",
+        "name": "Pratica societaria bloccata",
+        "subject": "Herion — Pratica [nome_pratica] sospesa per [nome_azienda]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile referente di <strong>[nome_azienda]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> e attualmente sospesa.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>Motivo:</strong> [elemento_mancante]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Per ripristinare la pratica: <strong>[azione_richiesta]</strong></p>' + _BTN("Risolvi", "[link_pratica]") + _SIG,
+        "placeholders": ["nome_azienda", "nome_pratica", "elemento_mancante", "azione_richiesta", "link_pratica"],
+        "user_types": ["company"], "practice_types": [],
+    },
+    "company_dossier_delivery": {
+        "id": "company_dossier_delivery", "group": "company", "group_label": "Aziende",
+        "name": "Consegna dossier societario",
+        "subject": "Herion — Dossier completo per [nome_pratica] di [nome_azienda]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile referente di <strong>[nome_azienda]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">il dossier completo per la pratica <strong>[nome_pratica]</strong> e stato finalizzato e verificato.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Pratica completata</strong></p><p style="margin:6px 0 0;font-size:13px;color:#065F46;">Documentazione verificata, archiviata e pronta per il download.</p></div>' + _BTN("Scarica il dossier", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;">Si consiglia di conservare una copia completa negli archivi aziendali.</p>' + _SIG,
+        "placeholders": ["nome_azienda", "nome_pratica", "link_pratica"],
+        "user_types": ["company"], "practice_types": [],
+    },
+    # ─── D. BLOCKED PRACTICES ───
+    "blocked_missing_doc": {
+        "id": "blocked_missing_doc", "group": "blocked", "group_label": "Pratiche Bloccate",
+        "name": "Blocco: documenti mancanti",
+        "subject": "Herion — Pratica [nome_pratica]: documenti mancanti",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> non puo proseguire perche mancano uno o piu documenti obbligatori.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>Documenti mancanti:</strong></p>[elenco_documenti]</div>' + _BTN("Carica documenti", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elenco_documenti", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "blocked_missing_delegation": {
+        "id": "blocked_missing_delegation", "group": "blocked", "group_label": "Pratiche Bloccate",
+        "name": "Blocco: delega mancante",
+        "subject": "Herion — Pratica [nome_pratica]: delega necessaria",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> richiede una delega firmata per poter proseguire.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;">La delega deve essere in formato PDF o P7M con firma digitale valida.</p></div>' + _BTN("Carica la delega", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "blocked_approval": {
+        "id": "blocked_approval", "group": "blocked", "group_label": "Pratiche Bloccate",
+        "name": "Blocco: approvazione mancante",
+        "subject": "Herion — Pratica [nome_pratica]: in attesa della tua approvazione",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> e stata analizzata ed e pronta, ma richiede la tua approvazione esplicita prima di procedere.</p><div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#9A3412;">Nessun invio verra effettuato senza la tua conferma.</p></div>' + _BTN("Rivedi e approva", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "blocked_routing": {
+        "id": "blocked_routing", "group": "blocked", "group_label": "Pratiche Bloccate",
+        "name": "Blocco: routing non chiaro",
+        "subject": "Herion — Pratica [nome_pratica]: destinazione da verificare",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">per la pratica <strong>[nome_pratica]</strong>, non e stato possibile determinare con certezza la destinazione corretta.</p><p style="color:#475569;font-size:14px;line-height:1.6;">Un nostro operatore verifichera il canale e la destinazione appropriata. Ti aggiorneremo appena la situazione sara chiarita.</p>' + _BTN("Dettagli pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "blocked_signature": {
+        "id": "blocked_signature", "group": "blocked", "group_label": "Pratiche Bloccate",
+        "name": "Blocco: firma digitale mancante",
+        "subject": "Herion — Pratica [nome_pratica]: firma digitale richiesta",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">alcuni documenti della pratica <strong>[nome_pratica]</strong> richiedono una firma digitale valida (P7M o PAdES) per poter proseguire.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>Documenti da firmare:</strong></p>[elenco_documenti]</div><p style="color:#475569;font-size:14px;line-height:1.6;">Carica le versioni firmate per sbloccare la pratica.</p>' + _BTN("Carica firmati", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elenco_documenti", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "blocked_sensitive_attachment": {
+        "id": "blocked_sensitive_attachment", "group": "blocked", "group_label": "Pratiche Bloccate",
+        "name": "Blocco: allegato riservato non inviabile",
+        "subject": "Herion — Pratica [nome_pratica]: allegato riservato",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">un documento allegato alla pratica <strong>[nome_pratica]</strong> e classificato come riservato e non puo essere inviato via email per motivi di sicurezza.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>[elemento_mancante]</strong></p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Contatta l\'amministratore per definire una modalita di consegna sicura.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elemento_mancante"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    # ─── F. APPROVAL FLOW ───
+    "approval_requested": {
+        "id": "approval_requested", "group": "approval", "group_label": "Flusso Approvazione",
+        "name": "Approvazione richiesta",
+        "subject": "Herion — La tua approvazione e necessaria per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> ([tipo_pratica]) e stata analizzata dai nostri agenti specializzati ed e ora pronta per la tua revisione.</p><p style="color:#475569;font-size:14px;line-height:1.6;">Ti chiediamo di verificare i dati, i documenti e il riepilogo, e di confermare la tua approvazione.</p>' + _BTN("Rivedi e approva", "[link_pratica]") + '<p style="color:#94A3B8;font-size:12px;">Herion non procedera con nessun invio senza la tua esplicita approvazione.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "tipo_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "approval_reminder": {
+        "id": "approval_reminder", "group": "approval", "group_label": "Flusso Approvazione",
+        "name": "Promemoria approvazione",
+        "subject": "Herion — Promemoria: approvazione in attesa per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti ricordiamo che la pratica <strong>[nome_pratica]</strong> e in attesa della tua approvazione da diverso tempo.</p><div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#9A3412;"><strong>Scadenza consigliata:</strong> [data_scadenza]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Se hai bisogno di chiarimenti, rispondi a questa email.</p>' + _BTN("Approva ora", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "data_scadenza", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "approval_confirmed": {
+        "id": "approval_confirmed", "group": "approval", "group_label": "Flusso Approvazione",
+        "name": "Conferma approvazione ricevuta",
+        "subject": "Herion — Approvazione confermata per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la tua approvazione per la pratica <strong>[nome_pratica]</strong> e stata registrata con successo.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Approvazione confermata</strong></p><p style="margin:6px 0 0;font-size:13px;color:#065F46;">Prossimo passo: [prossimo_step]</p></div>' + _BTN("Segui la pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "prossimo_step", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    # ─── G. DELEGATION FLOW ───
+    "delegation_requested": {
+        "id": "delegation_requested", "group": "delegation", "group_label": "Flusso Delega",
+        "name": "Delega richiesta",
+        "subject": "Herion — Delega necessaria per la pratica [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">per la pratica <strong>[nome_pratica]</strong> e necessario caricare un documento di delega firmato.</p><p style="color:#475569;font-size:14px;line-height:1.6;">La delega autorizza Herion o un intermediario a gestire la pratica per vostro conto presso l\'ente competente.</p><div style="background:#F7FAFC;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;"><strong>Formati accettati:</strong> PDF, P7M (firma digitale CAdES)</p><p style="margin:6px 0 0;font-size:13px;"><strong>Requisiti:</strong> Firma del legale rappresentante o del titolare</p></div>' + _BTN("Carica la delega", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "delegation_under_review": {
+        "id": "delegation_under_review", "group": "delegation", "group_label": "Flusso Delega",
+        "name": "Delega in fase di verifica",
+        "subject": "Herion — Delega per [nome_pratica] in verifica",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la delega caricata per la pratica <strong>[nome_pratica]</strong> e ora in fase di verifica.</p><p style="color:#475569;font-size:14px;line-height:1.6;">Riceverai una conferma non appena la verifica sara completata. Non e necessaria alcuna azione da parte tua al momento.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "delegation_rejected": {
+        "id": "delegation_rejected", "group": "delegation", "group_label": "Flusso Delega",
+        "name": "Delega respinta",
+        "subject": "Herion — Delega per [nome_pratica] non valida",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">purtroppo la delega caricata per la pratica <strong>[nome_pratica]</strong> non ha superato la verifica.</p><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#991B1B;"><strong>Motivo:</strong> [elemento_mancante]</p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Ti chiediamo di caricare una nuova delega corretta.</p>' + _BTN("Carica nuova delega", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elemento_mancante", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "delegation_valid": {
+        "id": "delegation_valid", "group": "delegation", "group_label": "Flusso Delega",
+        "name": "Delega confermata valida",
+        "subject": "Herion — Delega per [nome_pratica] confermata",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la delega per la pratica <strong>[nome_pratica]</strong> e stata verificata e confermata come valida.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Delega valida</strong></p><p style="margin:6px 0 0;font-size:13px;color:#065F46;">La pratica puo ora proseguire regolarmente.</p></div>' + _BTN("Vai alla pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    # ─── H. FINAL DELIVERY ───
+    "delivery_dossier_ready": {
+        "id": "delivery_dossier_ready", "group": "delivery", "group_label": "Consegna Finale",
+        "name": "Dossier finale pronto",
+        "subject": "Herion — Dossier finale pronto per [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">il dossier finale per la pratica <strong>[nome_pratica]</strong> e stato completato.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Contenuto del dossier:</strong></p><p style="margin:6px 0 0;font-size:13px;color:#065F46;">[elenco_documenti]</p></div>' + _BTN("Scarica il dossier", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "elenco_documenti", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "delivery_pdf_report": {
+        "id": "delivery_pdf_report", "group": "delivery", "group_label": "Consegna Finale",
+        "name": "Report PDF pronto",
+        "subject": "Herion — Report PDF della pratica [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">il report PDF riassuntivo per <strong>[nome_pratica]</strong> e disponibile per il download.</p>' + _BTN("Scarica il report", "[link_pratica]") + '<p style="color:#475569;font-size:14px;line-height:1.6;">Conserva il documento per i tuoi archivi.</p>' + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "delivery_package_sent": {
+        "id": "delivery_package_sent", "group": "delivery", "group_label": "Consegna Finale",
+        "name": "Pacchetto pratica inviato",
+        "subject": "Herion — Pratica [nome_pratica] completata e inviata",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">la pratica <strong>[nome_pratica]</strong> e stata completata e il pacchetto documentale e stato inviato all\'ente competente.</p><div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#065F46;"><strong>Stato: Inviata con successo</strong></p><p style="margin:6px 0 0;font-size:13px;color:#065F46;">Potrai seguire eventuali aggiornamenti dalla piattaforma.</p></div>' + _BTN("Segui la pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    # ─── I. REMINDER / FOLLOW-UP ───
+    "reminder_generic": {
+        "id": "reminder_generic", "group": "reminder", "group_label": "Promemoria",
+        "name": "Promemoria generico",
+        "subject": "Herion — Promemoria per la pratica [nome_pratica]",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti ricordiamo che la pratica <strong>[nome_pratica]</strong> richiede la tua attenzione.</p><div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#9A3412;"><strong>Azione richiesta:</strong> [azione_richiesta]</p><p style="margin:6px 0 0;font-size:13px;color:#9A3412;"><strong>Scadenza:</strong> [data_scadenza]</p></div>' + _BTN("Vai alla pratica", "[link_pratica]") + _SIG,
+        "placeholders": ["Nome", "nome_pratica", "azione_richiesta", "data_scadenza", "link_pratica"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    # ─── J. ACCOUNT / SECURITY ───
+    "account_password_reset": {
+        "id": "account_password_reset", "group": "account", "group_label": "Account e Sicurezza",
+        "name": "Ripristino password",
+        "subject": "Herion — Reimposta la tua password",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Ciao <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">hai richiesto il ripristino della password del tuo account Herion. Clicca il pulsante qui sotto per procedere.</p>' + _BTN("Reimposta Password", "[link_reset_password]") + '<p style="color:#94A3B8;font-size:12px;line-height:1.5;">Il link scade tra 1 ora. Se non hai richiesto tu il ripristino, ignora questa email.</p>' + _SIG,
+        "placeholders": ["Nome", "link_reset_password"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+    "account_security_notice": {
+        "id": "account_security_notice", "group": "account", "group_label": "Account e Sicurezza",
+        "name": "Avviso di sicurezza",
+        "subject": "Herion — Avviso di sicurezza per il tuo account",
+        "body_html": '<p style="color:#0F172A;font-size:14px;line-height:1.6;">Gentile <strong>[Nome]</strong>,</p><p style="color:#475569;font-size:14px;line-height:1.6;">ti segnaliamo un\'attivita sul tuo account che potrebbe richiedere la tua attenzione.</p><div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px;margin:12px 0;"><p style="margin:0;font-size:13px;color:#9A3412;"><strong>[azione_richiesta]</strong></p></div><p style="color:#475569;font-size:14px;line-height:1.6;">Se non riconosci questa attivita, ti consigliamo di cambiare la password immediatamente.</p>' + _SIG,
+        "placeholders": ["Nome", "azione_richiesta"],
+        "user_types": ["private", "freelancer", "company"], "practice_types": [],
+    },
+}
+
+TEMPLATE_GROUPS = {
+    "private": "Privati",
+    "freelancer": "Liberi Professionisti",
+    "company": "Aziende",
+    "blocked": "Pratiche Bloccate",
+    "approval": "Flusso Approvazione",
+    "delegation": "Flusso Delega",
+    "delivery": "Consegna Finale",
+    "reminder": "Promemoria",
+    "account": "Account e Sicurezza",
+}
+
+
+async def resolve_template_placeholders(template_id: str, practice_id: str = None, extra: dict = None) -> dict:
+    """Resolve placeholders in a template using practice data."""
+    template = EMAIL_TEMPLATES.get(template_id)
+    if not template:
+        return {"error": "Template non trovato"}
+
+    frontend_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    values = {
+        "Nome": "",
+        "codice_pratica": "",
+        "nome_pratica": "",
+        "tipo_pratica": "",
+        "stato_pratica": "",
+        "prossimo_step": "",
+        "azione_richiesta": "",
+        "elemento_mancante": "",
+        "elenco_documenti": "",
+        "data_scadenza": "",
+        "nome_azienda": "",
+        "link_pratica": "",
+        "link_reset_password": "",
+    }
+
+    if practice_id:
+        practice = await db.practices.find_one({"id": practice_id}, {"_id": 0})
+        if practice:
+            values["codice_pratica"] = practice_id[:8]
+            values["nome_pratica"] = practice.get("practice_type_label", "")
+            values["tipo_pratica"] = practice.get("practice_type_label", "")
+            values["nome_azienda"] = practice.get("company_name") or practice.get("client_name", "")
+            values["Nome"] = practice.get("client_name", "")
+            values["link_pratica"] = f"{frontend_url}/practices/{practice_id}"
+
+            status_labels = {
+                "draft": "Bozza", "in_progress": "In elaborazione", "waiting_approval": "In attesa di approvazione",
+                "approved": "Approvata", "submitted": "Inviata", "completed": "Completata",
+            }
+            values["stato_pratica"] = status_labels.get(practice.get("status"), practice.get("status_label", ""))
+
+            # Get readiness info for next step and blockers
+            readiness = await calculate_readiness(practice)
+            if readiness.get("blockers"):
+                values["elemento_mancante"] = readiness["blockers"][0]
+                values["azione_richiesta"] = f"Risolvere: {readiness['blockers'][0]}"
+            values["prossimo_step"] = readiness.get("next_step", "")
+
+            # Build document list from matrix
+            matrix = DOCUMENT_MATRIX.get(practice.get("practice_type") or practice.get("template_source"))
+            if matrix:
+                matrix_result = await get_document_matrix_for_practice(practice_id)
+                missing = matrix_result.get("completeness", {}).get("missing_required", [])
+                if missing:
+                    values["elenco_documenti"] = "".join(f'<p style="margin:4px 0;font-size:13px;">• {m}</p>' for m in missing)
+                else:
+                    values["elenco_documenti"] = '<p style="margin:4px 0;font-size:13px;color:#065F46;">Tutti i documenti richiesti sono stati caricati.</p>'
+            elif readiness.get("blockers"):
+                values["elenco_documenti"] = "".join(f'<p style="margin:4px 0;font-size:13px;">• {b}</p>' for b in readiness["blockers"][:5])
+
+    # Override with extra values
+    if extra:
+        for k, v in extra.items():
+            if v:
+                values[k] = v
+
+    # Resolve subject and body
+    subject = template["subject"]
+    body_html = template["body_html"]
+    for key, val in values.items():
+        placeholder = f"[{key}]"
+        subject = subject.replace(placeholder, str(val))
+        body_html = body_html.replace(placeholder, str(val))
+
+    return {
+        "template_id": template_id,
+        "subject": subject,
+        "body_html": body_html,
+        "resolved_values": {k: v for k, v in values.items() if v},
+        "template_name": template["name"],
+        "template_group": template["group"],
+    }
+
+
+@api_router.get("/emails/templates")
+async def get_email_templates(user: dict = Depends(get_current_user), group: Optional[str] = None, user_type: Optional[str] = None):
+    """Get available email templates, optionally filtered by group or user type."""
+    result = []
+    for tid, tpl in EMAIL_TEMPLATES.items():
+        if group and tpl["group"] != group:
+            continue
+        if user_type and user_type not in tpl.get("user_types", []):
+            continue
+        result.append({
+            "id": tpl["id"],
+            "group": tpl["group"],
+            "group_label": tpl["group_label"],
+            "name": tpl["name"],
+            "subject": tpl["subject"],
+            "placeholders": tpl["placeholders"],
+            "user_types": tpl["user_types"],
+            "practice_types": tpl.get("practice_types", []),
+        })
+    return result
+
+
+@api_router.get("/emails/template-groups")
+async def get_email_template_groups(user: dict = Depends(get_current_user)):
+    """Get template group definitions with counts."""
+    groups = []
+    for gid, glabel in TEMPLATE_GROUPS.items():
+        count = sum(1 for t in EMAIL_TEMPLATES.values() if t["group"] == gid)
+        groups.append({"id": gid, "label": glabel, "count": count})
+    return groups
+
+
+@api_router.get("/emails/templates/{template_id}")
+async def get_email_template(template_id: str, user: dict = Depends(get_current_user)):
+    """Get a single template with full details."""
+    tpl = EMAIL_TEMPLATES.get(template_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template non trovato")
+    return tpl
+
+
+@api_router.post("/emails/templates/{template_id}/resolve")
+async def resolve_email_template(template_id: str, user: dict = Depends(get_current_user)):
+    """Resolve a template with practice data and return ready-to-use subject + body."""
+    class ResolveRequest(BaseModel):
+        practice_id: Optional[str] = None
+        extra: Optional[dict] = None
+
+    # Parse body manually since we defined class inline
+    from starlette.requests import Request
+    import json as json_module
+    body = await Request(scope={"type": "http"}, receive=lambda: None).body() if False else None
+    # Fallback: use FastAPI's request
+    return {"error": "Use the draft-from-template endpoint instead"}
+
+
+class DraftFromTemplateRequest(BaseModel):
+    template_id: str
+    practice_id: str
+    recipient_email: EmailStr
+    recipient_name: Optional[str] = None
+    extra_values: Optional[dict] = None
+    attachment_doc_keys: Optional[List[str]] = []
+
+
+@api_router.post("/emails/draft-from-template")
+async def create_draft_from_template(req: DraftFromTemplateRequest, user: dict = Depends(get_current_user)):
+    """Create an email draft from a template, auto-resolving placeholders from practice data."""
+    template = EMAIL_TEMPLATES.get(req.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template non trovato")
+
+    practice = await db.practices.find_one({"id": req.practice_id}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    resolved = await resolve_template_placeholders(req.template_id, req.practice_id, req.extra_values)
+
+    # Check attachment compliance
+    compliance = await check_email_attachment_compliance(req.practice_id, req.attachment_doc_keys or [])
+
+    now = datetime.now(timezone.utc).isoformat()
+    draft_id = str(uuid.uuid4())
+    status = "blocked" if not compliance["compliant"] else "draft"
+
+    draft = {
+        "id": draft_id,
+        "practice_id": req.practice_id,
+        "created_by": user["id"],
+        "created_by_name": user.get("name", user.get("email")),
+        "recipient_email": req.recipient_email,
+        "recipient_name": req.recipient_name,
+        "subject": resolved["subject"],
+        "body_html": resolved["body_html"],
+        "attachment_doc_keys": req.attachment_doc_keys or [],
+        "email_type": "template",
+        "template_id": req.template_id,
+        "template_name": template["name"],
+        "template_group": template["group"],
+        "status": status,
+        "status_label": EMAIL_STATUSES[status],
+        "compliance": compliance,
+        "resend_email_id": None,
+        "sent_at": None,
+        "reviewed_by": None,
+        "reviewed_at": None,
+        "approved_by": None,
+        "approved_at": None,
+        "send_error": None,
+        "practice_label": practice.get("practice_type_label", ""),
+        "client_name": practice.get("client_name", ""),
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.email_drafts.insert_one(draft)
+
+    await add_timeline_event(req.practice_id, user["id"], "email_draft_created", {
+        "draft_id": draft_id,
+        "template_id": req.template_id,
+        "template_name": template["name"],
+        "recipient": req.recipient_email,
+        "subject": resolved["subject"],
+    })
+
+    await log_audit_event(user["id"], user.get("role", "user"), "email_draft_from_template", "email", draft_id,
+        reason=f"Bozza da template '{template['name']}' per {req.recipient_email}",
+        severity="info", practice_id=req.practice_id,
+        details={"template_id": req.template_id, "subject": resolved["subject"]})
+
+    draft.pop("_id", None)
+    return {"message": f"Bozza creata dal template '{template['name']}'", "draft": draft}
+
 
 async def check_email_attachment_compliance(practice_id: str, attachment_doc_keys: list) -> dict:
     """Check whether attachments are compliant with document matrix, signature, and sensitivity rules."""

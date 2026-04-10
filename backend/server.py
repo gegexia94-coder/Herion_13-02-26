@@ -326,6 +326,8 @@ async def login(user_data: UserLogin):
     user = await db.users.find_one({"email": email})
 
     if not user or not verify_password(user_data.password, user["password_hash"]):
+        # Log failed login for security monitoring
+        await log_security_event("failed_login", email, reason="Credenziali non valide")
         raise HTTPException(status_code=401, detail="Credenziali non valide")
 
     user_id = str(user["_id"])
@@ -627,7 +629,12 @@ async def upload_document(practice_id: str, file: UploadFile = File(...), catego
         "practice_id": practice_id,
         "user_id": user["id"],
         "is_deleted": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "vault_status": "stored",
+        "sensitivity_level": "high" if category in ["identity", "delegation", "tax"] else "medium",
+        "verification_status": "pending",
+        "version": 1,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     await db.documents.insert_one(doc_record)
@@ -2556,6 +2563,380 @@ async def get_permissions_for_role(user: dict = Depends(get_current_user)):
     return {"role": role, "permissions": perms}
 
 # ========================
+# ALERT CENTER
+# ========================
+
+ALERT_TYPES = {
+    "missing_documents": {"severity": "warning", "module": "documents", "title_tpl": "Documenti mancanti"},
+    "missing_delegation": {"severity": "warning", "module": "delegation", "title_tpl": "Delega mancante"},
+    "missing_approval": {"severity": "warning", "module": "approval", "title_tpl": "Approvazione mancante"},
+    "blocked_practice": {"severity": "high", "module": "practice", "title_tpl": "Pratica bloccata"},
+    "overdue_practice": {"severity": "high", "module": "deadline", "title_tpl": "Pratica scaduta"},
+    "failed_submission": {"severity": "high", "module": "submission", "title_tpl": "Invio fallito"},
+    "repeated_failed_submission": {"severity": "critical", "module": "submission", "title_tpl": "Invii falliti ripetuti"},
+    "routing_conflict": {"severity": "high", "module": "routing", "title_tpl": "Conflitto di routing"},
+    "suspicious_login": {"severity": "critical", "module": "security", "title_tpl": "Accesso sospetto"},
+    "repeated_failed_login": {"severity": "high", "module": "security", "title_tpl": "Tentativi accesso falliti"},
+    "unusual_document_movement": {"severity": "high", "module": "security", "title_tpl": "Movimento documenti anomalo"},
+    "permission_denied_repeated": {"severity": "high", "module": "security", "title_tpl": "Permessi negati ripetutamente"},
+    "state_inconsistency": {"severity": "warning", "module": "governance", "title_tpl": "Inconsistenza di stato"},
+    "missing_output": {"severity": "warning", "module": "submission", "title_tpl": "Output mancante"},
+    "creator_critical": {"severity": "critical", "module": "governance", "title_tpl": "Allerta critica Creator"},
+    "governance_block": {"severity": "high", "module": "governance", "title_tpl": "Blocco governance"},
+    "document_custody_issue": {"severity": "high", "module": "vault", "title_tpl": "Problema custodia documento"},
+}
+
+async def create_alert(
+    alert_type: str, title: str, explanation: str,
+    practice_id: str = None, user_id: str = None, actor: str = None,
+    severity: str = None, next_action: str = None, visibility: str = "admin"
+):
+    """Create an alert in the Alert Center."""
+    cfg = ALERT_TYPES.get(alert_type, {})
+    alert = {
+        "id": str(uuid.uuid4()),
+        "alert_type": alert_type,
+        "severity": severity or cfg.get("severity", "info"),
+        "title": title,
+        "explanation": explanation,
+        "practice_id": practice_id,
+        "user_id": user_id,
+        "actor": actor,
+        "module": cfg.get("module", "system"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "open",
+        "next_action": next_action or "Verificare e intervenire",
+        "visibility": visibility,
+    }
+    await db.alerts.insert_one(alert)
+    alert.pop("_id", None)
+    return alert
+
+@api_router.get("/alerts")
+async def get_alerts(user: dict = Depends(get_current_user), status: Optional[str] = None, severity: Optional[str] = None, limit: int = 100):
+    """Get alerts based on role visibility."""
+    role = user.get("role", "user")
+    query = {}
+    if role == "user":
+        query["$or"] = [{"user_id": user["id"]}, {"visibility": "all"}]
+    elif role == "admin":
+        query["visibility"] = {"$in": ["admin", "all", "creator"]}
+    # creator sees all
+
+    if status:
+        query["status"] = status
+    if severity:
+        query["severity"] = severity
+
+    alerts = await db.alerts.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
+
+    sections = {"new": [], "high_critical": [], "practice": [], "security": [], "governance": [], "resolved": []}
+    counts = {"open": 0, "high": 0, "critical": 0, "total": len(alerts)}
+    for a in alerts:
+        if a["status"] == "resolved":
+            sections["resolved"].append(a)
+        elif a["severity"] in ["high", "critical"]:
+            sections["high_critical"].append(a)
+            counts["high" if a["severity"] == "high" else "critical"] += 1
+            counts["open"] += 1
+        elif a["module"] == "security":
+            sections["security"].append(a)
+            counts["open"] += 1
+        elif a["module"] == "governance":
+            sections["governance"].append(a)
+            counts["open"] += 1
+        elif a["module"] in ["practice", "documents", "submission", "delegation", "deadline"]:
+            sections["practice"].append(a)
+            counts["open"] += 1
+        else:
+            sections["new"].append(a)
+            counts["open"] += 1
+
+    return {"sections": sections, "counts": counts}
+
+@api_router.put("/alerts/{alert_id}")
+async def update_alert(alert_id: str, user: dict = Depends(get_current_user)):
+    """Acknowledge or resolve an alert."""
+
+    class AlertAction(BaseModel):
+        action: str  # acknowledge, resolve, mute, escalate
+
+    # Read body manually
+    from starlette.requests import Request
+    import json as json_mod
+    body = await db.alerts.find_one({"id": alert_id})
+    if not body:
+        raise HTTPException(status_code=404, detail="Allerta non trovata")
+    return {"message": "Usa PATCH per aggiornare lo stato"}
+
+@api_router.patch("/alerts/{alert_id}")
+async def patch_alert(alert_id: str, user: dict = Depends(get_current_user), action: str = "acknowledge"):
+    """Update alert status."""
+    alert = await db.alerts.find_one({"id": alert_id})
+    if not alert:
+        raise HTTPException(status_code=404, detail="Allerta non trovata")
+
+    status_map = {"acknowledge": "acknowledged", "resolve": "resolved", "mute": "muted", "escalate": "open"}
+    new_status = status_map.get(action, "acknowledged")
+    await db.alerts.update_one({"id": alert_id}, {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": user.get("email")}})
+
+    await log_audit_event(user["id"], user.get("role", "user"), f"alert_{action}", "alert", alert_id,
+        previous_state=alert.get("status"), new_state=new_status, severity="info", practice_id=alert.get("practice_id"))
+
+    return {"message": f"Allerta {new_status}", "alert_id": alert_id, "new_status": new_status}
+
+@api_router.get("/alerts/summary")
+async def get_alerts_summary(user: dict = Depends(get_current_user)):
+    """Quick summary for badge display."""
+    role = user.get("role", "user")
+    query = {"status": {"$in": ["open"]}}
+    if role == "user":
+        query["$or"] = [{"user_id": user["id"]}, {"visibility": "all"}]
+    elif role == "admin":
+        query["visibility"] = {"$in": ["admin", "all", "creator"]}
+
+    open_count = await db.alerts.count_documents(query)
+    query["severity"] = {"$in": ["high", "critical"]}
+    urgent_count = await db.alerts.count_documents(query)
+    return {"open": open_count, "urgent": urgent_count}
+
+# ========================
+# SECURITY MONITORING
+# ========================
+
+SECURITY_EVENT_TYPES = {
+    "failed_login": {"severity": "info", "threshold": 3, "alert_type": "repeated_failed_login"},
+    "password_reset_attempt": {"severity": "info", "threshold": 3, "alert_type": "suspicious_login"},
+    "permission_denied": {"severity": "info", "threshold": 5, "alert_type": "permission_denied_repeated"},
+    "document_reassignment": {"severity": "warning", "threshold": 2, "alert_type": "unusual_document_movement"},
+    "failed_submission": {"severity": "warning", "threshold": 2, "alert_type": "repeated_failed_submission"},
+    "sensitive_area_access": {"severity": "info", "threshold": 5, "alert_type": "suspicious_login"},
+}
+
+async def log_security_event(event_type: str, actor: str, target: str = None, reason: str = None, details: dict = None):
+    """Log a security event and check thresholds for alert generation."""
+    cfg = SECURITY_EVENT_TYPES.get(event_type, {"severity": "info", "threshold": 10, "alert_type": "suspicious_login"})
+    event = {
+        "id": str(uuid.uuid4()),
+        "event_type": event_type,
+        "severity": cfg["severity"],
+        "actor": actor,
+        "target": target,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "reason": reason,
+        "details": details or {},
+        "linked_alert_id": None,
+    }
+    await db.security_events.insert_one(event)
+
+    # Check threshold for auto-alert
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    recent = await db.security_events.count_documents({
+        "event_type": event_type, "actor": actor,
+        "timestamp": {"$gte": one_hour_ago}
+    })
+
+    if recent >= cfg["threshold"]:
+        alert = await create_alert(
+            cfg["alert_type"],
+            f"{ALERT_TYPES.get(cfg['alert_type'], {}).get('title_tpl', 'Evento sicurezza')}: {actor}",
+            f"{recent} eventi '{event_type}' nell'ultima ora per {actor}. {reason or ''}",
+            user_id=actor, actor=actor, visibility="admin",
+            next_action="Verificare l'attivita dell'utente"
+        )
+        event["linked_alert_id"] = alert["id"]
+        await db.security_events.update_one({"id": event["id"]}, {"$set": {"linked_alert_id": alert["id"]}})
+
+    event.pop("_id", None)
+    return event
+
+@api_router.get("/security/events")
+async def get_security_events(user: dict = Depends(get_current_user), limit: int = 50, event_type: Optional[str] = None):
+    """Get security events (admin/creator only)."""
+    perm = check_permission(user.get("role", "user"), "view_fail_safe_details")
+    if not perm["allowed"]:
+        raise HTTPException(status_code=403, detail="Accesso non autorizzato")
+    query = {}
+    if event_type:
+        query["event_type"] = event_type
+    events = await db.security_events.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
+    return {"events": events, "total": len(events)}
+
+@api_router.get("/security/summary")
+async def get_security_summary(user: dict = Depends(get_current_user)):
+    """Security summary for admin/creator."""
+    perm = check_permission(user.get("role", "user"), "view_fail_safe_details")
+    if not perm["allowed"]:
+        raise HTTPException(status_code=403, detail="Accesso non autorizzato")
+
+    one_day_ago = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    total_24h = await db.security_events.count_documents({"timestamp": {"$gte": one_day_ago}})
+    by_type = {}
+    for et in SECURITY_EVENT_TYPES:
+        by_type[et] = await db.security_events.count_documents({"event_type": et, "timestamp": {"$gte": one_day_ago}})
+    high_severity = await db.security_events.count_documents({"severity": {"$in": ["high", "critical"]}, "timestamp": {"$gte": one_day_ago}})
+
+    return {"total_24h": total_24h, "by_type": by_type, "high_severity_24h": high_severity}
+
+# ========================
+# DOCUMENT VAULT
+# ========================
+
+VAULT_STATUSES = {
+    "stored": "Archiviato", "linked": "Collegato", "under_review": "In revisione",
+    "verified": "Verificato", "rejected": "Rifiutato", "archived": "Archiviato",
+    "locked": "Bloccato", "ready_for_send": "Pronto per invio", "sent": "Inviato",
+    "protected_output": "Output protetto"
+}
+
+VAULT_CATEGORIES = {
+    "identity": "Identita", "tax": "Fiscale", "company": "Aziendale",
+    "accounting": "Contabilita", "payment": "Pagamento", "delegation": "Delega",
+    "compliance": "Conformita", "support_docs": "Documenti supporto",
+    "generated_pdf": "PDF generato", "receipt_protocol": "Ricevuta/protocollo",
+    "final_dossier": "Dossier finale", "other": "Altro"
+}
+
+SENSITIVITY_LEVELS = {"low": "Basso", "medium": "Medio", "high": "Alto", "critical": "Critico"}
+
+@api_router.get("/vault")
+async def get_vault(user: dict = Depends(get_current_user), practice_id: Optional[str] = None, category: Optional[str] = None, vault_status: Optional[str] = None):
+    """Get Document Vault contents with role-based visibility."""
+    role = user.get("role", "user")
+    query = {"is_deleted": False}
+    if role == "user":
+        query["user_id"] = user["id"]
+    if practice_id:
+        query["practice_id"] = practice_id
+    if category:
+        query["category"] = category
+    if vault_status:
+        query["vault_status"] = vault_status
+
+    docs = await db.documents.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+    # Enrich with vault metadata
+    enriched = []
+    for d in docs:
+        enriched.append({
+            "id": d.get("id"),
+            "original_filename": d.get("original_filename"),
+            "category": d.get("category", "other"),
+            "category_label": VAULT_CATEGORIES.get(d.get("category", "other"), d.get("category", "Altro")),
+            "practice_id": d.get("practice_id"),
+            "user_id": d.get("user_id"),
+            "content_type": d.get("content_type"),
+            "size": d.get("size"),
+            "vault_status": d.get("vault_status", "stored"),
+            "vault_status_label": VAULT_STATUSES.get(d.get("vault_status", "stored"), "Archiviato"),
+            "sensitivity_level": d.get("sensitivity_level", "medium"),
+            "sensitivity_label": SENSITIVITY_LEVELS.get(d.get("sensitivity_level", "medium"), "Medio"),
+            "verification_status": d.get("verification_status", "pending"),
+            "uploaded_by": d.get("user_id"),
+            "created_at": d.get("created_at"),
+            "updated_at": d.get("updated_at"),
+            "version": d.get("version", 1),
+        })
+
+    # Counts by status and category
+    status_counts = {}
+    cat_counts = {}
+    for d in enriched:
+        vs = d["vault_status"]
+        status_counts[vs] = status_counts.get(vs, 0) + 1
+        cat = d["category"]
+        cat_counts[cat] = cat_counts.get(cat, 0) + 1
+
+    return {"documents": enriched, "total": len(enriched), "status_counts": status_counts, "category_counts": cat_counts}
+
+@api_router.patch("/vault/{document_id}")
+async def update_vault_document(document_id: str, user: dict = Depends(get_current_user), vault_status: Optional[str] = None, category: Optional[str] = None, sensitivity_level: Optional[str] = None):
+    """Update vault metadata for a document."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": document_id, "is_deleted": False}
+    if not is_admin:
+        query["user_id"] = user["id"]
+
+    doc = await db.documents.find_one(query)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento non trovato")
+
+    update_fields = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    prev_status = doc.get("vault_status", "stored")
+    if vault_status and vault_status in VAULT_STATUSES:
+        update_fields["vault_status"] = vault_status
+    if category and category in VAULT_CATEGORIES:
+        update_fields["category"] = category
+    if sensitivity_level and sensitivity_level in SENSITIVITY_LEVELS:
+        update_fields["sensitivity_level"] = sensitivity_level
+
+    await db.documents.update_one({"id": document_id}, {"$set": update_fields})
+
+    # Audit trail
+    await log_audit_event(user["id"], user.get("role", "user"), "vault_document_updated", "document", document_id,
+        previous_state=prev_status, new_state=vault_status or prev_status,
+        severity="info", practice_id=doc.get("practice_id"),
+        details={"category": category, "sensitivity": sensitivity_level})
+
+    # Security check: category change on sensitive doc
+    if category and category != doc.get("category") and doc.get("sensitivity_level") in ["high", "critical"]:
+        await log_security_event("document_reassignment", user.get("email", user["id"]),
+            target=document_id, reason=f"Categoria cambiata da {doc.get('category')} a {category}")
+        await create_alert("document_custody_issue",
+            "Riclassificazione documento sensibile",
+            f"Documento {doc.get('original_filename')} riclassificato da {doc.get('category')} a {category}",
+            practice_id=doc.get("practice_id"), user_id=user["id"], visibility="admin",
+            next_action="Verificare la correttezza della riclassificazione")
+
+    return {"message": "Documento aggiornato", "document_id": document_id}
+
+@api_router.get("/vault/summary")
+async def get_vault_summary(user: dict = Depends(get_current_user)):
+    """Vault health summary."""
+    role = user.get("role", "user")
+    query = {"is_deleted": False}
+    if role == "user":
+        query["user_id"] = user["id"]
+
+    total = await db.documents.count_documents(query)
+    verified = await db.documents.count_documents({**query, "verification_status": "verified"})
+    pending = await db.documents.count_documents({**query, "verification_status": {"$in": ["pending", None]}})
+    rejected = await db.documents.count_documents({**query, "verification_status": "rejected"})
+    high_sensitivity = await db.documents.count_documents({**query, "sensitivity_level": {"$in": ["high", "critical"]}})
+
+    return {"total": total, "verified": verified, "pending_review": pending, "rejected": rejected, "high_sensitivity": high_sensitivity}
+
+# ========================
+# PRACTICE TEMPLATES
+# ========================
+
+@api_router.get("/catalog/templates")
+async def get_practice_templates(user: dict = Depends(get_current_user)):
+    """Get practice templates from catalog that can generate instances."""
+    templates = await db.practice_catalog.find({}, {"_id": 0}).to_list(100)
+    return templates
+
+@api_router.post("/practices/from-template")
+async def create_practice_from_template(user: dict = Depends(get_current_user)):
+    """Create a practice instance from a catalog template."""
+    from starlette.requests import Request
+
+    class TemplateInstance(BaseModel):
+        template_id: str
+        client_name: str
+        client_type: str = "company"
+        country: str = "IT"
+        fiscal_code: Optional[str] = None
+        vat_number: Optional[str] = None
+        company_name: Optional[str] = None
+        description: Optional[str] = None
+        notes: Optional[str] = None
+
+    # This will be routed via the normal create practice flow
+    # The template enriches the practice with catalog data
+    return {"message": "Usa POST /api/practices con practice_type dal catalogo"}
+
+# ========================
 # DASHBOARD STATS
 # ========================
 
@@ -3031,6 +3412,15 @@ async def startup():
     await db.governance_audit.create_index("practice_id")
     await db.governance_audit.create_index("severity")
     await db.governance_audit.create_index("actor_id")
+
+    # Alert and security indexes
+    await db.alerts.create_index("timestamp")
+    await db.alerts.create_index("status")
+    await db.alerts.create_index("severity")
+    await db.alerts.create_index("user_id")
+    await db.security_events.create_index("timestamp")
+    await db.security_events.create_index("event_type")
+    await db.security_events.create_index("actor")
     await db.authority_registry.create_index("registry_id", unique=True)
     catalog_count = await db.practice_catalog.count_documents({})
     if catalog_count == 0:
@@ -3054,7 +3444,7 @@ async def startup():
             {"practice_id": "EINVOICING", "name": "Supporto fatturazione elettronica", "description": "Supporto per l'emissione e gestione delle fatture elettroniche.", "user_type": ["freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["invoices"], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "documents", "advisor"], "blocking_conditions": [], "escalation_conditions": ["fatturazione internazionale complessa"], "next_step": "Configurazione fatturazione elettronica", "user_explanation": "Ti supportiamo nella gestione della fatturazione elettronica tramite il portale dell'Agenzia delle Entrate."},
             {"practice_id": "INPS_GESTIONE_SEP", "name": "Iscrizione Gestione Separata INPS", "description": "Supporto per l'iscrizione alla Gestione Separata INPS.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": [], "next_step": "Preparazione iscrizione INPS", "user_explanation": "Ti guidiamo nell'iscrizione alla Gestione Separata INPS per liberi professionisti."},
             {"practice_id": "INPS_CASSETTO", "name": "Supporto cassetto previdenziale", "description": "Supporto per la consultazione del cassetto previdenziale.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "advisor", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Accesso cassetto previdenziale", "user_explanation": "Ti aiutiamo a consultare e comprendere il tuo cassetto previdenziale INPS."},
-            {"practice_id": "COMPANY_CLOSURE", "name": "Preparazione chiusura post-liquidazione", "description": "Preparazione del flusso di chiusura societaria dopo liquidazione.", "user_type": ["company"], "country_scope": "IT", "risk_level": "medium", "support_level": "partially_supported", "expected_channel": "official_portal", "destination_type": "chamber_registry", "required_documents": ["company_documents", "accounting", "identity"], "delegation_required": True, "approval_required": True, "agents": ["research", "deadline", "flow", "routing", "delegate", "documents"], "blocking_conditions": ["liquidazione non completata", "documenti societari mancanti"], "escalation_conditions": ["contenziosi pendenti", "debiti non risolti"], "next_step": "Verifica requisiti chiusura", "user_explanation": "Prepariamo il percorso di chiusura post-liquidazione, verificando tutti i requisiti necessari."},
+            {"practice_id": "COMPANY_CLOSURE", "name": "Chiusura societaria post-liquidazione", "description": "Gestione completa del flusso di chiusura societaria dopo liquidazione in Italia.", "user_type": ["company"], "country_scope": "IT", "risk_level": "medium", "support_level": "partially_supported", "expected_channel": "official_portal", "destination_type": "chamber_registry", "required_documents": ["company_documents", "accounting", "identity", "tax", "compliance"], "optional_documents": ["delegation", "payment", "support_docs"], "conditional_documents": ["delegation"], "delegation_required": True, "approval_required": True, "agents": ["intake", "research", "deadline", "flow", "routing", "delegate", "documents", "compliance", "ledger"], "blocking_conditions": ["liquidazione non completata", "documenti societari mancanti", "bilancio finale non approvato", "debiti tributari non risolti"], "escalation_conditions": ["contenziosi pendenti", "debiti non risolti", "irregolarita nella liquidazione"], "workflow_steps": ["Verifica requisiti chiusura", "Raccolta documenti societari", "Verifica bilancio finale di liquidazione", "Controllo conformita fiscale", "Preparazione delega", "Verifica delega", "Preparazione dossier chiusura", "Approvazione utente", "Invio al Registro delle Imprese"], "readiness_criteria": ["Bilancio finale approvato", "Tutti i debiti tributari risolti", "Documenti societari completi", "Delega valida", "Nessun contenzioso pendente"], "next_step": "Verifica requisiti chiusura", "user_explanation": "Herion prepara e gestisce il percorso di chiusura post-liquidazione. Verifichiamo i requisiti, raccogliamo i documenti necessari, controlliamo la conformita fiscale e prepariamo il dossier per il Registro delle Imprese.", "admin_notes": "Pratica semi-supportata: richiede preparazione completa ma invio tramite portale ufficiale. Verificare sempre lo stato della liquidazione e l'assenza di contenziosi.", "is_template": True},
         ]
         for entry in catalog_entries:
             entry["created_at"] = datetime.now(timezone.utc).isoformat()

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings, BookOpen, Clock, Send, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, History, LogOut, Menu, X, ChevronDown, UserCircle, Shield, User, Settings, BookOpen, Clock, Send, ShieldCheck, Bell, Lock } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
@@ -12,6 +12,8 @@ const navItems = [
   { path: '/catalog', label: 'Catalogo', icon: BookOpen, adminOnly: false },
   { path: '/submissions', label: 'Centro Invii', icon: Send, adminOnly: false },
   { path: '/deadlines', label: 'Scadenze', icon: Clock, adminOnly: false },
+  { path: '/vault', label: 'Archivio', icon: Lock, adminOnly: false },
+  { path: '/alerts', label: 'Allerte', icon: Bell, adminOnly: false },
   { path: '/governance', label: 'Governance', icon: ShieldCheck, adminOnly: true },
   { path: '/agents', label: 'Herion AI', icon: Bot, adminOnly: false },
   { path: '/activity-log', label: 'Attivita', icon: History, adminOnly: false },

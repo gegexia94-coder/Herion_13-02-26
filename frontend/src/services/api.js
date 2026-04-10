@@ -100,4 +100,18 @@ export const getPracticeGovernanceAudit = (practiceId) => api.get(`/governance/a
 export const getGovernanceDashboard = () => api.get('/governance/dashboard');
 export const getPermissions = () => api.get('/governance/permissions');
 
+// Alerts
+export const getAlerts = (params = {}) => api.get('/alerts', { params });
+export const getAlertsSummary = () => api.get('/alerts/summary');
+export const patchAlert = (alertId, action) => api.patch(`/alerts/${alertId}?action=${action}`);
+
+// Security
+export const getSecurityEvents = (params = {}) => api.get('/security/events', { params });
+export const getSecuritySummary = () => api.get('/security/summary');
+
+// Document Vault
+export const getVault = (params = {}) => api.get('/vault', { params });
+export const getVaultSummary = () => api.get('/vault/summary');
+export const patchVaultDocument = (docId, params = {}) => api.patch(`/vault/${docId}`, null, { params });
+
 export default api;

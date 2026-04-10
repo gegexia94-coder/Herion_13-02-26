@@ -17,6 +17,17 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - **Current**: Italy only — all workflows, routing, document logic, and service promises are strictly Italian
 - **Future**: Europe-ready architecture, but no active non-Italian support
 
+### Design System
+- **Archetype**: Swiss & High-Contrast Elevated (Italian Premium Finance)
+- **Font**: Manrope
+- **Brand Primary**: #0A192F (Deep Navy)
+- **Accent Blue**: #3B82F6 (Electric Blue Soft)
+- **Accent Palette**: Cyan #06B6D4, Lilla #8B5CF6, Coral #FF6B6B, Amber #F59E0B
+- **Background**: #F8F9FA, Surface #FFFFFF, Surface-alt #F1F3F5
+- **Navbar**: Logo-only (no text), 5 primary items, "Altro" dropdown for secondary
+- **KPIs**: Bento-style (hero card dark, supporting cards white)
+- **Dashboard Hero**: Deep navy with monumental "HERION" background text
+
 ### Key User Roles
 - **Creator**: Reserved bootstrap account with Control Room, full governance powers
 - **Admin**: System admin with governance, alerts, vault, email approval
@@ -49,38 +60,29 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - Full Document Matrix for 10 Italian practice types
 - Signature handling (P7M/CAdES, PAdES)
 - Sensitivity levels with role-based visibility
-- Output tracking, blocking logic
 
-#### Real Email Integration — Resend (Batch 7 — 2026-04-10)
-- **Resend configured** — API key in backend/.env only, never exposed
-- **Email Draft/Review/Send flow**: draft → review → approved → sent (or blocked/failed)
-- **Compliance gates**: 3 checks before any send — attachment existence, sensitivity rules, signature requirements
-- **Sensitivity blocking**: legal/confidential documents cannot be attached to emails
-- **Signature awareness**: unsigned docs that require P7M/PAdES are flagged and blocked
-- **Timeline events**: email_draft_created, email_submitted_review, email_approved, email_sent
-- **Audit events**: all email actions logged in governance audit
-- **Admin-only send**: only admin/creator can approve and send
-- **Email Center page** (`/email-center`): summary, filters, draft list, create form
-- **Password reset**: now uses Resend (real emails, not mock)
-- **Resend test mode**: emails only reach verified addresses; production domain verification needed for arbitrary recipients
+#### Real Email Integration — Resend (Batch 7)
+- Resend configured, API key in backend/.env only
+- Email Draft/Review/Send flow: draft → review → approved → sent
+- Compliance gates, sensitivity blocking, signature awareness
+- Timeline + audit events, admin-only send
+- Email Center page, password reset via Resend
 
-#### Italian Email Template System (Batch 8 — 2026-04-10)
-- **34 professional Italian templates** across 9 groups:
-  - Privati (5): missing docs, status update, reminder, blocked, dossier delivery
-  - Liberi Professionisti (5): VAT docs, F24, approval request, blocked, delivery
-  - Aziende (5): status update, delegation required, signed doc required, blocked, dossier
-  - Pratiche Bloccate (6): missing doc, delegation, approval, routing, signature, sensitive attachment
-  - Flusso Approvazione (3): requested, reminder, confirmed
-  - Flusso Delega (4): requested, under review, rejected, valid
-  - Consegna Finale (3): dossier ready, PDF report, package sent
-  - Promemoria (1): generic reminder
-  - Account e Sicurezza (2): password reset, security notice
-- **Placeholder resolution engine**: auto-populates from practice data (name, code, status, document matrix, blockers, links)
-- **Resolve endpoint** (`POST /api/emails/templates/{id}/resolve`): returns resolved subject + body + unresolved list
-- **Draft-from-template** (`POST /api/emails/draft-from-template`): one-step template → draft creation with compliance checks
-- **Frontend template UI**: tab switcher (Da Template / Manuale), group browser, template picker, practice selector, live HTML preview, unresolved placeholder overrides, and "Crea Bozza da Template" button
-- **Manual draft fallback**: original manual draft form preserved as "Manuale" tab
-- **Full integration**: template drafts follow same draft → review → approve → send flow with compliance, timeline, audit
+#### Italian Email Template System (Batch 8)
+- 34 professional Italian templates across 9 groups
+- Placeholder resolution engine from practice data
+- Resolve endpoint, draft-from-template endpoint
+- Frontend template UI with group browser, picker, live preview, override inputs
+- Manual draft fallback preserved
+
+#### UI Refactor — Product-Grade (Batch 9 — 2026-04-10)
+- **Navbar restructured**: Logo icon only, 5 primary nav items (Dashboard, Pratiche, Email, Scadenze, Governance), "Altro" dropdown for 7 secondary items, email live indicator ("Comunicazioni Attive"), user menu
+- **Dashboard hero redesigned**: Deep navy hero with monumental "HERION" background text, "Piattaforma Operativa" label, "Flusso Email Live" badge, blue CTA button
+- **KPI cards**: Bento-style grid — hero card (navy bg, white text), 3 supporting white cards with accent icons
+- **Global palette swap**: #0F4C5C → #0A192F, #5DD9C1 → #3B82F6 across all pages
+- **CSS variables updated**: New brand, accent, surface, text, border tokens
+- **Visual hierarchy improved**: More spacing, clearer sections, premium feel
+- **Follow-up toast bug fixed**: Passive fetch failures no longer trigger global toast
 
 ### Key API Endpoints
 - Auth: POST /api/auth/login, /register, /forgot-password, /reset-password
@@ -89,24 +91,24 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - Follow-Up: GET /api/follow-ups, GET /api/follow-ups/summary, PATCH /api/follow-ups/{id}
 - Template: POST /api/practices/from-template
 - Document Matrix: GET /api/documents/matrix/{id}, GET /api/documents/matrix-types, GET /api/documents/sensitivity-levels
-- Email: POST /api/emails/draft, GET /api/emails/drafts, GET/PUT /api/emails/drafts/{id}, POST .../submit-review, .../approve, .../send, GET /api/emails/summary
-- Email Templates: GET /api/emails/templates, GET /api/emails/template-groups, GET /api/emails/templates/{id}, POST /api/emails/templates/{id}/resolve, POST /api/emails/draft-from-template
+- Email: POST /api/emails/draft, GET /api/emails/drafts, POST .../submit-review, .../approve, .../send, GET /api/emails/summary
+- Email Templates: GET /api/emails/templates, GET /api/emails/template-groups, POST /api/emails/templates/{id}/resolve, POST /api/emails/draft-from-template
 - Governance: GET /api/governance/check/{id}, GET /api/governance/dashboard
-- Alerts, Vault, Catalog, Registry — unchanged
 
 ### Testing Status
-- Iteration 14: 24/24 tests passed (100%) — Email Template System complete
-- All previous iterations: 100% pass rate
+- Iteration 15: 100% pass — UI refactor verified (navbar, dashboard, palette, follow-up fix)
+- Iteration 14: 24/24 — Email template system
+- All previous: 100%
 
 ### 3rd Party Integrations
 - OpenAI GPT-5.2 — Agent orchestration (Emergent LLM Key)
 - Resend — Real email sending (API key in backend/.env)
 
 ### Remaining Backlog
-- P1: Resend domain verification for production sending to arbitrary recipients
+- P1: Resend domain verification for production sending
 - P2: Country-specific tax rules implementation
 - P2: 2FA-ready architecture
 - P2: Advanced analytics / Creator profit dashboard
 - P2: Multi-language support
 - P2: Catalog expansion to 120+ procedures
-- P2: Full attachment binary sending via Resend (currently reference-based)
+- P2: Full attachment binary sending via Resend

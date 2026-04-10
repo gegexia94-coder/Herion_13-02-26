@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import secrets
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
@@ -16,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
 import requests
+import resend
 from bson import ObjectId
 
 # Configure logging
@@ -29,6 +31,15 @@ db = client[os.environ['DB_NAME']]
 
 # JWT Config
 JWT_ALGORITHM = "HS256"
+
+# Resend Config
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+    logger.info("Resend email service configured")
+else:
+    logger.warning("RESEND_API_KEY not set — email sending will be disabled")
 
 def get_jwt_secret() -> str:
     return os.environ["JWT_SECRET"]
@@ -380,9 +391,46 @@ async def forgot_password(req: ForgotPasswordRequest):
         "created_at": datetime.now(timezone.utc).isoformat()
     })
 
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    frontend_url = os.environ.get("FRONTEND_URL", os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:3000"))
     reset_link = f"{frontend_url}/reset-password?token={token}"
-    logger.info(f"[MOCK EMAIL] Password reset link for {email}: {reset_link}")
+
+    # Send real email via Resend
+    if RESEND_API_KEY:
+        try:
+            html_content = f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <h1 style="color: #0F172A; font-size: 24px; font-weight: 700; margin: 0;">Herion</h1>
+                    <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Piattaforma operativa fiscale</p>
+                </div>
+                <h2 style="color: #0F172A; font-size: 18px; font-weight: 600;">Reimposta la tua password</h2>
+                <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+                    Hai richiesto il ripristino della password del tuo account Herion.
+                    Clicca il pulsante qui sotto per procedere.
+                </p>
+                <div style="text-align: center; margin: 28px 0;">
+                    <a href="{reset_link}" style="background-color: #0F4C5C; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                        Reimposta Password
+                    </a>
+                </div>
+                <p style="color: #94A3B8; font-size: 12px; line-height: 1.5;">
+                    Il link scade tra 1 ora. Se non hai richiesto tu il ripristino, ignora questa email.
+                </p>
+                <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+                <p style="color: #CBD5E1; font-size: 11px; text-align: center;">Herion — Gestione fiscale operativa per l'Italia</p>
+            </div>
+            """
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": SENDER_EMAIL,
+                "to": [email],
+                "subject": "Herion — Reimposta la tua password",
+                "html": html_content,
+            })
+            logger.info(f"Password reset email sent to {email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {str(e)}")
+    else:
+        logger.info(f"[EMAIL DISABLED] Password reset link for {email}: {reset_link}")
 
     return {"message": "Se l'email e registrata, riceverai un link per reimpostare la password."}
 
@@ -1160,6 +1208,11 @@ TIMELINE_EVENTS = {
     "follow_up_created": "Follow-up creato",
     "follow_up_resolved": "Follow-up risolto",
     "follow_up_overdue": "Follow-up scaduto",
+    "email_draft_created": "Bozza email creata",
+    "email_submitted_review": "Email inviata in revisione",
+    "email_approved": "Email approvata",
+    "email_sent": "Email inviata",
+    "email_send_failed": "Invio email fallito",
     "draft_prepared": "Bozza preparata",
     "risk_evaluated": "Rischio valutato",
     "documents_requested": "Documenti richiesti",
@@ -1756,6 +1809,404 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
 async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     await db.notifications.update_many({"user_id": user["id"], "read": False}, {"$set": {"read": True}})
     return {"message": "Tutte le notifiche segnate come lette"}
+
+
+# ========================
+# EMAIL DRAFT / REVIEW / SEND SYSTEM
+# ========================
+
+EMAIL_STATUSES = {
+    "draft": "Bozza",
+    "review": "In revisione",
+    "approved": "Approvata",
+    "sending": "In invio",
+    "sent": "Inviata",
+    "failed": "Invio fallito",
+    "blocked": "Bloccata",
+}
+
+
+async def check_email_attachment_compliance(practice_id: str, attachment_doc_keys: list) -> dict:
+    """Check whether attachments are compliant with document matrix, signature, and sensitivity rules."""
+    issues = []
+    blocked = False
+    warnings = []
+
+    matrix_result = await get_document_matrix_for_practice(practice_id)
+
+    for doc_key in attachment_doc_keys:
+        doc = await db.documents.find_one({"practice_id": practice_id, "doc_key": doc_key}, {"_id": 0})
+        if not doc:
+            doc = await db.documents.find_one({"practice_id": practice_id, "id": doc_key}, {"_id": 0})
+        if not doc:
+            issues.append({"doc_key": doc_key, "issue": "not_found", "label": f"Documento non trovato: {doc_key}", "blocking": True})
+            blocked = True
+            continue
+
+        # Check sensitivity
+        sensitivity = doc.get("sensitivity_level") or "standard"
+        # Also check from matrix
+        if matrix_result.get("has_matrix"):
+            for req in matrix_result.get("required", []) + matrix_result.get("conditional", []):
+                if req.get("doc_key") == doc_key:
+                    sensitivity = req.get("sensitivity", sensitivity)
+                    break
+
+        sens_config = SENSITIVITY_LEVELS.get(sensitivity, SENSITIVITY_LEVELS["standard"])
+        if not sens_config.get("sending_allowed"):
+            issues.append({
+                "doc_key": doc_key,
+                "issue": "sensitivity_blocked",
+                "label": f"Documento riservato non inviabile: {doc.get('original_name', doc_key)}",
+                "sensitivity": sensitivity,
+                "sensitivity_label": sens_config["label"],
+                "blocking": True,
+            })
+            blocked = True
+            continue
+
+        # Check signature requirement
+        if matrix_result.get("has_matrix"):
+            for req in matrix_result.get("required", []) + matrix_result.get("conditional", []):
+                if req.get("doc_key") == doc_key and req.get("signed_required"):
+                    fn = (doc.get("filename") or doc.get("original_name") or "").lower()
+                    is_signed = fn.endswith(".p7m") or doc.get("is_signed", False)
+                    if not is_signed:
+                        issues.append({
+                            "doc_key": doc_key,
+                            "issue": "signature_missing",
+                            "label": f"Firma digitale mancante: {doc.get('original_name', doc_key)}",
+                            "blocking": True,
+                        })
+                        blocked = True
+                    break
+
+        # Check file format
+        fn = (doc.get("filename") or doc.get("original_name") or "").lower()
+        if fn.endswith(".p7m"):
+            warnings.append(f"Allegato P7M: {doc.get('original_name', doc_key)} — il destinatario deve poter aprire buste crittografiche.")
+
+    return {
+        "compliant": not blocked,
+        "issues": issues,
+        "warnings": warnings,
+        "checked_count": len(attachment_doc_keys),
+    }
+
+
+class EmailDraftRequest(BaseModel):
+    practice_id: str
+    recipient_email: EmailStr
+    recipient_name: Optional[str] = None
+    subject: str
+    body_html: str
+    attachment_doc_keys: Optional[List[str]] = []
+    email_type: str = "practice_communication"
+
+
+@api_router.post("/emails/draft")
+async def create_email_draft(req: EmailDraftRequest, user: dict = Depends(get_current_user)):
+    """Create an email draft with compliance checks before it can be sent."""
+    practice = await db.practices.find_one({"id": req.practice_id}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    # Check attachment compliance
+    compliance = await check_email_attachment_compliance(req.practice_id, req.attachment_doc_keys or [])
+
+    now = datetime.now(timezone.utc).isoformat()
+    draft_id = str(uuid.uuid4())
+    status = "blocked" if not compliance["compliant"] else "draft"
+
+    draft = {
+        "id": draft_id,
+        "practice_id": req.practice_id,
+        "created_by": user["id"],
+        "created_by_name": user.get("name", user.get("email")),
+        "recipient_email": req.recipient_email,
+        "recipient_name": req.recipient_name,
+        "subject": req.subject,
+        "body_html": req.body_html,
+        "attachment_doc_keys": req.attachment_doc_keys or [],
+        "email_type": req.email_type,
+        "status": status,
+        "status_label": EMAIL_STATUSES[status],
+        "compliance": compliance,
+        "resend_email_id": None,
+        "sent_at": None,
+        "reviewed_by": None,
+        "reviewed_at": None,
+        "approved_by": None,
+        "approved_at": None,
+        "send_error": None,
+        "practice_label": practice.get("practice_type_label", ""),
+        "client_name": practice.get("client_name", ""),
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.email_drafts.insert_one(draft)
+
+    await add_timeline_event(req.practice_id, user["id"], "email_draft_created", {
+        "draft_id": draft_id,
+        "recipient": req.recipient_email,
+        "subject": req.subject,
+        "status": status,
+        "attachment_count": len(req.attachment_doc_keys or []),
+    })
+
+    await log_audit_event(user["id"], user.get("role", "user"), "email_draft_created", "email", draft_id,
+        reason=f"Bozza email creata per {req.recipient_email}",
+        severity="info", practice_id=req.practice_id,
+        details={"subject": req.subject, "status": status, "attachments": len(req.attachment_doc_keys or [])})
+
+    draft.pop("_id", None)
+    return {"message": f"Bozza {'creata' if status == 'draft' else 'bloccata per non conformita'}", "draft": draft}
+
+
+@api_router.get("/emails/drafts")
+async def get_email_drafts(user: dict = Depends(get_current_user), practice_id: Optional[str] = None, status: Optional[str] = None):
+    """Get email drafts. Admin/Creator see all, users see own."""
+    role = user.get("role", "user")
+    query = {} if role in ["admin", "creator"] else {"created_by": user["id"]}
+    if practice_id:
+        query["practice_id"] = practice_id
+    if status:
+        query["status"] = status
+    drafts = await db.email_drafts.find(query, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    return drafts
+
+
+@api_router.get("/emails/drafts/{draft_id}")
+async def get_email_draft(draft_id: str, user: dict = Depends(get_current_user)):
+    """Get a single email draft with full details."""
+    draft = await db.email_drafts.find_one({"id": draft_id}, {"_id": 0})
+    if not draft:
+        raise HTTPException(status_code=404, detail="Bozza non trovata")
+    return draft
+
+
+@api_router.put("/emails/drafts/{draft_id}")
+async def update_email_draft(draft_id: str, req: EmailDraftRequest, user: dict = Depends(get_current_user)):
+    """Update an email draft (only in draft/blocked status)."""
+    draft = await db.email_drafts.find_one({"id": draft_id}, {"_id": 0})
+    if not draft:
+        raise HTTPException(status_code=404, detail="Bozza non trovata")
+    if draft["status"] not in ["draft", "blocked"]:
+        raise HTTPException(status_code=400, detail="Solo le bozze possono essere modificate")
+
+    compliance = await check_email_attachment_compliance(req.practice_id, req.attachment_doc_keys or [])
+    new_status = "blocked" if not compliance["compliant"] else "draft"
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+        "recipient_email": req.recipient_email,
+        "recipient_name": req.recipient_name,
+        "subject": req.subject,
+        "body_html": req.body_html,
+        "attachment_doc_keys": req.attachment_doc_keys or [],
+        "compliance": compliance,
+        "status": new_status,
+        "status_label": EMAIL_STATUSES[new_status],
+        "updated_at": now,
+    }})
+
+    return {"message": "Bozza aggiornata", "status": new_status}
+
+
+@api_router.post("/emails/drafts/{draft_id}/submit-review")
+async def submit_email_for_review(draft_id: str, user: dict = Depends(get_current_user)):
+    """Submit a draft for admin/creator review."""
+    draft = await db.email_drafts.find_one({"id": draft_id}, {"_id": 0})
+    if not draft:
+        raise HTTPException(status_code=404, detail="Bozza non trovata")
+    if draft["status"] != "draft":
+        raise HTTPException(status_code=400, detail="Solo le bozze in stato 'draft' possono essere inviate in revisione")
+
+    # Re-check compliance
+    compliance = await check_email_attachment_compliance(draft["practice_id"], draft.get("attachment_doc_keys", []))
+    if not compliance["compliant"]:
+        await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+            "status": "blocked", "status_label": EMAIL_STATUSES["blocked"],
+            "compliance": compliance, "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+        return {"message": "Bozza bloccata: allegati non conformi", "compliance": compliance}
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+        "status": "review", "status_label": EMAIL_STATUSES["review"], "updated_at": now,
+    }})
+
+    await add_timeline_event(draft["practice_id"], user["id"], "email_submitted_review", {
+        "draft_id": draft_id, "subject": draft["subject"],
+    })
+
+    await create_alert("email_review_requested", "Email in attesa di revisione",
+        f"Una bozza email per la pratica {draft.get('client_name', '')} richiede revisione.",
+        practice_id=draft["practice_id"], user_id=user["id"],
+        next_action="Revisiona e approva la bozza email", visibility="admin")
+
+    return {"message": "Bozza inviata in revisione"}
+
+
+@api_router.post("/emails/drafts/{draft_id}/approve")
+async def approve_email_draft(draft_id: str, user: dict = Depends(get_current_user)):
+    """Approve an email draft (admin/creator only)."""
+    role = user.get("role", "user")
+    if role not in ["admin", "creator"]:
+        raise HTTPException(status_code=403, detail="Solo admin e Creator possono approvare email")
+
+    draft = await db.email_drafts.find_one({"id": draft_id}, {"_id": 0})
+    if not draft:
+        raise HTTPException(status_code=404, detail="Bozza non trovata")
+    if draft["status"] not in ["review", "draft"]:
+        raise HTTPException(status_code=400, detail="Solo le bozze in revisione o draft possono essere approvate")
+
+    # Final compliance check
+    compliance = await check_email_attachment_compliance(draft["practice_id"], draft.get("attachment_doc_keys", []))
+    if not compliance["compliant"]:
+        await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+            "status": "blocked", "status_label": EMAIL_STATUSES["blocked"],
+            "compliance": compliance, "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+        return {"message": "Approvazione rifiutata: allegati non conformi", "compliance": compliance}
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+        "status": "approved", "status_label": EMAIL_STATUSES["approved"],
+        "approved_by": user["id"], "approved_at": now, "compliance": compliance, "updated_at": now,
+    }})
+
+    await add_timeline_event(draft["practice_id"], user["id"], "email_approved", {
+        "draft_id": draft_id, "subject": draft["subject"], "approved_by_role": role,
+    })
+
+    await log_audit_event(user["id"], role, "email_approved", "email", draft_id,
+        reason=f"Email approvata per {draft['recipient_email']}",
+        severity="medium", practice_id=draft["practice_id"])
+
+    return {"message": "Email approvata e pronta per l'invio"}
+
+
+@api_router.post("/emails/drafts/{draft_id}/send")
+async def send_email_draft(draft_id: str, user: dict = Depends(get_current_user)):
+    """Send an approved email via Resend."""
+    role = user.get("role", "user")
+    if role not in ["admin", "creator"]:
+        raise HTTPException(status_code=403, detail="Solo admin e Creator possono inviare email")
+
+    if not RESEND_API_KEY:
+        raise HTTPException(status_code=503, detail="Servizio email non configurato")
+
+    draft = await db.email_drafts.find_one({"id": draft_id}, {"_id": 0})
+    if not draft:
+        raise HTTPException(status_code=404, detail="Bozza non trovata")
+    if draft["status"] != "approved":
+        raise HTTPException(status_code=400, detail=f"Solo le email approvate possono essere inviate (stato attuale: {draft['status_label']})")
+
+    # Final compliance gate
+    compliance = await check_email_attachment_compliance(draft["practice_id"], draft.get("attachment_doc_keys", []))
+    if not compliance["compliant"]:
+        await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+            "status": "blocked", "status_label": EMAIL_STATUSES["blocked"],
+            "compliance": compliance, "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+        return {"message": "Invio bloccato: allegati non conformi", "compliance": compliance}
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+        "status": "sending", "status_label": EMAIL_STATUSES["sending"], "updated_at": now,
+    }})
+
+    # Build the full HTML email
+    wrapped_html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #0F172A; font-size: 22px; font-weight: 700; margin: 0;">Herion</h1>
+            <p style="color: #64748B; font-size: 12px; margin-top: 2px;">Piattaforma operativa fiscale — Italia</p>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px;">
+            {draft['body_html']}
+        </div>
+        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #E2E8F0; text-align: center;">
+            <p style="color: #CBD5E1; font-size: 10px;">
+                Questa email e stata inviata tramite Herion. Per domande, contatta il tuo referente.
+            </p>
+        </div>
+    </div>
+    """
+
+    # Note on attachments: Resend supports attachments but requires file content.
+    # For now we send the email body and note which docs are referenced.
+    # Full attachment binary sending can be added when file storage supports it.
+    attachment_note = ""
+    if draft.get("attachment_doc_keys"):
+        doc_labels = []
+        for dk in draft["attachment_doc_keys"]:
+            doc = await db.documents.find_one({"practice_id": draft["practice_id"], "$or": [{"doc_key": dk}, {"id": dk}]}, {"_id": 0, "original_name": 1})
+            doc_labels.append(doc.get("original_name", dk) if doc else dk)
+        attachment_note = "<p style='color: #64748B; font-size: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #E2E8F0;'><strong>Documenti allegati di riferimento:</strong> " + ", ".join(doc_labels) + "</p>"
+        wrapped_html = wrapped_html.replace("</div>\n        <div style=\"margin-top: 20px;", attachment_note + "</div>\n        <div style=\"margin-top: 20px;")
+
+    try:
+        email_result = await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [draft["recipient_email"]],
+            "subject": draft["subject"],
+            "html": wrapped_html,
+        })
+        resend_id = email_result.get("id") if isinstance(email_result, dict) else str(email_result)
+
+        await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+            "status": "sent", "status_label": EMAIL_STATUSES["sent"],
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "resend_email_id": resend_id,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+
+        await add_timeline_event(draft["practice_id"], user["id"], "email_sent", {
+            "draft_id": draft_id, "recipient": draft["recipient_email"],
+            "subject": draft["subject"], "resend_id": resend_id,
+            "attachment_count": len(draft.get("attachment_doc_keys", [])),
+        })
+
+        await log_audit_event(user["id"], role, "email_sent", "email", draft_id,
+            reason=f"Email inviata a {draft['recipient_email']}",
+            severity="medium", practice_id=draft["practice_id"],
+            details={"resend_id": resend_id, "subject": draft["subject"]})
+
+        logger.info(f"Email sent: draft={draft_id}, resend_id={resend_id}")
+        return {"message": "Email inviata con successo", "resend_id": resend_id, "status": "sent"}
+
+    except Exception as e:
+        error_msg = str(e)
+        await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+            "status": "failed", "status_label": EMAIL_STATUSES["failed"],
+            "send_error": error_msg, "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+
+        await log_audit_event(user["id"], role, "email_send_failed", "email", draft_id,
+            reason=f"Invio fallito: {error_msg[:100]}",
+            severity="high", practice_id=draft["practice_id"])
+
+        logger.error(f"Email send failed: draft={draft_id}, error={error_msg}")
+        return {"message": f"Invio fallito: {error_msg}", "status": "failed"}
+
+
+@api_router.get("/emails/summary")
+async def get_email_summary(user: dict = Depends(get_current_user)):
+    """Get email draft summary counts."""
+    role = user.get("role", "user")
+    base_query = {} if role in ["admin", "creator"] else {"created_by": user["id"]}
+    total = await db.email_drafts.count_documents(base_query)
+    draft = await db.email_drafts.count_documents({**base_query, "status": "draft"})
+    review = await db.email_drafts.count_documents({**base_query, "status": "review"})
+    approved = await db.email_drafts.count_documents({**base_query, "status": "approved"})
+    sent = await db.email_drafts.count_documents({**base_query, "status": "sent"})
+    failed = await db.email_drafts.count_documents({**base_query, "status": "failed"})
+    blocked = await db.email_drafts.count_documents({**base_query, "status": "blocked"})
+    return {"total": total, "draft": draft, "review": review, "approved": approved, "sent": sent, "failed": failed, "blocked": blocked}
+
 
 # ========================
 # DELEGATION SYSTEM
@@ -4430,6 +4881,9 @@ async def startup():
     await db.follow_up_items.create_index("status")
     await db.follow_up_items.create_index("urgency")
     await db.follow_up_items.create_index("rule_key")
+    await db.email_drafts.create_index("practice_id")
+    await db.email_drafts.create_index("status")
+    await db.email_drafts.create_index("created_by")
     await db.authority_registry.create_index("registry_id", unique=True)
     catalog_count = await db.practice_catalog.count_documents({})
     if catalog_count == 0:

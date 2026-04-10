@@ -131,4 +131,14 @@ export const getDocumentMatrix = (practiceId) => api.get(`/documents/matrix/${pr
 export const getDocumentMatrixTypes = () => api.get('/documents/matrix-types');
 export const getSensitivityLevels = () => api.get('/documents/sensitivity-levels');
 
+// Email Draft / Review / Send
+export const createEmailDraft = (data) => api.post('/emails/draft', data);
+export const getEmailDrafts = (params = {}) => api.get('/emails/drafts', { params });
+export const getEmailDraft = (draftId) => api.get(`/emails/drafts/${draftId}`);
+export const updateEmailDraft = (draftId, data) => api.put(`/emails/drafts/${draftId}`, data);
+export const submitEmailForReview = (draftId) => api.post(`/emails/drafts/${draftId}/submit-review`);
+export const approveEmailDraft = (draftId) => api.post(`/emails/drafts/${draftId}/approve`);
+export const sendEmailDraft = (draftId) => api.post(`/emails/drafts/${draftId}/send`);
+export const getEmailSummary = () => api.get('/emails/summary');
+
 export default api;

@@ -24,6 +24,7 @@ import GovernanceDashboardPage from "@/pages/GovernanceDashboardPage";
 import AlertCenterPage from "@/pages/AlertCenterPage";
 import DocumentVaultPage from "@/pages/DocumentVaultPage";
 import FollowUpPage from "@/pages/FollowUpPage";
+import EmailCenterPage from "@/pages/EmailCenterPage";
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
             <Route path="/alerts" element={<AlertCenterPage />} />
             <Route path="/vault" element={<DocumentVaultPage />} />
             <Route path="/follow-ups" element={<FollowUpPage />} />
+            <Route path="/email-center" element={<EmailCenterPage />} />
             <Route path="/activity-log" element={<ActivityLogPage />} />
             <Route path="/creator" element={<CreatorControlRoom />} />
             <Route path="/profile" element={<ProfileSettingsPage />} />

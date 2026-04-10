@@ -1,110 +1,106 @@
 {
+  "project_name": "Herion - AI Italian Tax Management",
   "theme": "light",
-  "archetype": "1 (Organic & Earthy / Trust) with 5 (Jewel & Luxury) influence",
-  "brand_name": "Herion",
-  "language": "it",
-  "typography": {
-    "font_family_primary": "Manrope",
-    "font_family_secondary": "Manrope",
-    "headings": {
-      "font_weight": "700",
-      "letter_spacing": "tracking-tight",
-      "color": "text-slate-900"
+  "archetype": "4 - Swiss & High-Contrast (Elevated for Italian Premium Finance)",
+  "design_philosophy": "Premium, mature, ordered, innovative, and memorable. A serious product with identity. Not a generic SaaS template. Focus on strong typography, breathing room, and clear hierarchy.",
+  "colors": {
+    "background": {
+      "base": "#F8F9FA",
+      "surface": "#FFFFFF",
+      "surface_alt": "#F1F3F5",
+      "surface_hover": "#E9ECEF"
     },
-    "body": {
-      "font_weight": "400",
-      "color": "text-slate-600",
-      "line_height": "leading-relaxed"
+    "brand": {
+      "primary": "#0A192F", 
+      "primary_hover": "#112240",
+      "deep_petrol": "#0B243B",
+      "navy_elegante": "#0F172A"
+    },
+    "accent": {
+      "electric_blue_soft": "#3B82F6",
+      "cyan_controllato": "#06B6D4",
+      "lilla_tecnico": "#8B5CF6",
+      "coral_sofisticato": "#FF6B6B",
+      "ambra_moderna": "#F59E0B"
+    },
+    "text": {
+      "primary": "#0A192F",
+      "secondary": "#475569",
+      "muted": "#94A3B8",
+      "inverse": "#FFFFFF"
+    },
+    "border": {
+      "subtle": "#E2E8F0",
+      "focus": "#3B82F6"
     }
   },
-  "colors": {
-    "primary": "#0F4C5C",
-    "accent": "#5DD9C1",
-    "accent_gold": "#C6A96B",
-    "background": "#F7FAFC",
-    "surface": "#FFFFFF",
-    "text_main": "#0F172A",
-    "text_secondary": "#475569",
-    "border": "#E2E8F0"
-  },
-  "spacing_and_layout": {
-    "container_padding": "p-8 md:p-12",
-    "gap": "gap-6 md:gap-8",
-    "border_radius": "rounded-2xl",
-    "shadows": {
-      "default": "shadow-[0_4px_20px_rgba(15,23,42,0.05)]",
-      "hover": "shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
+  "typography": {
+    "font_family": {
+      "primary": "'Manrope', sans-serif"
     },
-    "navbar": "sticky top-4 mx-4 md:mx-auto max-w-6xl rounded-full backdrop-blur-xl bg-white/80 border border-slate-200/50 shadow-sm z-50",
-    "general": "Spacious layout, clear hierarchy, minimal visual noise, generous white space."
+    "rules": {
+      "h1": "text-4xl sm:text-5xl font-extrabold tracking-tighter text-[#0A192F]",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-[#0B243B]",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-tight",
+      "body": "text-base font-medium leading-relaxed",
+      "kpi_value": "text-4xl sm:text-5xl font-black tracking-tighter text-[#0A192F]",
+      "kpi_label": "text-xs font-bold uppercase tracking-[0.2em] text-[#475569]"
+    }
   },
-  "motion": {
-    "hover": "transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg",
-    "entrance": "animate-fade-in-up",
-    "page_transition": "animate-fade-in"
+  "layout_and_spacing": {
+    "general": "Generous spacing. p-6 to p-8 for cards. gap-6 to gap-8 for grids.",
+    "kpi_grid": "Bento-style grid. 1 hero KPI (larger, deep navy background), others smaller. Avoid uniform grids.",
+    "background_element": "Massive background typographic element reading 'HERION'. Fixed position, behind content, opacity-5 (text-slate-200/40), monumental, pyramidal layout. Selectable: none, pointer-events: none.",
+    "email_status": "Small, live operational indicator (pulsing dot + text 'Flusso Email Live') positioned in the top right or navbar, enhancing reliability."
   },
   "components": {
-    "buttons": {
-      "primary": "bg-[#0F4C5C] text-white hover:bg-[#0b3844] rounded-full px-6 py-2.5 font-medium transition-all shadow-sm hover:shadow-md",
-      "secondary": "bg-white text-[#0F172A] border border-[#E2E8F0] hover:border-[#0F4C5C] hover:text-[#0F4C5C] rounded-full px-6 py-2.5 font-medium transition-all",
-      "accent": "bg-[#5DD9C1] text-[#0F4C5C] hover:bg-[#4bc2ab] rounded-full px-6 py-2.5 font-semibold transition-all shadow-sm"
+    "navbar": {
+      "logo": "Clean, well-aligned icon only. REMOVE the word 'Herion'.",
+      "primary_links": ["Dashboard", "Pratiche", "Centro Invii/Email", "Scadenze", "Governance"],
+      "dropdown_name": "Altro",
+      "dropdown_links": ["Catalogo", "Archivio", "Follow-Up", "Allerte", "Attività", "Herion AI"],
+      "styling": "Crystal Glassmorphism (bg-white/70 backdrop-blur-xl border-b border-white/40) or crisp solid white with 1px subtle border."
     },
     "cards": {
-      "base": "bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
+      "style": "Neumorphic tactile edge: white background, subtle ambient shadow (shadow-sm), 1px border (border-slate-100). Hover state: slight lift, shadow-md.",
+      "hierarchy": "Macro-sections must feel distinct. Use different background tints (e.g., surface_alt for secondary cards) or varying border weights."
     },
-    "inputs": {
-      "base": "w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none transition-all"
+    "buttons": {
+      "primary": "bg-[#0A192F] text-white hover:bg-[#112240] transition-colors rounded-md px-6 py-2 font-semibold",
+      "accent": "bg-[#3B82F6] text-white hover:bg-[#2563EB] shadow-[0_0_15px_rgba(59,130,246,0.3)]",
+      "secondary": "bg-[#F1F3F5] text-[#0A192F] hover:bg-[#E2E8F0]"
     }
   },
-  "media": {
-    "image_urls": [
-      {
-        "url": "https://images.unsplash.com/photo-1771678040857-51d00a11be7a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMG1vZGVybiUyMG9mZmljZSUyMGludGVyaW9yfGVufDB8fHx8MTc3NTYzNjk1MHww&ixlib=rb-4.1.0&q=85",
-        "description": "Modern white interior with large windows and columns",
-        "category": "auth_background",
-        "usage": "Use as the background image for Login, Register, Forgot/Reset Password pages. Add a white/70 backdrop-blur overlay for readability."
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1769398425402-d13820fe474b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2ODh8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHRlYWwlMjB3YXZlc3xlbnwwfHx8fDE3NzU2MzY5NDR8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Abstract wavy lines in muted earth tones and blues",
-        "category": "ai_banner",
-        "usage": "Use as the background or decorative element for the AI feature banner in the Dashboard."
-      },
-      {
-        "url": "https://images.pexels.com/photos/36645466/pexels-photo-36645466.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "A confident businessman posing and smiling in a modern office corridor.",
-        "category": "user_avatar",
-        "usage": "Use as the user profile image in the navbar and Profile page."
-      }
-    ]
+  "icons": {
+    "library": "lucide-react",
+    "usage": "Use stroke-width 1.5 for a premium, delicate feel. Avoid heavy icons."
   },
-  "pages_and_features": {
-    "auth": {
-      "login": "Minimalist form on the right, premium architectural image on the left. Italian text.",
-      "register": "Multi-step or grid-based form (Nome, Cognome, Email, Telefono, Data di Nascita, Nazione, Città, Indirizzo, Tipo di Cliente, P.IVA, Codice Fiscale, Ragione Sociale).",
-      "forgot_password": "Clean, reassuring UI to request reset link.",
-      "reset_password": "Secure input for new password."
-    },
-    "dashboard": {
-      "layout": "Grid layout with stats cards (Pratiche, Messaggi, etc.), quick actions, recent practices table.",
-      "ai_banner": "Visually distinct block introducing the AI assistant, featuring the abstract teal waves image."
-    },
-    "practice_management": {
-      "list": "Elegant data table with filters, status badges (using primary/accent colors).",
-      "detail": "Comprehensive view with tabs. Categorized documents grid, Activity log timeline. PDF download prominent CTA.",
-      "workflow": "5-step AI pipeline visualization: Analisi -> Validazione -> Conformità -> Documento -> Comunicazione. Use horizontal or vertical progression with active states."
-    },
-    "profile": "Clean settings layout to view/edit personal info, change password."
+  "testing": {
+    "attributes": "ALL interactive elements must have data-testid in kebab-case."
   },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1737138778667-3b4b6e7b238b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBlbGVnYW50JTIwcHJvZmlsZSUyMHBpY3R1cmV8ZW58MHx8fHwxNzc1ODUyNjkzfDA&ixlib=rb-4.1.0&q=85",
+      "category": "user_avatar",
+      "description": "Elegant professional man"
+    },
+    {
+      "url": "https://images.pexels.com/photos/36753138/pexels-photo-36753138.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "category": "user_avatar_female",
+      "description": "Elegant professional woman"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1770009971150-f50bc7d373a4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGdlb21ldHJpYyUyMGFyY2hpdGVjdHVyYWwlMjBsaW5lcyUyMGxpZ2h0fGVufDB8fHx8MTc3NTg1MjY5Mnww&ixlib=rb-4.1.0&q=85",
+      "category": "abstract_texture",
+      "description": "Abstract architectural shapes with sky visible (can be used for accent banners or login background)"
+    }
+  ],
   "instructions_to_main_agent": [
-    "Use Italian language for ALL UI text (e.g., 'Accedi', 'Registrati', 'Dashboard', 'Pratiche', 'Profilo', 'Esci').",
-    "Use Manrope font for all text. Import it from Google Fonts.",
-    "Implement the floating premium navbar. It should be sticky, rounded-full, with backdrop-blur and a subtle border.",
-    "Do NOT use generic blue/purple gradients. Stick strictly to the defined teal (#0F4C5C), emerald (#5DD9C1), and gold (#C6A96B) palette.",
-    "Avoid the 'playful startup' look. The UI must feel like an exclusive European financial tool (Swiss/Milan design influence).",
-    "Add 'data-testid' attributes to all interactive and key informational elements (e.g., data-testid='login-submit-btn').",
-    "Use lucide-react or @phosphor-icons/react for premium-looking icons. Keep stroke width thin (e.g., 1.5) for elegance.",
-    "Ensure generous padding inside cards and form elements (e.g., p-6 or p-8).",
-    "Build the 5-agent pipeline visualization using clean CSS/Tailwind steps, utilizing the gold or emerald accent for completed/active steps."
+    "Implement a premium LIGHT theme using Manrope font.",
+    "For the massive background typography 'herion-logo', use absolute positioning, very large font size (e.g. text-[20vw] or huge SVG), tracking-widest, text-slate-100/50, pointer-events-none, fixed to the background. Make it look architectural/pyramidal.",
+    "In the Navbar, DO NOT render the text 'Herion'. Only render the SVG/Lucide logo. Follow the exact primary and dropdown links provided.",
+    "Add a small 'Email Live' operational status indicator in the top right. Use a pulsing green or electric blue dot with 'Comunicazioni Attive'.",
+    "KPI Cards must not be all identical. Make the primary KPI (e.g. Total Practices) visually distinct (e.g., Deep Petrol background with white text), and the others white with subtle borders.",
+    "Apply 'data-testid' to all interactive elements."
   ]
 }

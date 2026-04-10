@@ -442,9 +442,10 @@ function TemplateDraftFlow({ onCreated }) {
                 className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-xs text-[#0F172A] bg-white"
                 data-testid="template-practice-select">
                 <option value="">Seleziona pratica...</option>
-                {practices.map(p => (
-                  <option key={p.id} value={p.id}>{p.client_name} — {p.practice_type_label}</option>
-                ))}
+                {practices.map(p => {
+                  const label = `${p.client_name || ''} - ${p.practice_type_label || ''}`;
+                  return <option key={p.id} value={p.id}>{label}</option>;
+                })}
               </select>
             </div>
             <div>
@@ -590,9 +591,10 @@ function ManualDraftForm({ onCreated }) {
             className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#0F172A] bg-white"
             data-testid="manual-practice-select">
             <option value="">Seleziona pratica...</option>
-            {practices.map(p => (
-              <option key={p.id} value={p.id}>{p.client_name} — {p.practice_type_label}</option>
-            ))}
+            {practices.map(p => {
+              const label = `${p.client_name || ''} - ${p.practice_type_label || ''}`;
+              return <option key={p.id} value={p.id}>{label}</option>;
+            })}
           </select>
         </div>
         <div>

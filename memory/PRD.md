@@ -64,6 +64,24 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - **Password reset**: now uses Resend (real emails, not mock)
 - **Resend test mode**: emails only reach verified addresses; production domain verification needed for arbitrary recipients
 
+#### Italian Email Template System (Batch 8 — 2026-04-10)
+- **34 professional Italian templates** across 9 groups:
+  - Privati (5): missing docs, status update, reminder, blocked, dossier delivery
+  - Liberi Professionisti (5): VAT docs, F24, approval request, blocked, delivery
+  - Aziende (5): status update, delegation required, signed doc required, blocked, dossier
+  - Pratiche Bloccate (6): missing doc, delegation, approval, routing, signature, sensitive attachment
+  - Flusso Approvazione (3): requested, reminder, confirmed
+  - Flusso Delega (4): requested, under review, rejected, valid
+  - Consegna Finale (3): dossier ready, PDF report, package sent
+  - Promemoria (1): generic reminder
+  - Account e Sicurezza (2): password reset, security notice
+- **Placeholder resolution engine**: auto-populates from practice data (name, code, status, document matrix, blockers, links)
+- **Resolve endpoint** (`POST /api/emails/templates/{id}/resolve`): returns resolved subject + body + unresolved list
+- **Draft-from-template** (`POST /api/emails/draft-from-template`): one-step template → draft creation with compliance checks
+- **Frontend template UI**: tab switcher (Da Template / Manuale), group browser, template picker, practice selector, live HTML preview, unresolved placeholder overrides, and "Crea Bozza da Template" button
+- **Manual draft fallback**: original manual draft form preserved as "Manuale" tab
+- **Full integration**: template drafts follow same draft → review → approve → send flow with compliance, timeline, audit
+
 ### Key API Endpoints
 - Auth: POST /api/auth/login, /register, /forgot-password, /reset-password
 - Practices: GET/POST /api/practices, GET /api/practices/{id}, POST /api/practices/{id}/submit, /approve
@@ -72,11 +90,12 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - Template: POST /api/practices/from-template
 - Document Matrix: GET /api/documents/matrix/{id}, GET /api/documents/matrix-types, GET /api/documents/sensitivity-levels
 - Email: POST /api/emails/draft, GET /api/emails/drafts, GET/PUT /api/emails/drafts/{id}, POST .../submit-review, .../approve, .../send, GET /api/emails/summary
+- Email Templates: GET /api/emails/templates, GET /api/emails/template-groups, GET /api/emails/templates/{id}, POST /api/emails/templates/{id}/resolve, POST /api/emails/draft-from-template
 - Governance: GET /api/governance/check/{id}, GET /api/governance/dashboard
 - Alerts, Vault, Catalog, Registry — unchanged
 
 ### Testing Status
-- Iteration 13: 20/20 tests passed (100%) — Resend email complete
+- Iteration 14: 24/24 tests passed (100%) — Email Template System complete
 - All previous iterations: 100% pass rate
 
 ### 3rd Party Integrations

@@ -83,8 +83,8 @@ export default function CatalogPage() {
     try {
       const res = await getCatalog();
       setCatalog(res.data);
-    } catch {
-      toast.error('Errore nel caricamento del catalogo');
+    } catch (e) {
+      console.warn('Catalog fetch failed:', e?.message);
     } finally {
       setLoading(false);
     }

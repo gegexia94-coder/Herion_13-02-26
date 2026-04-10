@@ -64,7 +64,7 @@ export default function DeadlineDashboardPage() {
     try {
       const res = await getDeadlines();
       setData(res.data);
-    } catch { toast.error('Errore nel caricamento delle scadenze'); }
+    } catch (e) { console.warn('Deadlines fetch failed:', e?.message); }
     finally { setLoading(false); }
   };
 

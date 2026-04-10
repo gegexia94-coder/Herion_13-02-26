@@ -55,8 +55,7 @@ export default function PracticesListPage() {
       const response = await getPractices();
       setPractices(response.data);
     } catch (error) {
-      console.error('Error loading practices:', error);
-      toast.error('Errore nel caricamento delle pratiche');
+      console.warn('Practices fetch failed:', error?.message);
     } finally {
       setLoading(false);
     }

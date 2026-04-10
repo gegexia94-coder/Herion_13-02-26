@@ -541,6 +541,96 @@ async def get_registry_entry(registry_id: str, user: dict = Depends(get_current_
         raise HTTPException(status_code=404, detail="Ente non trovato nel registro")
     return entry
 
+
+
+# ========================
+# PRIORITY ENGINE
+# ========================
+
+PRIORITY_LEVELS = {
+    "low": {"label": "Bassa", "order": 0},
+    "normal": {"label": "Normale", "order": 1},
+    "high": {"label": "Alta", "order": 2},
+    "urgent": {"label": "Urgente", "order": 3},
+}
+
+
+def evaluate_practice_priority(practice: dict) -> str:
+    """Calculate practice priority from real conditions. Returns priority level string."""
+    status = practice.get("status", "draft")
+    risk = practice.get("risk_level")
+    deadline_str = practice.get("deadline")
+    updated_str = practice.get("updated_at")
+    now = datetime.now(timezone.utc)
+
+    score = 1  # normal baseline
+
+    # Rule A: Deadline proximity
+    if deadline_str:
+        try:
+            dl = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
+            if dl.tzinfo is None:
+                dl = dl.replace(tzinfo=timezone.utc)
+            days_left = (dl - now).total_seconds() / 86400
+            if days_left < 0:
+                score = max(score, 3)  # passed → urgent
+            elif days_left < 3:
+                score = max(score, 2)  # <3 days → high
+            elif days_left < 7:
+                score = max(score, 1)  # <7 days → normal
+        except (ValueError, TypeError):
+            pass
+
+    # Rule B: Status-based
+    if status == "waiting_approval":
+        score = max(score, 2)
+    elif status == "failed":
+        score = max(score, 2)
+    elif status == "escalated":
+        score = max(score, 3)
+    elif status == "blocked":
+        score = max(score, 2)
+
+    # Rule C: Risk interaction
+    if risk == "high":
+        score = max(score, 2)
+        if status == "waiting_approval":
+            score = 3  # high risk + waiting → urgent
+
+    # Rule D: Stale practices (no update for >7 days while processing)
+    if updated_str and status in ("in_progress", "processing"):
+        try:
+            upd = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+            if upd.tzinfo is None:
+                upd = upd.replace(tzinfo=timezone.utc)
+            days_stale = (now - upd).total_seconds() / 86400
+            if days_stale > 7:
+                score = max(score, 2)
+        except (ValueError, TypeError):
+            pass
+
+    # Rule E: Completed → low
+    if status in ("completed", "submitted"):
+        score = 0
+
+    levels = ["low", "normal", "high", "urgent"]
+    return levels[min(score, 3)]
+
+
+async def refresh_practice_priority(practice_id: str):
+    """Recalculate and persist priority for a single practice."""
+    practice = await db.practices.find_one({"id": practice_id}, {"_id": 0})
+    if not practice:
+        return
+    new_priority = evaluate_practice_priority(practice)
+    if practice.get("priority") != new_priority:
+        await db.practices.update_one(
+            {"id": practice_id},
+            {"$set": {"priority": new_priority, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    return new_priority
+
+
 # ========================
 # PRACTICES ENDPOINTS
 # ========================
@@ -560,6 +650,9 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "vat_number": practice.vat_number if practice.client_type in ["freelancer", "company"] else None,
         "country": practice.country or user.get("country", "IT"),
         "additional_data": practice.additional_data or {},
+        "priority": "normal",
+        "deadline": practice.additional_data.get("deadline") if practice.additional_data else None,
+        "current_step": None,
         "status": "draft",
         "status_label": "Bozza",
         "documents": [],
@@ -1605,7 +1698,17 @@ Prepara il tuo riepilogo coordinato completo per l'approvazione dell'utente."""
         "risk_level": risk_level
     })
 
+    await refresh_practice_priority(req.practice_id)
+
     return orchestration_result
+
+
+@api_router.post("/practices/{practice_id}/run")
+async def run_practice_workflow(practice_id: str, user: dict = Depends(get_current_user)):
+    """Convenience wrapper: run full agent workflow for a practice."""
+    req = OrchestrationRequest(practice_id=practice_id, query="Analisi completa della pratica")
+    return await orchestrate_agents(req, user)
+
 
 # ========================
 # PRACTICE APPROVAL
@@ -1716,6 +1819,9 @@ async def approve_practice(practice_id: str, user: dict = Depends(get_current_us
         f"La pratica '{practice.get('practice_type_label')}' e stata approvata, inviata e completata con successo.", "success")
 
     approval_snapshot.pop("_id", None)
+
+    await refresh_practice_priority(practice_id)
+
     return {
         "message": "Pratica approvata, inviata e completata con successo",
         "approval_snapshot": approval_snapshot,
@@ -4942,11 +5048,39 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     completed = await db.practices.count_documents({"user_id": user["id"], "status": "completed"})
     blocked = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["blocked", "escalated"]}})
     unread_notifications = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    urgent_count = await db.practices.count_documents({"user_id": user["id"], "priority": "urgent"})
+    high_count = await db.practices.count_documents({"user_id": user["id"], "priority": "high"})
 
     recent_practices = await db.practices.find(
         {"user_id": user["id"]},
-        {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1, "status_label": 1, "created_at": 1}
-    ).sort("created_at", -1).limit(5).to_list(5)
+        {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1, "status_label": 1,
+         "risk_level": 1, "priority": 1, "current_step": 1, "created_at": 1, "updated_at": 1, "deadline": 1}
+    ).sort("created_at", -1).limit(10).to_list(10)
+
+    # Recalculate priority for all returned practices
+    for p in recent_practices:
+        p["priority"] = evaluate_practice_priority(p)
+        p["priority_label"] = PRIORITY_LEVELS.get(p["priority"], {}).get("label", p["priority"])
+
+    # Critical practices: waiting_approval + blocked + urgent
+    critical = await db.practices.find(
+        {"user_id": user["id"], "$or": [
+            {"status": "waiting_approval"},
+            {"status": {"$in": ["blocked", "escalated"]}},
+            {"priority": {"$in": ["urgent", "high"]}},
+        ]},
+        {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1, "status_label": 1,
+         "risk_level": 1, "priority": 1, "current_step": 1, "created_at": 1, "updated_at": 1}
+    ).sort("created_at", -1).limit(10).to_list(10)
+
+    for c in critical:
+        c["priority"] = evaluate_practice_priority(c)
+        c["priority_label"] = PRIORITY_LEVELS.get(c["priority"], {}).get("label", c["priority"])
+
+    # Recent activity logs
+    activity_logs = await db.activity_logs.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).sort("timestamp", -1).limit(8).to_list(8)
 
     return {
         "total_practices": total_practices,
@@ -4955,8 +5089,12 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "waiting_approval": waiting_approval,
         "completed": completed,
         "blocked": blocked,
+        "urgent": urgent_count,
+        "high_priority": high_count,
         "unread_notifications": unread_notifications,
-        "recent_practices": recent_practices
+        "recent_practices": recent_practices,
+        "critical_practices": critical,
+        "activity_logs": activity_logs,
     }
 
 # ========================

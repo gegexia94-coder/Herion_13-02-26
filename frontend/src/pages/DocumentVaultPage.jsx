@@ -70,7 +70,7 @@ export default function DocumentVaultPage() {
       const [vRes, sRes] = await Promise.all([getVault(), getVaultSummary()]);
       setDocs(vRes.data.documents || []);
       setSummary(sRes.data);
-    } catch { toast.error('Errore nel caricamento del vault'); }
+    } catch (e) { console.warn('Vault fetch failed:', e?.message); }
     finally { setLoading(false); }
   };
 

@@ -51,8 +51,8 @@ export default function EmailCenterPage() {
       ]);
       setDrafts(draftsRes.data);
       setSummary(summaryRes.data);
-    } catch {
-      toast.error('Errore nel caricamento delle email');
+    } catch (e) {
+      console.warn('Email fetch failed:', e?.message);
     } finally {
       setLoading(false);
     }
@@ -282,7 +282,7 @@ function TemplateDraftFlow({ onCreated }) {
       setGroups(gRes.data || []);
       setTemplates(tRes.data || []);
       setPractices(pRes.data || []);
-    }).catch(() => toast.error('Errore nel caricamento dei template'))
+    }).catch((e) => console.warn('Template fetch failed:', e?.message))
       .finally(() => setLoadingInit(false));
   }, []);
 
@@ -302,7 +302,7 @@ function TemplateDraftFlow({ onCreated }) {
         });
         if (!cancelled) setResolved(res.data);
       } catch {
-        if (!cancelled) toast.error('Errore nella risoluzione del template');
+        if (!cancelled) console.warn('Template resolve failed');
       } finally {
         if (!cancelled) setResolving(false);
       }

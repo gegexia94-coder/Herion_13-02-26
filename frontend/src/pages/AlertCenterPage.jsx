@@ -56,7 +56,7 @@ export default function AlertCenterPage() {
     try {
       const res = await getAlerts();
       setData(res.data);
-    } catch { toast.error('Errore nel caricamento delle allerte'); }
+    } catch (e) { console.warn('Alert fetch failed:', e?.message); }
     finally { setLoading(false); }
   };
 

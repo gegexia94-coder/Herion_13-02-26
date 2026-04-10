@@ -1,0 +1,159 @@
+{
+  "summary": "Iteration 16 Testing Complete - UI Refactor to Operational Control Center. All features verified: 3-section navbar (Dashboard, Pratiche, Comunicazione), Herion mascot logo, redesigned dashboard with KPIs, quick actions, practice table with run/approve controls, critical block, activity log, reminder banner. Backend priority engine and /run endpoint working. No toast spam on page load.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_16.json",
+    "/app/backend/tests/test_iteration16.py",
+    "/app/test_reports/pytest/pytest_results_v16.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration16.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!",
+    "creator": "gegexia94@gmail.com / PROTECTED (env only)"
+  },
+  "seed_data_creation": "None - used existing data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 16 tested the complete UI refactor to operational control center. All features verified working: (1) Navbar: 3 items only - Dashboard, Pratiche, Comunicazione. Herion mascot logo visible at /herion-mascot.png. User menu with Profilo and Esci (Control Room only for creator users). (2) Dashboard: KPI grid with Pratiche Attive, Attesa Approvazione (highlighted when >0), Completate, Urgenti. Quick actions: Nuova Pratica and Comunicazione buttons. Reminder banner with carousel. Practice table with Esegui button for draft practices and Approva button for waiting_approval practices. Critical block showing practices needing attention. Activity log with timestamps. (3) Backend: GET /api/dashboard/stats returns all required fields including total_practices, pending, processing, waiting_approval, completed, blocked, urgent, high_priority, recent_practices, critical_practices, activity_logs. POST /api/practices/{id}/run endpoint works (calls AI orchestration). POST /api/practices/{id}/approve validates status correctly. Priority engine (evaluate_practice_priority) calculates correct levels based on status/risk/deadline. (4) Toast spam fix verified - no toast.error on page load for Dashboard, Practices, Email Center. (5) All UI text in Italian.",
+  "features_tested": {
+    "navbar_3_sections": {
+      "status": "PASS",
+      "details": [
+        "Only 3 nav items visible: Dashboard, Pratiche, Comunicazione",
+        "Dashboard -> /dashboard",
+        "Pratiche -> /practices",
+        "Comunicazione -> /email-center"
+      ]
+    },
+    "herion_mascot_logo": {
+      "status": "PASS",
+      "details": [
+        "Logo image found at /herion-mascot.png",
+        "Displayed in navbar via [data-testid='logo-link']"
+      ]
+    },
+    "user_menu": {
+      "status": "PASS",
+      "details": [
+        "User menu opens with avatar click",
+        "Shows Profilo option",
+        "Shows Esci (logout) option",
+        "Control Room NOT shown for admin user (correct - only for creator)"
+      ]
+    },
+    "dashboard_kpis": {
+      "status": "PASS",
+      "details": [
+        "Pratiche Attive: 26",
+        "Attesa Approvazione: 3 (highlighted with amber border)",
+        "Completate: 2",
+        "Urgenti: 0"
+      ]
+    },
+    "quick_actions": {
+      "status": "PASS",
+      "details": [
+        "Nuova Pratica button navigates to /practices/new",
+        "Comunicazione button navigates to /email-center"
+      ]
+    },
+    "practice_table": {
+      "status": "PASS",
+      "details": [
+        "Shows 10 recent practices",
+        "Displays client name, practice type, status badge, risk level, priority badge",
+        "6 Esegui buttons for draft practices",
+        "1 Approva button for waiting_approval practice"
+      ]
+    },
+    "critical_block": {
+      "status": "PASS",
+      "details": [
+        "Shows 'RICHIEDE ATTENZIONE' section",
+        "Displays practices with waiting_approval, blocked, escalated status"
+      ]
+    },
+    "activity_log": {
+      "status": "PASS",
+      "details": [
+        "Shows 'ATTIVITA RECENTI' section",
+        "Displays 8 recent activity entries with timestamps"
+      ]
+    },
+    "reminder_banner": {
+      "status": "PASS",
+      "details": [
+        "Shows reminder with category icon",
+        "Carousel navigation (prev/next) works",
+        "Displays category label and title"
+      ]
+    },
+    "backend_dashboard_stats": {
+      "status": "PASS",
+      "details": [
+        "Returns all required fields: total_practices, pending, processing, waiting_approval, completed, blocked, urgent, high_priority, recent_practices, critical_practices, activity_logs",
+        "recent_practices include priority field",
+        "critical_practices include priority field"
+      ]
+    },
+    "backend_run_endpoint": {
+      "status": "PASS",
+      "details": [
+        "POST /api/practices/{id}/run exists and works",
+        "Calls orchestrate_agents internally",
+        "Requires practice ownership (user_id match)"
+      ]
+    },
+    "backend_priority_engine": {
+      "status": "PASS",
+      "details": [
+        "evaluate_practice_priority function at line 558",
+        "Escalated status -> urgent priority",
+        "Waiting_approval status -> high priority",
+        "Completed status -> low priority",
+        "Normal practices -> normal priority",
+        "High risk + waiting_approval -> urgent priority"
+      ]
+    },
+    "toast_spam_fix": {
+      "status": "PASS",
+      "details": [
+        "No toast.error on Dashboard page load",
+        "No toast.error on Practices page load",
+        "No toast.error on Email Center page load",
+        "console.warn used for passive fetch failures"
+      ]
+    },
+    "login_flow": {
+      "status": "PASS",
+      "details": [
+        "Login with admin@aic.it / Admin123! redirects to dashboard",
+        "Cookie-based auth working"
+      ]
+    }
+  },
+  "backend_api_verification": {
+    "login": "PASS - Returns user data with correct structure",
+    "dashboard_stats": "PASS - Returns all required fields including priority data",
+    "practices": "PASS - Returns list with status, priority, risk_level",
+    "run_endpoint": "PASS - Endpoint exists and calls AI orchestration",
+    "approve_endpoint": "PASS - Validates waiting_approval status correctly"
+  },
+  "ui_text_language": "Italian (verified: Dashboard, Pratiche, Comunicazione, Nuova Pratica, Attesa Approvazione, Completate, Urgenti, Esegui, Approva, Profilo, Esci, etc.)"
+}

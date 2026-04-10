@@ -263,7 +263,7 @@ export default function PracticeDetailPage() {
       try { const g = await getGuardEvaluation(id); setGuardResult(g.data); } catch {}
       // Load Document Matrix
       try { const dm = await getDocumentMatrix(id); setDocMatrix(dm.data); } catch {}
-    } catch { toast.error('Errore nel caricamento'); }
+    } catch (e) { console.warn('Practice detail fetch failed:', e?.message); }
     finally { setLoading(false); }
   }, [id]);
 

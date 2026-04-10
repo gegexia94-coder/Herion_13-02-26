@@ -59,7 +59,7 @@ export default function GovernanceDashboardPage() {
       ]);
       setDashboard(dRes.data);
       setAuditEvents(aRes.data.events || []);
-    } catch { toast.error('Errore nel caricamento governance'); }
+    } catch (e) { console.warn('Governance fetch failed:', e?.message); }
     finally { setLoading(false); }
   };
 

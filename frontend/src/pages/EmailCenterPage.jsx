@@ -238,7 +238,7 @@ function CreateDraftForm({ onCreated }) {
             className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#0F172A] bg-white" data-testid="email-practice-select">
             <option value="">Seleziona pratica...</option>
             {practices.map(p => (
-              <option key={p.id} value={p.id}>{p.client_name} — {p.practice_type_label}</option>
+              <option key={p.id} value={p.id}>{p.client_name} - {p.practice_type_label}</option>
             ))}
           </select>
         </div>

@@ -2190,13 +2190,14 @@ async def resolve_template_placeholders(template_id: str, practice_id: str = Non
             if v:
                 values[k] = v
 
-    # Resolve subject and body
+    # Resolve subject and body — only replace placeholders that have non-empty values
     subject = template["subject"]
     body_html = template["body_html"]
     for key, val in values.items():
-        placeholder = f"[{key}]"
-        subject = subject.replace(placeholder, str(val))
-        body_html = body_html.replace(placeholder, str(val))
+        if val:  # Only replace if value is non-empty
+            placeholder = f"[{key}]"
+            subject = subject.replace(placeholder, str(val))
+            body_html = body_html.replace(placeholder, str(val))
 
     return {
         "template_id": template_id,
@@ -2249,19 +2250,40 @@ async def get_email_template(template_id: str, user: dict = Depends(get_current_
     return tpl
 
 
-@api_router.post("/emails/templates/{template_id}/resolve")
-async def resolve_email_template(template_id: str, user: dict = Depends(get_current_user)):
-    """Resolve a template with practice data and return ready-to-use subject + body."""
-    class ResolveRequest(BaseModel):
-        practice_id: Optional[str] = None
-        extra: Optional[dict] = None
+class TemplateResolveRequest(BaseModel):
+    practice_id: Optional[str] = None
+    extra: Optional[dict] = None
 
-    # Parse body manually since we defined class inline
-    from starlette.requests import Request
-    import json as json_module
-    body = await Request(scope={"type": "http"}, receive=lambda: None).body() if False else None
-    # Fallback: use FastAPI's request
-    return {"error": "Use the draft-from-template endpoint instead"}
+
+@api_router.post("/emails/templates/{template_id}/resolve")
+async def resolve_email_template(template_id: str, req: TemplateResolveRequest, user: dict = Depends(get_current_user)):
+    """Resolve a template with practice data and return ready-to-use subject + body."""
+    tpl = EMAIL_TEMPLATES.get(template_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template non trovato")
+
+    resolved = await resolve_template_placeholders(template_id, req.practice_id, req.extra)
+    if "error" in resolved:
+        raise HTTPException(status_code=400, detail=resolved["error"])
+
+    # Identify which placeholders are still unresolved (contain [...])
+    import re
+    unresolved = []
+    for ph in tpl["placeholders"]:
+        bracket = f"[{ph}]"
+        if bracket in resolved["subject"] or bracket in resolved["body_html"]:
+            unresolved.append(ph)
+
+    return {
+        "template_id": template_id,
+        "template_name": tpl["name"],
+        "template_group": tpl["group"],
+        "subject": resolved["subject"],
+        "body_html": resolved["body_html"],
+        "resolved_values": resolved.get("resolved_values", {}),
+        "unresolved_placeholders": unresolved,
+        "all_placeholders": tpl["placeholders"],
+    }
 
 
 class DraftFromTemplateRequest(BaseModel):

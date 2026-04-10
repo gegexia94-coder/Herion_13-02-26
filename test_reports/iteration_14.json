@@ -1,0 +1,158 @@
+{
+  "summary": "Herion Iteration 14 Testing Complete - Italian Email Template System. 24/24 backend tests passed, all frontend features verified. Template system with 34 templates in 9 groups, placeholder resolution, live preview, and full draft→review→approve→send flow working.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "EmailCenterPage - TemplateDraftFlow",
+        "issue": "React hydration warning: <span> cannot be a child of <option>. This is a minor console warning that doesn't affect functionality (same as iteration 13).",
+        "selector": "[data-testid='template-practice-select'] option",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_herion_v14_email_templates.py",
+    "/app/test_reports/pytest/pytest_results_v14.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: EmailCenterPage.jsx line 446 - option element contains dynamic content that causes React hydration warning. Consider using plain text instead of JSX expressions inside option tags."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_herion_v14_email_templates.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!",
+    "creator": "gegexia94@gmail.com / PROTECTED (env only)"
+  },
+  "seed_data_creation": "Multiple email drafts created during testing from various templates",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 14 tested the new Italian Email Template System. All 24 backend tests pass. Template system features: GET /api/emails/templates (returns 34 templates with id, group, name, placeholders, user_types), GET /api/emails/template-groups (returns 9 groups with counts), GET /api/emails/templates/{id} (single template detail), POST /api/emails/templates/{id}/resolve (resolves placeholders from practice data, returns unresolved_placeholders list), POST /api/emails/draft-from-template (creates draft with template-resolved content, tracks template_id and template_name). Frontend has tab switcher ('Da Template' / 'Manuale'), group selector with 9 groups, template picker with 34 templates, practice/recipient fields, live preview with resolved HTML, unresolved placeholders section with override inputs, and 'Crea Bozza da Template' button. Template-created drafts have email_type='template' and show template_name badge in list. Full draft→review→approve→send flow works for template drafts.",
+  "features_tested": {
+    "email_templates_list": {
+      "endpoint": "GET /api/emails/templates",
+      "status": "PASS",
+      "details": [
+        "Returns 34 templates",
+        "Each template has id, group, group_label, name, subject, placeholders, user_types",
+        "Supports group filter parameter",
+        "Supports user_type filter parameter"
+      ]
+    },
+    "email_template_groups": {
+      "endpoint": "GET /api/emails/template-groups",
+      "status": "PASS",
+      "details": [
+        "Returns 9 groups: private (5), freelancer (5), company (5), blocked (6), approval (3), delegation (4), delivery (3), reminder (1), account (2)",
+        "Each group has id, label, count"
+      ]
+    },
+    "email_template_detail": {
+      "endpoint": "GET /api/emails/templates/{template_id}",
+      "status": "PASS",
+      "details": [
+        "Returns single template with full details including body_html",
+        "Non-existent template returns 404"
+      ]
+    },
+    "email_template_resolve": {
+      "endpoint": "POST /api/emails/templates/{template_id}/resolve",
+      "status": "PASS",
+      "details": [
+        "Resolves placeholders from practice data",
+        "Returns subject, body_html, resolved_values, unresolved_placeholders",
+        "Unresolved placeholders remain visible as [placeholder] in output",
+        "Accepts extra overrides to fill unresolved placeholders",
+        "Non-existent template returns 404"
+      ]
+    },
+    "draft_from_template": {
+      "endpoint": "POST /api/emails/draft-from-template",
+      "status": "PASS",
+      "details": [
+        "Creates draft with template-resolved content",
+        "Draft has email_type='template', template_id, template_name, template_group",
+        "Accepts extra_values for placeholder overrides",
+        "Integrates with compliance check (attachment validation)",
+        "Creates timeline event (email_draft_created)",
+        "Creates audit event (email_draft_from_template)",
+        "Invalid practice returns 404",
+        "Invalid template returns 404"
+      ]
+    },
+    "template_draft_integration": {
+      "status": "PASS",
+      "details": [
+        "Template-created drafts appear in drafts list",
+        "Template-created drafts can be submitted for review",
+        "Template-created drafts can be approved",
+        "Template-created drafts can be sent (full flow works)"
+      ]
+    },
+    "existing_email_endpoints": {
+      "status": "PASS",
+      "details": [
+        "POST /api/emails/draft (manual) still works",
+        "GET /api/emails/drafts still works",
+        "GET /api/emails/summary still works",
+        "POST /api/emails/drafts/{id}/submit-review still works",
+        "POST /api/emails/drafts/{id}/approve still works"
+      ]
+    },
+    "frontend_template_flow": {
+      "route": "/email-center",
+      "status": "PASS",
+      "features_verified": [
+        "Tab switcher between 'Da Template' and 'Manuale' modes",
+        "Group selector with 9 groups and counts (Tutti shows 34)",
+        "Template picker shows templates with names and group labels",
+        "Practice selector + recipient email fields appear after template selection",
+        "Live preview renders resolved HTML email with populated placeholders",
+        "Unresolved placeholders show override inputs in amber section",
+        "'Crea Bozza da Template' button creates draft and refreshes list",
+        "Manual flow still works (practice, recipient, subject, body, create)",
+        "Email list shows template name badge on template-created drafts",
+        "Draft → Review → Approve → Send actions work on template-created drafts"
+      ]
+    }
+  },
+  "backend_tests_summary": {
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "test_classes": [
+      "TestAdminLogin (1 test)",
+      "TestEmailTemplatesList (3 tests)",
+      "TestEmailTemplateGroups (1 test)",
+      "TestSingleTemplateDetail (2 tests)",
+      "TestTemplateResolve (4 tests)",
+      "TestDraftFromTemplate (4 tests)",
+      "TestTemplateDraftIntegration (3 tests)",
+      "TestTimelineAndAuditLogging (2 tests)",
+      "TestExistingEmailEndpoints (2 tests)",
+      "TestTemplateCount (2 tests)"
+    ]
+  },
+  "template_groups_verified": {
+    "private": {"label": "Privati", "count": 5},
+    "freelancer": {"label": "Liberi Professionisti", "count": 5},
+    "company": {"label": "Aziende", "count": 5},
+    "blocked": {"label": "Pratiche Bloccate", "count": 6},
+    "approval": {"label": "Flusso Approvazione", "count": 3},
+    "delegation": {"label": "Flusso Delega", "count": 4},
+    "delivery": {"label": "Consegna Finale", "count": 3},
+    "reminder": {"label": "Promemoria", "count": 1},
+    "account": {"label": "Account e Sicurezza", "count": 2}
+  }
+}

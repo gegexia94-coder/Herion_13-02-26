@@ -141,4 +141,11 @@ export const approveEmailDraft = (draftId) => api.post(`/emails/drafts/${draftId
 export const sendEmailDraft = (draftId) => api.post(`/emails/drafts/${draftId}/send`);
 export const getEmailSummary = () => api.get('/emails/summary');
 
+// Email Templates
+export const getEmailTemplates = (params = {}) => api.get('/emails/templates', { params });
+export const getEmailTemplateGroups = () => api.get('/emails/template-groups');
+export const getEmailTemplate = (templateId) => api.get(`/emails/templates/${templateId}`);
+export const resolveEmailTemplate = (templateId, data) => api.post(`/emails/templates/${templateId}/resolve`, data);
+export const createDraftFromTemplate = (data) => api.post('/emails/draft-from-template', data);
+
 export default api;

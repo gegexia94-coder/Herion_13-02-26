@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline, updateDelegation, getPracticeReadiness } from '@/services/api';
+import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline, updateDelegation, getPracticeReadiness, getGuardEvaluation } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,6 +67,12 @@ const TIMELINE_ICONS = {
   blocked: XCircle,
   escalated: AlertTriangle,
   status_changed: CircleDot,
+  guard_evaluated: Shield,
+  guard_cleared: CheckCircle,
+  guard_guarded: AlertTriangle,
+  guard_blocked: XCircle,
+  follow_up_created: Clock,
+  follow_up_resolved: CheckCircle,
 };
 
 // Workflow lifecycle steps
@@ -237,6 +243,7 @@ export default function PracticeDetailPage() {
   const [expandedLogs, setExpandedLogs] = useState({});
   const [delegationLoading, setDelegationLoading] = useState(false);
   const [readiness, setReadiness] = useState(null);
+  const [guardResult, setGuardResult] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -251,6 +258,8 @@ export default function PracticeDetailPage() {
       setTimeline(t.data);
       // Load readiness
       try { const r = await getPracticeReadiness(id); setReadiness(r.data); } catch {}
+      // Load Herion Guard evaluation
+      try { const g = await getGuardEvaluation(id); setGuardResult(g.data); } catch {}
     } catch { toast.error('Errore nel caricamento'); }
     finally { setLoading(false); }
   }, [id]);
@@ -754,6 +763,86 @@ export default function PracticeDetailPage() {
                         <RefreshCw className="w-3 h-3" />Richiedi Nuovamente
                       </button>
                     ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Herion Guard Panel */}
+          {guardResult && (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="guard-panel">
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  guardResult.verdict === 'cleared' ? 'bg-emerald-600' :
+                  guardResult.verdict === 'guarded' ? 'bg-amber-500' : 'bg-red-600'
+                }`}>
+                  <ShieldAlert className="w-4 h-4 text-white" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0F172A]">Herion Guard</h3>
+                  <p className="text-[10px] text-[#475569]">Confini operativi e alternative sicure</p>
+                </div>
+                <div className="ml-auto">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    guardResult.verdict === 'cleared' ? 'bg-emerald-50 text-emerald-700' :
+                    guardResult.verdict === 'guarded' ? 'bg-amber-50 text-amber-700' :
+                    'bg-red-50 text-red-700'
+                  }`} data-testid="guard-verdict">{guardResult.verdict_label}</span>
+                </div>
+              </div>
+
+              {/* Guard Score */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-medium text-[#475569]">Punteggio Guard</span>
+                  <span className={`text-xs font-bold ${
+                    guardResult.guard_score >= 80 ? 'text-emerald-600' :
+                    guardResult.guard_score >= 50 ? 'text-amber-600' : 'text-red-600'
+                  }`} data-testid="guard-score">{guardResult.guard_score}%</span>
+                </div>
+                <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-700 ${
+                    guardResult.guard_score >= 80 ? 'bg-emerald-500' :
+                    guardResult.guard_score >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                  }`} style={{ width: `${guardResult.guard_score}%` }} />
+                </div>
+              </div>
+
+              {/* Dimensions */}
+              <div className="space-y-1.5 mb-3">
+                {guardResult.dimensions?.map((dim, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                    <span className="text-[10px] font-medium text-[#475569]">{dim.label}</span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      dim.status === 'passed' ? 'bg-emerald-50 text-emerald-700' :
+                      dim.status === 'warning' ? 'bg-amber-50 text-amber-700' :
+                      'bg-red-50 text-red-700'
+                    }`} data-testid={`guard-dim-${dim.key}`}>{dim.detail}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Safe Alternatives */}
+              {guardResult.safe_alternatives?.length > 0 && (
+                <div className="border-t border-[#E2E8F0] pt-3">
+                  <p className="text-[9px] font-semibold text-[#0F4C5C] uppercase tracking-wider mb-2">Alternative Sicure Suggerite</p>
+                  <div className="space-y-1.5">
+                    {guardResult.safe_alternatives.map((alt, i) => (
+                      <div key={i} className={`flex items-start gap-2 p-2 rounded-lg ${
+                        alt.priority === 'critical' ? 'bg-red-50/60' :
+                        alt.priority === 'high' ? 'bg-amber-50/60' : 'bg-[#F7FAFC]'
+                      }`} data-testid={`guard-alt-${i}`}>
+                        <ArrowRight className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
+                          alt.priority === 'critical' ? 'text-red-500' :
+                          alt.priority === 'high' ? 'text-amber-500' : 'text-[#94A3B8]'
+                        }`} />
+                        <div>
+                          <p className="text-[10px] font-semibold text-[#0F172A]">{alt.label}</p>
+                          <p className="text-[9px] text-[#64748B]">{alt.detail}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

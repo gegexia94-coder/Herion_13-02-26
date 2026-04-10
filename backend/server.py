@@ -547,7 +547,9 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
 
 @api_router.get("/practices")
 async def get_practices(user: dict = Depends(get_current_user)):
-    practices = await db.practices.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {} if is_admin else {"user_id": user["id"]}
+    practices = await db.practices.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     return practices
 
 @api_router.get("/practices/{practice_id}")
@@ -935,6 +937,43 @@ Format:
 - Note su incertezze
 - Livello di confidenza"""
     },
+    "guard": {
+        "name": "Guardia e Confini Operativi",
+        "branded_name": "Herion Guard",
+        "icon_key": "guard",
+        "description": "Valuta i confini operativi, verifica la prontezza e propone alternative sicure quando l'esecuzione non e possibile.",
+        "step": 12,
+        "system_message": """Sei Herion Guard, l'agente di protezione e confini operativi della piattaforma Herion.
+Il tuo compito e valutare se una pratica puo procedere in sicurezza verso il prossimo stato.
+Non sei un semplice blocco: sei un confine intelligente che protegge e guida.
+
+Devi valutare:
+1. Prontezza complessiva della pratica (documenti, dati, delega, approvazione)
+2. Livello di supporto della piattaforma per questo tipo di pratica
+3. Chiarezza del routing e della destinazione
+4. Validita della delega (se richiesta)
+5. Stato dell'approvazione (se richiesta)
+6. Rischio complessivo
+
+Per ogni problema trovato, DEVI suggerire un'alternativa sicura e concreta:
+- Se mancano documenti: suggerisci quali caricare
+- Se la delega non e valida: suggerisci come richiederla o aggiornarla
+- Se il rischio e alto: suggerisci escalation o revisione
+- Se il routing non e chiaro: suggerisci verifica con l'amministratore
+
+Il tuo verdetto deve essere uno di:
+- AUTORIZZATO: la pratica puo procedere senza ostacoli
+- SORVEGLIATO: ci sono avvertimenti ma si puo procedere con cautela
+- BLOCCATO: non si puo procedere, ma esistono alternative sicure
+
+Rispondi SEMPRE in italiano. Sii protettivo ma mai opaco.
+Format:
+- Verdetto: AUTORIZZATO / SORVEGLIATO / BLOCCATO
+- Dimensioni valutate (con esito per ciascuna)
+- Problemi identificati
+- Alternative sicure suggerite
+- Prossimo passo raccomandato"""
+    },
     "routing": {
         "name": "Canale e Destinazione",
         "branded_name": "Herion Routing",
@@ -990,7 +1029,7 @@ Sei il genitore di tutti gli agenti. Il tuo ruolo e:
 8. Preparare il riepilogo per l'approvazione dell'utente
 9. Bloccare l'esecuzione se il rischio e troppo alto
 
-Gestisci un team di 11 agenti specializzati:
+Gestisci un team di 12 agenti specializzati:
 - Herion Intake: comprensione e classificazione del caso
 - Herion Ledger: dati contabili e finanziari
 - Herion Compliance: conformita normativa
@@ -1002,6 +1041,7 @@ Gestisci un team di 11 agenti specializzati:
 - Herion Advisor: spiegazione finale all'utente
 - Herion Research: ricerca e verifica fonti ufficiali
 - Herion Routing: canale e destinazione
+- Herion Guard: protezione confini operativi e alternative sicure
 
 Regole assolute:
 - MAI eseguire senza approvazione esplicita dell'utente
@@ -1073,7 +1113,7 @@ RISK_LEVELS = {
 }
 
 # Ordered specialist pipeline for controlled execution
-SPECIALIST_PIPELINE = ["intake", "ledger", "compliance", "documents", "delegate", "deadline", "flow", "routing", "research", "monitor", "advisor"]
+SPECIALIST_PIPELINE = ["intake", "ledger", "compliance", "documents", "delegate", "deadline", "flow", "routing", "research", "monitor", "advisor", "guard"]
 
 # Timeline event types
 TIMELINE_EVENTS = {
@@ -1088,6 +1128,13 @@ TIMELINE_EVENTS = {
     "flow_completed": "Analisi flusso completata",
     "monitor_completed": "Monitoraggio completato",
     "advisor_completed": "Spiegazione finale completata",
+    "guard_evaluated": "Herion Guard: valutazione confini",
+    "guard_cleared": "Herion Guard: autorizzato",
+    "guard_guarded": "Herion Guard: sorvegliato con avvertimenti",
+    "guard_blocked": "Herion Guard: bloccato con alternative",
+    "follow_up_created": "Follow-up creato",
+    "follow_up_resolved": "Follow-up risolto",
+    "follow_up_overdue": "Follow-up scaduto",
     "draft_prepared": "Bozza preparata",
     "risk_evaluated": "Rischio valutato",
     "documents_requested": "Documenti richiesti",
@@ -1988,6 +2035,7 @@ async def submit_practice(practice_id: str, user: dict = Depends(get_current_use
     if gov["final_decision"] == "blocked":
         await log_audit_event(user["id"], user.get("role", "user"), "submission_blocked_by_governance", "practice", practice_id,
             reason=gov["blocking_reason"], severity="high", practice_id=practice_id)
+        guard = gov.get("guard") or {}
         return {
             "success": False,
             "message": gov["blocking_reason"] or "Invio bloccato dalla governance",
@@ -1995,10 +2043,14 @@ async def submit_practice(practice_id: str, user: dict = Depends(get_current_use
             "missing_items": gov["missing_items"],
             "readiness_state": gov["readiness"]["readiness_state"],
             "governance_decision": gov["final_decision"],
+            "guard_verdict": guard.get("verdict"),
+            "guard_score": guard.get("guard_score"),
+            "safe_alternatives": guard.get("safe_alternatives", []),
         }
     if gov["final_decision"] == "escalation_required":
         await log_audit_event(user["id"], user.get("role", "user"), "submission_escalated_by_governance", "practice", practice_id,
             reason="Escalation richiesta dalla governance", severity="high", practice_id=practice_id)
+        guard = gov.get("guard") or {}
         return {
             "success": False,
             "message": "Invio richiede escalation: " + (gov["governance_warnings"][0] if gov["governance_warnings"] else "revisione necessaria"),
@@ -2006,6 +2058,9 @@ async def submit_practice(practice_id: str, user: dict = Depends(get_current_use
             "missing_items": gov["missing_items"],
             "readiness_state": gov["readiness"]["readiness_state"],
             "governance_decision": gov["final_decision"],
+            "guard_verdict": guard.get("verdict"),
+            "guard_score": guard.get("guard_score"),
+            "safe_alternatives": guard.get("safe_alternatives", []),
         }
 
     readiness = gov["readiness"]
@@ -2373,10 +2428,10 @@ async def check_fail_safe(practice: dict, action: str, readiness: dict = None) -
     }
 
 async def governance_call(practice_id: str, actor_id: str, actor_role: str, action_requested: str, context: dict = None) -> dict:
-    """Unified Governance Call Method — runs all governance checks before important actions."""
+    """Unified Governance Call Method — runs all governance checks including Herion Guard before important actions."""
     practice = await db.practices.find_one({"id": practice_id}, {"_id": 0})
     if not practice:
-        return {"final_decision": "blocked", "blocking_reason": "Pratica non trovata", "missing_items": [], "governance_warnings": [], "next_safe_action": "Verificare l'ID della pratica", "audit_entries": [], "creator_notification": False, "admin_notification": False}
+        return {"final_decision": "blocked", "blocking_reason": "Pratica non trovata", "missing_items": [], "governance_warnings": [], "next_safe_action": "Verificare l'ID della pratica", "audit_entries": [], "creator_notification": False, "admin_notification": False, "guard": None}
 
     readiness = await calculate_readiness(practice)
 
@@ -2398,22 +2453,27 @@ async def governance_call(practice_id: str, actor_id: str, actor_role: str, acti
             "audit_entries": [audit_entry["id"]],
             "creator_notification": actor_role == "admin",
             "admin_notification": False,
+            "guard": None,
         }
 
-    # 2. Non-negotiable rules check
+    # 2. Herion Guard evaluation
+    guard_result = await herion_guard_evaluate(practice_id, action_requested, actor_id, actor_role)
+
+    # 3. Non-negotiable rules check
     nnr_violations = await check_non_negotiable_rules(practice, action_requested, readiness)
 
-    # 3. Fail-safe check
+    # 4. Fail-safe check
     fail_safe = await check_fail_safe(practice, action_requested, readiness)
 
-    # Combine results
+    # Combine results (including Guard verdict)
     has_critical_violation = any(v["severity"] == "critical" for v in nnr_violations)
     has_high_violation = any(v["severity"] == "high" for v in nnr_violations)
     fail_safe_blocked = not fail_safe["safe_to_continue"] and fail_safe["stop_level"] in ["high", "critical"]
+    guard_hard_blocked = guard_result["verdict"] == "hard_blocked"
 
-    if has_critical_violation or fail_safe_blocked:
+    if has_critical_violation or fail_safe_blocked or guard_hard_blocked:
         final_decision = "blocked"
-    elif has_high_violation or (not fail_safe["safe_to_continue"] and fail_safe["stop_level"] == "warning"):
+    elif has_high_violation or (not fail_safe["safe_to_continue"] and fail_safe["stop_level"] == "warning") or guard_result["verdict"] == "guarded":
         final_decision = "escalation_required"
     else:
         final_decision = "allowed"
@@ -2473,6 +2533,7 @@ async def governance_call(practice_id: str, actor_id: str, actor_role: str, acti
         "fail_safe": fail_safe,
         "readiness": readiness,
         "permissions": perm_result,
+        "guard": guard_result,
         "next_safe_action": next_action,
         "audit_entries": [audit_entry["id"]],
         "creator_notification": creator_notify,
@@ -2907,6 +2968,526 @@ async def get_vault_summary(user: dict = Depends(get_current_user)):
     return {"total": total, "verified": verified, "pending_review": pending, "rejected": rejected, "high_sensitivity": high_sensitivity}
 
 # ========================
+# HERION GUARD ENGINE
+# ========================
+
+GUARD_DIMENSIONS = {
+    "readiness": {"label": "Prontezza Pratica", "weight": 3},
+    "support_level": {"label": "Livello di Supporto", "weight": 3},
+    "routing_clarity": {"label": "Chiarezza Routing", "weight": 2},
+    "delegation_validity": {"label": "Validita Delega", "weight": 3},
+    "approval_status": {"label": "Stato Approvazione", "weight": 3},
+    "risk_profile": {"label": "Profilo di Rischio", "weight": 2},
+    "document_completeness": {"label": "Completezza Documenti", "weight": 3},
+}
+
+async def herion_guard_evaluate(practice_id: str, action: str = "submit", actor_id: str = None, actor_role: str = "user") -> dict:
+    """Herion Guard — boundary-enforcement agent. Evaluates practice readiness across
+    multiple dimensions. When blocked, always provides safe alternative recommendations."""
+    practice = await db.practices.find_one({"id": practice_id}, {"_id": 0})
+    if not practice:
+        return {
+            "verdict": "hard_blocked",
+            "verdict_label": "Bloccato",
+            "reason": "Pratica non trovata",
+            "dimensions": [],
+            "safe_alternatives": [],
+            "guard_score": 0,
+            "can_proceed": False,
+        }
+
+    readiness = await calculate_readiness(practice)
+
+    dimensions = []
+    safe_alternatives = []
+    blockers_count = 0
+    warnings_count = 0
+
+    # 1. Readiness
+    readiness_state = readiness.get("readiness_state", "unknown")
+    if readiness_state in ["ready_to_submit", "completed", "submitted"]:
+        dimensions.append({"key": "readiness", "label": "Prontezza Pratica", "status": "passed", "detail": "Pratica pronta"})
+    elif readiness_state == "waiting_approval":
+        dimensions.append({"key": "readiness", "label": "Prontezza Pratica", "status": "warning", "detail": "In attesa di approvazione"})
+        warnings_count += 1
+        if action == "submit":
+            safe_alternatives.append({"action": "request_approval", "label": "Richiedere approvazione", "detail": "La pratica richiede approvazione prima dell'invio.", "priority": "high"})
+    else:
+        dimensions.append({"key": "readiness", "label": "Prontezza Pratica", "status": "blocked", "detail": f"Stato: {readiness_state}"})
+        blockers_count += 1
+        if readiness.get("blockers"):
+            for b in readiness["blockers"][:3]:
+                safe_alternatives.append({"action": "resolve_blocker", "label": f"Risolvere: {b}", "detail": b, "priority": "high"})
+
+    # 2. Support Level
+    support = readiness.get("support_level", "unknown")
+    if support == "supported":
+        dimensions.append({"key": "support_level", "label": "Livello di Supporto", "status": "passed", "detail": "Pienamente supportata"})
+    elif support == "partially_supported":
+        dimensions.append({"key": "support_level", "label": "Livello di Supporto", "status": "warning", "detail": "Parzialmente supportata — preparazione completa, invio tramite portale esterno"})
+        warnings_count += 1
+    elif support == "not_supported":
+        dimensions.append({"key": "support_level", "label": "Livello di Supporto", "status": "blocked", "detail": "Non supportata dalla piattaforma"})
+        blockers_count += 1
+        safe_alternatives.append({"action": "escalate", "label": "Escalation a professionista", "detail": "Questa pratica richiede assistenza professionale esterna.", "priority": "critical"})
+    else:
+        dimensions.append({"key": "support_level", "label": "Livello di Supporto", "status": "warning", "detail": "Livello di supporto non determinato"})
+        warnings_count += 1
+
+    # 3. Routing Clarity
+    if readiness.get("routing_clear"):
+        channel = readiness.get("channel", "unknown")
+        dimensions.append({"key": "routing_clarity", "label": "Chiarezza Routing", "status": "passed", "detail": f"Canale: {channel}"})
+    else:
+        dimensions.append({"key": "routing_clarity", "label": "Chiarezza Routing", "status": "blocked", "detail": "Routing non chiaro o destinazione non trovata"})
+        blockers_count += 1
+        safe_alternatives.append({"action": "verify_routing", "label": "Verificare routing", "detail": "Contattare l'amministratore per verificare il canale e la destinazione corretti.", "priority": "medium"})
+
+    # 4. Delegation Validity
+    if readiness.get("delegation_required"):
+        if readiness.get("delegation_valid"):
+            dimensions.append({"key": "delegation_validity", "label": "Validita Delega", "status": "passed", "detail": "Delega valida"})
+        else:
+            d_status = readiness.get("delegation_status", "mancante")
+            dimensions.append({"key": "delegation_validity", "label": "Validita Delega", "status": "blocked", "detail": f"Delega: {d_status}"})
+            blockers_count += 1
+            if d_status in ["not_required", "requested"]:
+                safe_alternatives.append({"action": "request_delegation", "label": "Richiedere delega", "detail": "Avviare il processo di delega dal pannello pratica.", "priority": "high"})
+            elif d_status in ["expired", "rejected"]:
+                safe_alternatives.append({"action": "renew_delegation", "label": "Rinnovare delega", "detail": "La delega precedente non e piu valida. Caricare un nuovo documento di delega.", "priority": "high"})
+            else:
+                safe_alternatives.append({"action": "upload_delegation", "label": "Caricare documento delega", "detail": "Caricare il documento di delega firmato.", "priority": "high"})
+    else:
+        dimensions.append({"key": "delegation_validity", "label": "Validita Delega", "status": "passed", "detail": "Non richiesta"})
+
+    # 5. Approval Status
+    if readiness.get("approval_required"):
+        a_status = readiness.get("approval_status", "not_started")
+        if a_status == "approved":
+            dimensions.append({"key": "approval_status", "label": "Stato Approvazione", "status": "passed", "detail": "Approvata"})
+        elif a_status == "pending":
+            dimensions.append({"key": "approval_status", "label": "Stato Approvazione", "status": "warning", "detail": "In attesa"})
+            warnings_count += 1
+        else:
+            dimensions.append({"key": "approval_status", "label": "Stato Approvazione", "status": "blocked", "detail": "Approvazione non ancora richiesta"})
+            blockers_count += 1
+            safe_alternatives.append({"action": "start_orchestration", "label": "Avviare analisi agenti", "detail": "Eseguire l'orchestrazione degli agenti per preparare la pratica all'approvazione.", "priority": "high"})
+    else:
+        dimensions.append({"key": "approval_status", "label": "Stato Approvazione", "status": "passed", "detail": "Non richiesta"})
+
+    # 6. Risk Profile
+    risk = readiness.get("risk_level", "unknown")
+    if risk in ["basic", "low"]:
+        dimensions.append({"key": "risk_profile", "label": "Profilo di Rischio", "status": "passed", "detail": "Rischio basso"})
+    elif risk == "medium":
+        dimensions.append({"key": "risk_profile", "label": "Profilo di Rischio", "status": "warning", "detail": "Rischio medio — verifica raccomandata"})
+        warnings_count += 1
+    elif risk == "high":
+        dimensions.append({"key": "risk_profile", "label": "Profilo di Rischio", "status": "blocked", "detail": "Rischio alto — approvazione esplicita richiesta"})
+        if practice.get("status") != "approved":
+            blockers_count += 1
+            safe_alternatives.append({"action": "request_review", "label": "Richiedere revisione", "detail": "Pratica ad alto rischio: richiedere revisione da parte di admin o Creator.", "priority": "critical"})
+    else:
+        dimensions.append({"key": "risk_profile", "label": "Profilo di Rischio", "status": "warning", "detail": "Rischio non determinato"})
+        warnings_count += 1
+
+    # 7. Document Completeness
+    doc_blockers = [b for b in readiness.get("blockers", []) if "Documento" in b or "documento" in b]
+    if not doc_blockers:
+        dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "passed", "detail": f"{readiness.get('document_count', 0)} documenti presenti"})
+    else:
+        dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "blocked", "detail": f"{len(doc_blockers)} documenti mancanti"})
+        blockers_count += 1
+        for db_item in doc_blockers[:3]:
+            safe_alternatives.append({"action": "upload_document", "label": f"Caricare: {db_item.replace('Documento mancante: ', '')}", "detail": db_item, "priority": "high"})
+
+    # Determine verdict
+    if blockers_count == 0 and warnings_count == 0:
+        verdict = "cleared"
+        verdict_label = "Autorizzato"
+    elif blockers_count == 0 and warnings_count > 0:
+        verdict = "guarded"
+        verdict_label = "Sorvegliato"
+    else:
+        verdict = "hard_blocked"
+        verdict_label = "Bloccato"
+
+    # Calculate score (0-100)
+    total_dims = len(dimensions)
+    passed = sum(1 for d in dimensions if d["status"] == "passed")
+    guard_score = round((passed / total_dims) * 100) if total_dims > 0 else 0
+
+    # Deduplicate alternatives
+    seen = set()
+    unique_alts = []
+    for alt in safe_alternatives:
+        key = alt["action"] + alt.get("label", "")
+        if key not in seen:
+            seen.add(key)
+            unique_alts.append(alt)
+
+    # Sort by priority
+    priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    unique_alts.sort(key=lambda x: priority_order.get(x.get("priority", "low"), 3))
+
+    # Log timeline event
+    event_type = f"guard_{verdict}"
+    await add_timeline_event(practice_id, actor_id or "system", event_type, {
+        "action_evaluated": action,
+        "verdict": verdict,
+        "guard_score": guard_score,
+        "blockers_count": blockers_count,
+        "warnings_count": warnings_count,
+        "alternatives_count": len(unique_alts),
+    })
+
+    # Log audit
+    await log_audit_event(
+        actor_id or "system", actor_role, f"guard_evaluation_{verdict}", "practice", practice_id,
+        reason=f"Guard verdict: {verdict_label} (score: {guard_score}%)",
+        severity="info" if verdict == "cleared" else "high" if verdict == "hard_blocked" else "medium",
+        practice_id=practice_id,
+        details={"guard_score": guard_score, "blockers": blockers_count, "warnings": warnings_count, "action": action}
+    )
+
+    # Create alert for hard blocks
+    if verdict == "hard_blocked":
+        await create_alert(
+            "governance_block",
+            "Herion Guard: pratica bloccata",
+            f"La pratica {practice_id[:8]} e stata bloccata da Herion Guard durante '{action}'. Punteggio: {guard_score}%. {blockers_count} blocchi identificati.",
+            practice_id=practice_id, user_id=actor_id,
+            next_action=unique_alts[0]["label"] if unique_alts else "Verificare i requisiti",
+            visibility="admin"
+        )
+
+    return {
+        "verdict": verdict,
+        "verdict_label": verdict_label,
+        "guard_score": guard_score,
+        "can_proceed": verdict in ["cleared", "guarded"],
+        "dimensions": dimensions,
+        "safe_alternatives": unique_alts,
+        "blockers_count": blockers_count,
+        "warnings_count": warnings_count,
+        "practice_id": practice_id,
+        "action_evaluated": action,
+        "readiness_state": readiness.get("readiness_state"),
+        "risk_level": readiness.get("risk_level"),
+    }
+
+@api_router.get("/guard/evaluate/{practice_id}")
+async def get_guard_evaluation(practice_id: str, action: str = "submit", user: dict = Depends(get_current_user)):
+    """Run Herion Guard evaluation for a practice."""
+    result = await herion_guard_evaluate(practice_id, action, user["id"], user.get("role", "user"))
+    return result
+
+@api_router.get("/guard/summary")
+async def get_guard_summary(user: dict = Depends(get_current_user)):
+    """Get summary of recent Guard evaluations across all practices."""
+    role = user.get("role", "user")
+    query = {} if role in ["admin", "creator"] else {"user_id": user["id"]}
+    practices = await db.practices.find(query, {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1}).to_list(200)
+
+    evaluations = []
+    for p in practices[:20]:
+        if p.get("status") in ["draft", "completed", "rejected"]:
+            continue
+        ev = await herion_guard_evaluate(p["id"], "submit", user["id"], role)
+        evaluations.append({
+            "practice_id": p["id"],
+            "practice_label": p.get("practice_type_label", ""),
+            "client_name": p.get("client_name", ""),
+            "status": p.get("status"),
+            "verdict": ev["verdict"],
+            "verdict_label": ev["verdict_label"],
+            "guard_score": ev["guard_score"],
+            "blockers_count": ev["blockers_count"],
+            "alternatives_count": len(ev["safe_alternatives"]),
+        })
+
+    cleared = sum(1 for e in evaluations if e["verdict"] == "cleared")
+    guarded = sum(1 for e in evaluations if e["verdict"] == "guarded")
+    blocked = sum(1 for e in evaluations if e["verdict"] == "hard_blocked")
+
+    return {
+        "total_evaluated": len(evaluations),
+        "cleared": cleared,
+        "guarded": guarded,
+        "blocked": blocked,
+        "evaluations": evaluations,
+    }
+
+# ========================
+# REAL-TIME FOLLOW-UP SYSTEM
+# ========================
+
+FOLLOW_UP_RULES = {
+    "submitted_no_receipt": {
+        "trigger_status": "submitted",
+        "expected_event": "receipt_received",
+        "deadline_hours": 48,
+        "label": "Ricevuta mancante dopo invio",
+        "description": "La pratica e stata inviata ma non e stata ricevuta la conferma/ricevuta.",
+        "urgency_escalation": {"pending": 0, "overdue": 48, "critical": 96},
+    },
+    "approved_not_submitted": {
+        "trigger_status": "approved",
+        "expected_event": "submitted",
+        "deadline_hours": 24,
+        "label": "Invio in attesa dopo approvazione",
+        "description": "La pratica e stata approvata ma non ancora inviata.",
+        "urgency_escalation": {"pending": 0, "overdue": 24, "critical": 72},
+    },
+    "delegation_pending_verification": {
+        "trigger_status": None,
+        "trigger_delegation": "under_review",
+        "expected_event": "delegation_verified",
+        "deadline_hours": 72,
+        "label": "Delega in attesa di verifica",
+        "description": "Un documento di delega e stato caricato ma non ancora verificato.",
+        "urgency_escalation": {"pending": 0, "overdue": 72, "critical": 144},
+    },
+    "orchestration_awaiting_approval": {
+        "trigger_status": "waiting_approval",
+        "expected_event": "approved",
+        "deadline_hours": 48,
+        "label": "Approvazione in attesa",
+        "description": "L'orchestrazione e completata ma l'utente non ha ancora approvato.",
+        "urgency_escalation": {"pending": 0, "overdue": 48, "critical": 120},
+    },
+    "stagnant_in_progress": {
+        "trigger_status": "in_progress",
+        "expected_event": "any_progression",
+        "deadline_hours": 120,
+        "label": "Pratica ferma in elaborazione",
+        "description": "La pratica non ha avuto progressi recenti.",
+        "urgency_escalation": {"pending": 0, "overdue": 120, "critical": 240},
+    },
+}
+
+async def evaluate_follow_ups():
+    """Scan practices and generate/update follow-up items based on current state."""
+    now = datetime.now(timezone.utc)
+    active_practices = await db.practices.find(
+        {"status": {"$in": ["submitted", "approved", "waiting_approval", "in_progress", "processing"]}},
+        {"_id": 0}
+    ).to_list(500)
+
+    created_count = 0
+    updated_count = 0
+
+    for practice in active_practices:
+        p_id = practice["id"]
+        status = practice.get("status")
+        delegation_status = (practice.get("delegation_info") or {}).get("status")
+
+        for rule_key, rule in FOLLOW_UP_RULES.items():
+            trigger_match = False
+
+            if rule.get("trigger_status") and rule["trigger_status"] == status:
+                trigger_match = True
+            elif rule.get("trigger_delegation") and rule["trigger_delegation"] == delegation_status:
+                trigger_match = True
+
+            if not trigger_match:
+                continue
+
+            existing = await db.follow_up_items.find_one(
+                {"practice_id": p_id, "rule_key": rule_key, "status": {"$ne": "resolved"}},
+                {"_id": 0}
+            )
+
+            if existing:
+                created_at = datetime.fromisoformat(existing["created_at"])
+                hours_elapsed = (now - created_at).total_seconds() / 3600
+                escalation = rule["urgency_escalation"]
+
+                if hours_elapsed >= escalation["critical"] and existing["urgency"] != "critical":
+                    await db.follow_up_items.update_one(
+                        {"id": existing["id"]},
+                        {"$set": {"urgency": "critical", "updated_at": now.isoformat()}}
+                    )
+                    await create_alert("missing_output", f"Follow-up critico: {rule['label']}",
+                        f"Pratica {p_id[:8]}: {rule['description']} Urgenza critica raggiunta.",
+                        practice_id=p_id, severity="critical", next_action="Intervento immediato richiesto",
+                        visibility="admin")
+                    updated_count += 1
+                elif hours_elapsed >= escalation["overdue"] and existing["urgency"] == "pending":
+                    await db.follow_up_items.update_one(
+                        {"id": existing["id"]},
+                        {"$set": {"urgency": "overdue", "updated_at": now.isoformat()}}
+                    )
+                    updated_count += 1
+            else:
+                timestamp_field = None
+                if status == "submitted":
+                    timestamp_field = practice.get("submitted_at")
+                elif status == "approved":
+                    timestamp_field = practice.get("approved_at")
+                elif status in ["waiting_approval", "in_progress", "processing"]:
+                    timestamp_field = practice.get("updated_at")
+
+                if not timestamp_field:
+                    timestamp_field = now.isoformat()
+
+                created_at_dt = datetime.fromisoformat(timestamp_field) if isinstance(timestamp_field, str) else timestamp_field
+                deadline_at = created_at_dt + timedelta(hours=rule["deadline_hours"])
+                hours_elapsed = (now - created_at_dt).total_seconds() / 3600
+                escalation = rule["urgency_escalation"]
+
+                if hours_elapsed >= escalation["critical"]:
+                    urgency = "critical"
+                elif hours_elapsed >= escalation["overdue"]:
+                    urgency = "overdue"
+                else:
+                    urgency = "pending"
+
+                follow_up = {
+                    "id": str(uuid.uuid4()),
+                    "practice_id": p_id,
+                    "rule_key": rule_key,
+                    "label": rule["label"],
+                    "description": rule["description"],
+                    "urgency": urgency,
+                    "status": "open",
+                    "expected_event": rule["expected_event"],
+                    "deadline_at": deadline_at.isoformat(),
+                    "created_at": now.isoformat(),
+                    "updated_at": now.isoformat(),
+                    "practice_status": status,
+                    "practice_label": practice.get("practice_type_label", ""),
+                    "client_name": practice.get("client_name", ""),
+                    "resolved_at": None,
+                    "resolved_by": None,
+                    "resolution_note": None,
+                }
+                await db.follow_up_items.insert_one(follow_up)
+                created_count += 1
+
+    # Auto-resolve follow-ups for practices that progressed
+    open_follow_ups = await db.follow_up_items.find(
+        {"status": "open"}, {"_id": 0}
+    ).to_list(500)
+
+    for fu in open_follow_ups:
+        practice = await db.practices.find_one({"id": fu["practice_id"]}, {"_id": 0})
+        if not practice:
+            await db.follow_up_items.update_one(
+                {"id": fu["id"]},
+                {"$set": {"status": "resolved", "urgency": "resolved", "resolved_at": now.isoformat(), "resolution_note": "Pratica non trovata"}}
+            )
+            continue
+
+        should_resolve = False
+        if fu["rule_key"] == "submitted_no_receipt" and practice.get("status") == "completed":
+            should_resolve = True
+        elif fu["rule_key"] == "approved_not_submitted" and practice.get("status") in ["submitted", "completed"]:
+            should_resolve = True
+        elif fu["rule_key"] == "delegation_pending_verification":
+            d_status = (practice.get("delegation_info") or {}).get("status")
+            if d_status in ["valid", "not_required"]:
+                should_resolve = True
+        elif fu["rule_key"] == "orchestration_awaiting_approval" and practice.get("status") in ["approved", "submitted", "completed"]:
+            should_resolve = True
+        elif fu["rule_key"] == "stagnant_in_progress" and practice.get("status") not in ["in_progress", "processing"]:
+            should_resolve = True
+
+        if should_resolve:
+            await db.follow_up_items.update_one(
+                {"id": fu["id"]},
+                {"$set": {"status": "resolved", "urgency": "resolved", "resolved_at": now.isoformat(), "resolution_note": "Risolto automaticamente"}}
+            )
+
+    return {"created": created_count, "updated": updated_count}
+
+
+@api_router.get("/follow-ups")
+async def get_follow_ups(user: dict = Depends(get_current_user), status: Optional[str] = None, urgency: Optional[str] = None, limit: int = 100):
+    """Get follow-up items. Admin/Creator see all, users see own."""
+    # Trigger follow-up evaluation
+    await evaluate_follow_ups()
+
+    role = user.get("role", "user")
+    query = {}
+    if status:
+        query["status"] = status
+    else:
+        query["status"] = {"$ne": "resolved"}
+    if urgency:
+        query["urgency"] = urgency
+
+    if role == "user":
+        user_practices = await db.practices.find({"user_id": user["id"]}, {"_id": 0, "id": 1}).to_list(200)
+        p_ids = [p["id"] for p in user_practices]
+        query["practice_id"] = {"$in": p_ids}
+
+    items = await db.follow_up_items.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return items
+
+
+@api_router.get("/follow-ups/summary")
+async def get_follow_ups_summary(user: dict = Depends(get_current_user)):
+    """Get summary of follow-up items."""
+    await evaluate_follow_ups()
+
+    role = user.get("role", "user")
+    base_query = {}
+    if role == "user":
+        user_practices = await db.practices.find({"user_id": user["id"]}, {"_id": 0, "id": 1}).to_list(200)
+        p_ids = [p["id"] for p in user_practices]
+        base_query["practice_id"] = {"$in": p_ids}
+
+    total_open = await db.follow_up_items.count_documents({**base_query, "status": "open"})
+    pending = await db.follow_up_items.count_documents({**base_query, "status": "open", "urgency": "pending"})
+    overdue = await db.follow_up_items.count_documents({**base_query, "status": "open", "urgency": "overdue"})
+    critical = await db.follow_up_items.count_documents({**base_query, "status": "open", "urgency": "critical"})
+    resolved = await db.follow_up_items.count_documents({**base_query, "status": "resolved"})
+
+    return {
+        "total_open": total_open,
+        "pending": pending,
+        "overdue": overdue,
+        "critical": critical,
+        "resolved": resolved,
+    }
+
+
+@api_router.patch("/follow-ups/{follow_up_id}")
+async def resolve_follow_up(follow_up_id: str, user: dict = Depends(get_current_user)):
+    """Resolve a follow-up item manually."""
+    role = user.get("role", "user")
+    if role not in ["admin", "creator"]:
+        raise HTTPException(status_code=403, detail="Solo admin e Creator possono risolvere follow-up")
+
+    class ResolveData(BaseModel):
+        resolution_note: Optional[str] = None
+
+    item = await db.follow_up_items.find_one({"id": follow_up_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Follow-up non trovato")
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.follow_up_items.update_one(
+        {"id": follow_up_id},
+        {"$set": {
+            "status": "resolved",
+            "urgency": "resolved",
+            "resolved_at": now,
+            "resolved_by": user["id"],
+            "resolution_note": "Risolto manualmente da " + user.get("name", user.get("email", "admin")),
+        }}
+    )
+
+    await add_timeline_event(item["practice_id"], user["id"], "follow_up_resolved", {
+        "follow_up_id": follow_up_id,
+        "rule_key": item.get("rule_key"),
+    })
+
+    return {"message": "Follow-up risolto", "id": follow_up_id}
+
+
+# ========================
 # PRACTICE TEMPLATES
 # ========================
 
@@ -2916,25 +3497,83 @@ async def get_practice_templates(user: dict = Depends(get_current_user)):
     templates = await db.practice_catalog.find({}, {"_id": 0}).to_list(100)
     return templates
 
+
+class TemplateInstanceRequest(BaseModel):
+    template_id: str
+    client_name: str
+    client_type: str = "company"
+    country: str = "IT"
+    fiscal_code: Optional[str] = None
+    vat_number: Optional[str] = None
+    company_name: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+
+
 @api_router.post("/practices/from-template")
-async def create_practice_from_template(user: dict = Depends(get_current_user)):
+async def create_practice_from_template(req: TemplateInstanceRequest, user: dict = Depends(get_current_user)):
     """Create a practice instance from a catalog template."""
-    from starlette.requests import Request
+    template = await db.practice_catalog.find_one({"practice_id": req.template_id}, {"_id": 0})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template non trovato nel catalogo")
 
-    class TemplateInstance(BaseModel):
-        template_id: str
-        client_name: str
-        client_type: str = "company"
-        country: str = "IT"
-        fiscal_code: Optional[str] = None
-        vat_number: Optional[str] = None
-        company_name: Optional[str] = None
-        description: Optional[str] = None
-        notes: Optional[str] = None
+    now = datetime.now(timezone.utc).isoformat()
+    practice_id = str(uuid.uuid4())
 
-    # This will be routed via the normal create practice flow
-    # The template enriches the practice with catalog data
-    return {"message": "Usa POST /api/practices con practice_type dal catalogo"}
+    practice = {
+        "id": practice_id,
+        "user_id": user["id"],
+        "practice_type": req.template_id,
+        "practice_type_label": template.get("name", req.template_id),
+        "client_name": req.client_name,
+        "client_type": req.client_type,
+        "client_type_label": {"private": "Privato", "freelancer": "Libero Professionista", "company": "Azienda"}.get(req.client_type, req.client_type),
+        "country": req.country,
+        "fiscal_code": req.fiscal_code,
+        "vat_number": req.vat_number,
+        "company_name": req.company_name,
+        "description": req.description or template.get("description", ""),
+        "notes": req.notes,
+        "status": "draft",
+        "status_label": STATUS_LABELS["draft"],
+        "risk_level": template.get("risk_level", "basic"),
+        "support_level": template.get("support_level", "supported"),
+        "delegation_required": template.get("delegation_required", False),
+        "approval_required": template.get("approval_required", False),
+        "delegation_info": {"status": "not_required"} if not template.get("delegation_required") else {"status": "requested", "requested_at": now},
+        "template_source": req.template_id,
+        "template_workflow_steps": template.get("workflow_steps", []),
+        "template_readiness_criteria": template.get("readiness_criteria", []),
+        "blocking_conditions": template.get("blocking_conditions", []),
+        "escalation_conditions": template.get("escalation_conditions", []),
+        "assigned_agents": template.get("agents", []),
+        "additional_data": {},
+        "agent_logs": [],
+        "orchestration_result": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.practices.insert_one(practice)
+
+    await add_timeline_event(practice_id, user["id"], "practice_created", {
+        "template_source": req.template_id,
+        "template_name": template.get("name"),
+        "client_name": req.client_name,
+        "instantiation_method": "template",
+    })
+
+    await log_activity(user["id"], "practice", "practice_created_from_template", {
+        "practice_id": practice_id,
+        "template_id": req.template_id,
+        "client_name": req.client_name,
+    })
+
+    practice.pop("_id", None)
+    return {
+        "message": f"Pratica creata dal template '{template.get('name')}'",
+        "practice": practice,
+    }
 
 # ========================
 # DASHBOARD STATS
@@ -3339,9 +3978,10 @@ async def startup():
 
 ## Creator Account (Protected Bootstrap)
 - Email: {CREATOR_EMAIL}
-- Password: {creator_pw or '(SET VIA CREATOR_PASSWORD env var)'}
+- Password: (PROTECTED — stored exclusively in backend/.env as CREATOR_PASSWORD)
 - Role: creator
 - Creator UUID: {CREATOR_UUID}
+- Login: Standard /login page. Password from env var only. Supports secure reset via /forgot-password.
 
 ## Admin Account
 - Email: {admin_email}
@@ -3421,6 +4061,10 @@ async def startup():
     await db.security_events.create_index("timestamp")
     await db.security_events.create_index("event_type")
     await db.security_events.create_index("actor")
+    await db.follow_up_items.create_index("practice_id")
+    await db.follow_up_items.create_index("status")
+    await db.follow_up_items.create_index("urgency")
+    await db.follow_up_items.create_index("rule_key")
     await db.authority_registry.create_index("registry_id", unique=True)
     catalog_count = await db.practice_catalog.count_documents({})
     if catalog_count == 0:
@@ -3469,6 +4113,7 @@ async def startup():
             {"registry_id": "EXTERNAL_INFO_REQ", "name": "Destinatario informazioni esterne", "destination_type": "external_recipient", "country": "multi", "related_practices": ["INFO_FISCAL_GENERIC"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Richieste informative verso destinatari esterni validati"},
             {"registry_id": "ESCALATION_HUMAN", "name": "Escalation revisione professionale", "destination_type": "professional_review", "country": "multi", "related_practices": [], "portal_url": None, "required_channel": "escalation", "allowed_channels": ["escalation", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Casi che richiedono revisione professionale umana"},
             {"registry_id": "PREPARATION_ONLY", "name": "Solo preparazione interna", "destination_type": "internal", "country": "multi", "related_practices": ["DOC_COMPLETENESS", "BLOCKED_RECOVERY"], "portal_url": None, "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Raccolta dati e documenti senza invio"},
+            {"registry_id": "CCIAA_COMPANY_CLOSURE", "name": "Camera di Commercio - Chiusura Societaria", "destination_type": "chamber_registry", "country": "IT", "related_practices": ["COMPANY_CLOSURE"], "portal_url": "https://www.registroimprese.it/", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Cancellazione dal Registro delle Imprese presso la Camera di Commercio. Richiede dossier completo e delega valida."},
         ]
         for entry in registry_entries:
             entry["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -3488,6 +4133,65 @@ async def startup():
         ]
         await db.reminders.insert_many(default_reminders)
         logger.info("Default reminders seeded")
+
+    # Seed Nexus S.r.l. practice from COMPANY_CLOSURE template (demo instance)
+    nexus_exists = await db.practices.find_one({"template_source": "COMPANY_CLOSURE", "client_name": "Nexus S.r.l."})
+    if not nexus_exists:
+        closure_template = await db.practice_catalog.find_one({"practice_id": "COMPANY_CLOSURE"}, {"_id": 0})
+        if closure_template:
+            creator_doc = await db.users.find_one({"is_creator": True})
+            creator_id = str(creator_doc["_id"]) if creator_doc else "system"
+            nexus_now = datetime.now(timezone.utc).isoformat()
+            nexus_id = str(uuid.uuid4())
+            nexus_practice = {
+                "id": nexus_id,
+                "user_id": creator_id,
+                "practice_type": "COMPANY_CLOSURE",
+                "practice_type_label": closure_template.get("name", "Chiusura societaria post-liquidazione"),
+                "client_name": "Nexus S.r.l.",
+                "client_type": "company",
+                "client_type_label": "Azienda",
+                "country": "IT",
+                "fiscal_code": "NXSSRL80A01H501Z",
+                "vat_number": "IT12345678901",
+                "company_name": "Nexus S.r.l.",
+                "description": "Chiusura societaria post-liquidazione per Nexus S.r.l. — societa in liquidazione volontaria completata. Procedura di cancellazione dal Registro delle Imprese.",
+                "notes": "Pratica dimostrativa creata automaticamente dal template COMPANY_CLOSURE.",
+                "status": "draft",
+                "status_label": STATUS_LABELS["draft"],
+                "risk_level": closure_template.get("risk_level", "medium"),
+                "support_level": closure_template.get("support_level", "partially_supported"),
+                "delegation_required": True,
+                "approval_required": True,
+                "delegation_info": {"status": "requested", "requested_at": nexus_now},
+                "template_source": "COMPANY_CLOSURE",
+                "template_workflow_steps": closure_template.get("workflow_steps", []),
+                "template_readiness_criteria": closure_template.get("readiness_criteria", []),
+                "blocking_conditions": closure_template.get("blocking_conditions", []),
+                "escalation_conditions": closure_template.get("escalation_conditions", []),
+                "assigned_agents": closure_template.get("agents", []),
+                "additional_data": {"liquidation_completed": True, "final_balance_approved": False},
+                "agent_logs": [],
+                "orchestration_result": None,
+                "created_at": nexus_now,
+                "updated_at": nexus_now,
+            }
+            await db.practices.insert_one(nexus_practice)
+            await db.practice_timeline.insert_one({
+                "id": str(uuid.uuid4()),
+                "practice_id": nexus_id,
+                "user_id": creator_id,
+                "event_type": "practice_created",
+                "event_label": "Pratica creata",
+                "details": {
+                    "template_source": "COMPANY_CLOSURE",
+                    "template_name": closure_template.get("name"),
+                    "client_name": "Nexus S.r.l.",
+                    "instantiation_method": "seed",
+                },
+                "timestamp": nexus_now,
+            })
+            logger.info(f"Nexus S.r.l. practice seeded from COMPANY_CLOSURE template: {nexus_id}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

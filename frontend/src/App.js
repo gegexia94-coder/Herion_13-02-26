@@ -23,6 +23,7 @@ import SubmissionCenterPage from "@/pages/SubmissionCenterPage";
 import GovernanceDashboardPage from "@/pages/GovernanceDashboardPage";
 import AlertCenterPage from "@/pages/AlertCenterPage";
 import DocumentVaultPage from "@/pages/DocumentVaultPage";
+import FollowUpPage from "@/pages/FollowUpPage";
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
             <Route path="/governance" element={<GovernanceDashboardPage />} />
             <Route path="/alerts" element={<AlertCenterPage />} />
             <Route path="/vault" element={<DocumentVaultPage />} />
+            <Route path="/follow-ups" element={<FollowUpPage />} />
             <Route path="/activity-log" element={<ActivityLogPage />} />
             <Route path="/creator" element={<CreatorControlRoom />} />
             <Route path="/profile" element={<ProfileSettingsPage />} />

@@ -1,0 +1,131 @@
+{
+  "summary": "Herion Batch 5 Testing Complete - Guard, Follow-Up, Template Instance all working. 14/14 backend tests passed, all frontend features verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_herion_v11_batch5.py",
+    "/app/test_reports/pytest/pytest_results_v11.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_herion_v11_batch5.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!",
+    "creator": "gegexia94@gmail.com / PROTECTED (env only)"
+  },
+  "seed_data_creation": "Nexus S.r.l. practice auto-seeded from COMPANY_CLOSURE template at startup",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Batch 5 Herion Guard, Follow-Up System, Template Instance fully tested and working. All 14 backend API tests pass. Frontend pages load correctly with all features functional. Guard panel displays verdict, score, dimensions, and safe alternatives. Follow-Up page shows summary cards, filters, item list with resolve button (admin only). Nexus S.r.l. practice seeded from COMPANY_CLOSURE template.",
+  "features_tested": {
+    "herion_guard_api": {
+      "status": "PASS",
+      "endpoints_tested": [
+        "GET /api/guard/evaluate/{practice_id} - returns verdict, dimensions, guard_score, safe_alternatives, can_proceed",
+        "GET /api/guard/summary - returns evaluations list with cleared/guarded/blocked counts"
+      ],
+      "verdict_types": ["cleared", "guarded", "hard_blocked"],
+      "dimensions_evaluated": ["readiness", "support_level", "routing_clarity", "delegation_validity", "approval_status", "risk_profile", "document_completeness"]
+    },
+    "herion_guard_ui": {
+      "status": "PASS",
+      "location": "Practice detail page right sidebar",
+      "features_verified": [
+        "Guard panel with title 'Herion Guard'",
+        "Verdict badge (Bloccato/Sorvegliato/Autorizzato)",
+        "Guard score percentage with progress bar",
+        "7 dimensions displayed with status indicators",
+        "Safe alternatives section with actionable suggestions"
+      ]
+    },
+    "follow_up_api": {
+      "status": "PASS",
+      "endpoints_tested": [
+        "GET /api/follow-ups - returns follow-up items with urgency states (pending/overdue/critical/resolved)",
+        "GET /api/follow-ups?status=open - filters by status",
+        "GET /api/follow-ups/summary - returns counts (total_open, pending, overdue, critical, resolved)",
+        "PATCH /api/follow-ups/{id} - resolves follow-up (admin only, returns 403 for users)"
+      ],
+      "urgency_escalation": "Auto-escalates from pending -> overdue -> critical based on time elapsed"
+    },
+    "follow_up_ui": {
+      "status": "PASS",
+      "url": "/follow-ups",
+      "features_verified": [
+        "Page title 'Follow-Up in Tempo Reale' (Italian)",
+        "Summary cards (Aperti, In Attesa, Scaduti, Critici, Risolti)",
+        "Filter tabs (Aperti, Risolti, Tutti)",
+        "Follow-up items with urgency badges",
+        "Dettagli button navigates to practice",
+        "Risolvi button (admin only) resolves follow-up",
+        "Success toast 'Follow-up risolto' on resolve"
+      ]
+    },
+    "template_instance_api": {
+      "status": "PASS",
+      "endpoints_tested": [
+        "POST /api/practices/from-template - creates practice from catalog template",
+        "Returns 404 for non-existent template"
+      ],
+      "template_metadata_copied": ["template_workflow_steps", "template_readiness_criteria", "blocking_conditions", "escalation_conditions", "assigned_agents"]
+    },
+    "nexus_practice_seeded": {
+      "status": "PASS",
+      "practice_details": {
+        "client_name": "Nexus S.r.l.",
+        "template_source": "COMPANY_CLOSURE",
+        "practice_type": "COMPANY_CLOSURE",
+        "practice_type_label": "Preparazione chiusura post-liquidazione",
+        "client_type": "company",
+        "country": "IT",
+        "fiscal_code": "NXSSRL80A01H501Z"
+      }
+    },
+    "governance_includes_guard": {
+      "status": "PASS",
+      "endpoint": "GET /api/governance/check/{practice_id}",
+      "guard_key": "guard (not guard_result)",
+      "guard_fields": ["verdict", "guard_score", "dimensions", "safe_alternatives"]
+    },
+    "creator_password_protection": {
+      "status": "PASS",
+      "test_credentials_md": "Shows 'PROTECTED' for creator password, not actual password"
+    },
+    "navigation": {
+      "status": "PASS",
+      "follow_up_link": "Visible in navigation bar for all authenticated users"
+    },
+    "italian_localization": {
+      "status": "PASS",
+      "verified_pages": ["Follow-Up page", "Guard panel", "Practice detail"]
+    }
+  },
+  "backend_tests_summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "test_classes": [
+      "TestAdminLogin (1 test)",
+      "TestGuardEvaluationAPI (2 tests)",
+      "TestFollowUpAPI (4 tests)",
+      "TestTemplateInstanceAPI (2 tests)",
+      "TestNexusPracticeSeeded (2 tests)",
+      "TestGovernanceIncludesGuard (1 test)",
+      "TestCreatorPasswordProtection (1 test)",
+      "TestCleanup (1 test)"
+    ]
+  }
+}

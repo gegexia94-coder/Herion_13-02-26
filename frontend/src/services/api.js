@@ -114,4 +114,16 @@ export const getVault = (params = {}) => api.get('/vault', { params });
 export const getVaultSummary = () => api.get('/vault/summary');
 export const patchVaultDocument = (docId, params = {}) => api.patch(`/vault/${docId}`, null, { params });
 
+// Herion Guard
+export const getGuardEvaluation = (practiceId, action = 'submit') => api.get(`/guard/evaluate/${practiceId}?action=${action}`);
+export const getGuardSummary = () => api.get('/guard/summary');
+
+// Follow-Up System
+export const getFollowUps = (params = {}) => api.get('/follow-ups', { params });
+export const getFollowUpsSummary = () => api.get('/follow-ups/summary');
+export const resolveFollowUp = (id) => api.patch(`/follow-ups/${id}`);
+
+// Template Instance
+export const createPracticeFromTemplate = (data) => api.post('/practices/from-template', data);
+
 export default api;

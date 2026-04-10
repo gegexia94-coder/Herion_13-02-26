@@ -9,73 +9,71 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - **Frontend**: React + Tailwind CSS + Shadcn UI
 - **Backend**: FastAPI (monolith server.py)
 - **Database**: MongoDB
-- **AI**: OpenAI GPT-5.2 via Emergent LLM Key (13 agents including Father Agent)
+- **AI**: OpenAI GPT-5.2 via Emergent LLM Key (13 agents incl. Father Agent + Herion Guard)
 - **Auth**: JWT cookie-based with protected Creator bootstrap
 
+### Operational Scope
+- **Current**: Italy only — all workflows, routing, document logic, and service promises are strictly Italian
+- **Future**: Europe-ready architecture, but no active non-Italian support
+- **Rule**: Non-Italian cases are blocked, unsupported, or escalated
+
 ### Key User Roles
-- **Creator**: Reserved bootstrap account with Control Room (`/creator`), full governance powers
-- **Admin**: System admin with governance, alerts, vault management
-- **User**: Standard client, can create and manage own practices
+- **Creator**: Reserved bootstrap account with Control Room, full governance powers
+- **Admin**: System admin with governance, alerts, vault, document matrix management
+- **User**: Standard client for Italian fiscal practices
 
-### Implemented Features (Completed)
+### Implemented Features
 
-#### Batch 0 — Foundation
-- JWT auth with registration, login, logout, password reset
-- Creator bootstrap from environment (email + password from .env)
-- Practice CRUD with status management
-- 12-agent AI orchestration (intake, ledger, compliance, documents, delegate, deadline, flow, routing, research, monitor, advisor, guard)
-- Agent chat and single/full orchestration
-- Role-based access control
+#### Foundation (Batch 0)
+- JWT auth, Creator bootstrap, Practice CRUD, 13-agent orchestration, role-based access
 
-#### Batch 1 — Practice Catalog & Workflow
-- Practice Catalog page (`/catalog`) with Italian tax procedures
-- Step-by-step workflow stepper visualization
-- Practice state machine (draft → in_progress → waiting_approval → approved → submitted → completed)
+#### Practice Catalog & Workflow (Batch 1)
+- Practice Catalog with Italian tax procedures, workflow stepper visualization
 
-#### Batch 2 — Submission & Deadlines
-- Submission Center (`/submissions`)
-- Deadline Dashboard (`/deadlines`)
-- Delegation system with UI and backend engine
+#### Submission & Deadlines (Batch 2)
+- Submission Center, Deadline Dashboard, Delegation system
 
-#### Batch 3 — Governance & Security
-- Governance Dashboard (`/governance`) with Non-Negotiable Rules, Permissions Matrix, Fail-Safe
-- Audit logging system with severity levels
-- Governance Call — unified check method before important actions
+#### Governance & Security (Batch 3)
+- Governance Dashboard, Non-Negotiable Rules, Permissions Matrix, Fail-Safe, Audit log
 
-#### Batch 4 — Alerts & Vault
-- Alert Center (`/alerts`) with filtering and severity
-- Security monitoring engine
-- Document Vault (`/vault`) with metadata tracking and visibility controls
+#### Alerts & Vault (Batch 4)
+- Alert Center, Security monitoring, Document Vault with metadata
 
-#### Batch 5 — Guard, Follow-Up, Template Instance (2026-04-10)
-- **Herion Guard**: 13th agent — boundary-enforcement engine evaluating 7 dimensions (readiness, support, routing, delegation, approval, risk, documents). Verdicts: Autorizzato / Sorvegliato / Bloccato. Always provides safe alternative recommendations. Integrated into governance_call() and submit flow. UI panel on practice detail.
-- **Real-Time Follow-Up System**: Post-transition event tracking. 5 follow-up rules (submitted_no_receipt, approved_not_submitted, delegation_pending_verification, orchestration_awaiting_approval, stagnant_in_progress). Urgency escalation: pending → overdue → critical. Auto-resolution when practice progresses. API + UI page at `/follow-ups` with summary, filters, resolve buttons.
-- **Nexus S.r.l. Practice Instance**: Demo practice seeded from COMPANY_CLOSURE template. Full template-to-instance flow via `POST /api/practices/from-template`. Authority Registry entry for CCIAA (Camera di Commercio) added.
-- **Creator Security Fix**: Creator password removed from all public files and summaries. Stored exclusively in backend `.env`. test_credentials.md shows "PROTECTED".
+#### Guard, Follow-Up, Nexus (Batch 5)
+- Herion Guard (13th agent): 7-dimension boundary enforcement with safe alternatives
+- Real-Time Follow-Up System: 5 rules, urgency escalation, auto-resolution
+- Nexus S.r.l. practice from COMPANY_CLOSURE template
+- Creator password security fix (env-only, never exposed)
+
+#### Italy-Only Cleanup + Document Intelligence (Batch 6 — 2026-04-10)
+- **Phase A**: All 20 catalog entries → country_scope=IT, operational_status (active_italy_scope/active_internal). All 15 registry entries → registry_status (active_italy_scope/active_internal/needs_validation). Welcome/Catalog pages → Italy-first positioning. Guard/Governance → country scope enforcement.
+- **Phase B**: Full Document Matrix for 10 Italian practice types:
+  - COMPANY_CLOSURE: 6 required (2 signed), 3 optional, 2 conditional (delegation P7M, procura speciale), 4 expected outputs
+  - VAT_OPEN_PF: 3 required (1 signed), 1 optional, 1 conditional, 2 outputs
+  - All other types: complete matrices with formats, sensitivity, signing requirements
+- Signature handling: P7M/CAdES awareness, PAdES support, blocking on missing signatures
+- Sensitivity levels: standard, personal, fiscal, legal, confidential — with role-based visibility
+- Output tracking: receipt, protocol, attestation, dossier per practice type
+- Blocking logic: practice stops when document conditions unmet
+- Guard integration: document_completeness dimension uses Document Matrix
 
 ### Key API Endpoints
-- Auth: POST /api/auth/login, /register, /forgot-password, /reset-password, /change-password
+- Auth: POST /api/auth/login, /register, /forgot-password, /reset-password
 - Practices: GET/POST /api/practices, GET /api/practices/{id}, POST /api/practices/{id}/submit, /approve
 - Guard: GET /api/guard/evaluate/{id}, GET /api/guard/summary
 - Follow-Up: GET /api/follow-ups, GET /api/follow-ups/summary, PATCH /api/follow-ups/{id}
 - Template: POST /api/practices/from-template, GET /api/catalog/templates
+- Document Matrix: GET /api/documents/matrix/{id}, GET /api/documents/matrix-types, GET /api/documents/sensitivity-levels
 - Governance: GET /api/governance/check/{id}, GET /api/governance/dashboard
 - Alerts: GET /api/alerts, GET /api/alerts/summary
 - Vault: GET /api/vault, GET /api/vault/summary
-- Orchestration: POST /api/practices/{id}/orchestrate, POST /api/practices/{id}/agent/{name}
 
 ### Database Collections
-- users, practices, practice_timeline, documents, alerts, security_events
-- governance_audit, practice_catalog, authority_registry, reminders
-- follow_up_items (NEW — Batch 5)
-
-### 3rd Party Integrations
-- OpenAI GPT-5.2 — Agent orchestration (Emergent LLM Key)
-- Resend — Email (PLANNED, not yet integrated)
+users, practices, practice_timeline, documents, alerts, security_events, governance_audit, practice_catalog, authority_registry, reminders, follow_up_items
 
 ### Testing Status
-- Iteration 11: 14/14 tests passed (100%) — Batch 5 complete
-- All previous iterations (7-10): 100% pass rate
+- Iteration 12: 20/20 tests passed (100%)
+- All previous iterations: 100% pass rate
 
 ### Remaining Backlog
 - P1: Real Email Integration (Resend) — requires user API key

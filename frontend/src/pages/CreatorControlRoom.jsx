@@ -84,7 +84,7 @@ export default function CreatorControlRoom() {
           </div>
           <div className="space-y-2">
             {[
-              { name: 'Father Agent', role: 'Supervisore supremo', color: 'bg-[#0F4C5C]' },
+              { name: 'Father Agent', role: 'Supervisore Father', color: 'bg-[#0F4C5C]' },
               { name: 'Herion Intake', role: 'Raccolta e classificazione', color: 'bg-sky-500' },
               { name: 'Herion Ledger', role: 'Contabilita e finanza', color: 'bg-indigo-500' },
               { name: 'Herion Compliance', role: 'Conformita normativa', color: 'bg-amber-500' },

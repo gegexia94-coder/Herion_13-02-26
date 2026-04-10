@@ -1,71 +1,86 @@
-# Herion - Controlled Execution Platform for Fiscal/Administrative Operations
+# Herion - Controlled AI-Driven Tax Management Platform
+
 ## Product Requirements Document
 
 ### Original Problem Statement
-Build Herion as a premium European operational platform for fiscal and administrative practices, designed as a controlled execution system with strong founder-level governance.
+Build a transparent, AI-driven tax management web application called "Herion". Must be a controlled execution platform with orchestration of multiple specialized agents, strict user approval before submission, and a structured Practice Catalog and Authority Registry. All UI text in Italian; codebase in English.
 
 ### Core Architecture
-- **Frontend**: React + Tailwind CSS + Shadcn/UI
-- **Backend**: FastAPI + MongoDB
-- **AI**: OpenAI GPT-5.2 via Emergent LLM Key
-- **Branding**: Deep Teal #0F4C5C + Emerald #5DD9C1, Manrope font
-- **Language**: UI in Italian, codebase in English
+- **Frontend**: React + Tailwind CSS + Shadcn UI
+- **Backend**: FastAPI (monolith server.py)
+- **Database**: MongoDB
+- **AI**: OpenAI GPT-5.2 via Emergent LLM Key (13 agents including Father Agent)
+- **Auth**: JWT cookie-based with protected Creator bootstrap
 
-### Role Model
-1. **Creator** (HERION-CREATOR-001) - Unique protected founder, full visibility
-2. **Admin** - Operational management, governance visibility
-3. **User** - Practice management, approval, status tracking
+### Key User Roles
+- **Creator**: Reserved bootstrap account with Control Room (`/creator`), full governance powers
+- **Admin**: System admin with governance, alerts, vault management
+- **User**: Standard client, can create and manage own practices
 
-### What's Implemented
+### Implemented Features (Completed)
 
-**Core Platform (Batch 0):**
-- [x] JWT Auth (cookie-based), Creator bootstrap (env var only), 12-agent system
-- [x] Practice CRUD, Document upload, PDF export, Q&A Chat, Reminders
-- [x] Practice Catalog (20+ entries) + Authority Registry (14 entries)
+#### Batch 0 — Foundation
+- JWT auth with registration, login, logout, password reset
+- Creator bootstrap from environment (email + password from .env)
+- Practice CRUD with status management
+- 12-agent AI orchestration (intake, ledger, compliance, documents, delegate, deadline, flow, routing, research, monitor, advisor, guard)
+- Agent chat and single/full orchestration
+- Role-based access control
 
-**Batch 1 (Catalog & Visualization):**
-- [x] Practice Catalog Page (/catalog), WorkflowStepper, User/Client Identity Card
+#### Batch 1 — Practice Catalog & Workflow
+- Practice Catalog page (`/catalog`) with Italian tax procedures
+- Step-by-step workflow stepper visualization
+- Practice state machine (draft → in_progress → waiting_approval → approved → submitted → completed)
 
-**Batch 2 (Operational Core):**
-- [x] Deadline Dashboard (/deadlines), Submission Center (/submissions)
-- [x] Delegation System (lifecycle: not_required→requested→under_review→valid/rejected)
-- [x] Readiness Engine + Practice Readiness Panel
+#### Batch 2 — Submission & Deadlines
+- Submission Center (`/submissions`)
+- Deadline Dashboard (`/deadlines`)
+- Delegation system with UI and backend engine
 
-**Batch 3 (Governance Layer):**
-- [x] Non-Negotiable Rules (10 NNR rules), Permissions Matrix (23 actions x 3 roles)
-- [x] Fail-Safe/Emergency Stop, Enhanced Audit Logging, Governance Call Method
-- [x] Governance Dashboard (/governance) — admin/creator only
+#### Batch 3 — Governance & Security
+- Governance Dashboard (`/governance`) with Non-Negotiable Rules, Permissions Matrix, Fail-Safe
+- Audit logging system with severity levels
+- Governance Call — unified check method before important actions
 
-**Batch 4 (Protection & Monitoring):**
-- [x] **Alert Center** (/alerts) — Severity-based alerts (info/warning/high/critical), role-based visibility, sections (Alta Priorita, Nuove, Pratiche, Sicurezza, Governance, Risolte), acknowledge/resolve actions
-- [x] **Security Monitoring** — Failed login tracking, threshold-based auto-alert generation (3+ failed logins → alert), security events API (admin/creator only)
-- [x] **Document Vault** (/vault) — Secure document storage with vault_status, sensitivity_level, verification_status, category metadata. Summary cards, search, category filters, admin verify action
-- [x] **Integrated Protection** — Failed logins → security events → auto-alerts. Sensitive document recategorization → security event + alert. All changes tracked in governance audit
-- [x] **Enhanced Company Closure Template** — COMPANY_CLOSURE catalog entry with workflow_steps, readiness_criteria, admin_notes, is_template flag
+#### Batch 4 — Alerts & Vault
+- Alert Center (`/alerts`) with filtering and severity
+- Security monitoring engine
+- Document Vault (`/vault`) with metadata tracking and visibility controls
 
-### What's NOT Yet Implemented
-- [ ] Herion Guard (boundary enforcement agent, alternative recommendations)
-- [ ] Real-Time Follow-Up System (post-submission tracking)
-- [ ] Real Email Integration (Resend — user confirmed)
-- [ ] Practice template instance creation (Nexus S.r.l. case)
-- [ ] Catalog expansion to 120+, country-specific tax rules, 2FA, multi-language
-
-### Key DB Collections
-users, practices, practice_timeline, approval_snapshots, practice_catalog, authority_registry, documents, activity_logs, reminders, notifications, practice_chats, submission_records, governance_audit, **alerts** (NEW), **security_events** (NEW)
+#### Batch 5 — Guard, Follow-Up, Template Instance (2026-04-10)
+- **Herion Guard**: 13th agent — boundary-enforcement engine evaluating 7 dimensions (readiness, support, routing, delegation, approval, risk, documents). Verdicts: Autorizzato / Sorvegliato / Bloccato. Always provides safe alternative recommendations. Integrated into governance_call() and submit flow. UI panel on practice detail.
+- **Real-Time Follow-Up System**: Post-transition event tracking. 5 follow-up rules (submitted_no_receipt, approved_not_submitted, delegation_pending_verification, orchestration_awaiting_approval, stagnant_in_progress). Urgency escalation: pending → overdue → critical. Auto-resolution when practice progresses. API + UI page at `/follow-ups` with summary, filters, resolve buttons.
+- **Nexus S.r.l. Practice Instance**: Demo practice seeded from COMPANY_CLOSURE template. Full template-to-instance flow via `POST /api/practices/from-template`. Authority Registry entry for CCIAA (Camera di Commercio) added.
+- **Creator Security Fix**: Creator password removed from all public files and summaries. Stored exclusively in backend `.env`. test_credentials.md shows "PROTECTED".
 
 ### Key API Endpoints
-- Alerts: GET /api/alerts, GET /api/alerts/summary, PATCH /api/alerts/{id}?action=...
-- Security: GET /api/security/events, GET /api/security/summary
-- Vault: GET /api/vault, GET /api/vault/summary, PATCH /api/vault/{id}?vault_status=...
-- Governance: GET /api/governance/check/{id}, /dashboard, /audit, /permissions
-- Submission: GET /api/submission-center, POST /api/practices/{id}/submit
-- Delegation: PUT /api/practices/{id}/delegation
-- + All previous endpoints (auth, practices, catalog, documents, agents, etc.)
+- Auth: POST /api/auth/login, /register, /forgot-password, /reset-password, /change-password
+- Practices: GET/POST /api/practices, GET /api/practices/{id}, POST /api/practices/{id}/submit, /approve
+- Guard: GET /api/guard/evaluate/{id}, GET /api/guard/summary
+- Follow-Up: GET /api/follow-ups, GET /api/follow-ups/summary, PATCH /api/follow-ups/{id}
+- Template: POST /api/practices/from-template, GET /api/catalog/templates
+- Governance: GET /api/governance/check/{id}, GET /api/governance/dashboard
+- Alerts: GET /api/alerts, GET /api/alerts/summary
+- Vault: GET /api/vault, GET /api/vault/summary
+- Orchestration: POST /api/practices/{id}/orchestrate, POST /api/practices/{id}/agent/{name}
 
-### Creator Security Rules
-- Password from CREATOR_PASSWORD env var only (no fallback)
-- Creator recognized via: email + role=creator + is_creator=true + creator_uuid
+### Database Collections
+- users, practices, practice_timeline, documents, alerts, security_events
+- governance_audit, practice_catalog, authority_registry, reminders
+- follow_up_items (NEW — Batch 5)
 
 ### 3rd Party Integrations
-- OpenAI GPT-5.2 via Emergent LLM Key (agent orchestration + Q&A)
-- Email: MOCKED (Resend selected, to be integrated later)
+- OpenAI GPT-5.2 — Agent orchestration (Emergent LLM Key)
+- Resend — Email (PLANNED, not yet integrated)
+
+### Testing Status
+- Iteration 11: 14/14 tests passed (100%) — Batch 5 complete
+- All previous iterations (7-10): 100% pass rate
+
+### Remaining Backlog
+- P1: Real Email Integration (Resend) — requires user API key
+- P2: Country-specific tax rules implementation
+- P2: 2FA-ready architecture
+- P2: Advanced analytics / Creator profit dashboard
+- P2: Multi-language support
+- P2: Catalog expansion to 120+ procedures

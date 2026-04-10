@@ -20,24 +20,24 @@ export function HerionLogo({ size = 'md', variant = 'full', className = '' }) {
       className="flex-shrink-0"
     >
       {/* Background shape with subtle gradient effect */}
-      <rect x="2" y="2" width="44" height="44" rx="12" fill="#0F4C5C" />
+      <rect x="2" y="2" width="44" height="44" rx="12" fill="#0A192F" />
       
       {/* Abstract "H" formed by geometric shapes */}
       <path 
         d="M14 12V36" 
-        stroke="#5DD9C1" 
+        stroke="#3B82F6" 
         strokeWidth="4" 
         strokeLinecap="round"
       />
       <path 
         d="M34 12V36" 
-        stroke="#5DD9C1" 
+        stroke="#3B82F6" 
         strokeWidth="4" 
         strokeLinecap="round"
       />
       <path 
         d="M14 24H34" 
-        stroke="#5DD9C1" 
+        stroke="#3B82F6" 
         strokeWidth="4" 
         strokeLinecap="round"
       />
@@ -45,7 +45,7 @@ export function HerionLogo({ size = 'md', variant = 'full', className = '' }) {
       {/* Accent element - small diamond for premium touch */}
       <path 
         d="M24 18L27 21L24 24L21 21L24 18Z" 
-        fill="#5DD9C1"
+        fill="#3B82F6"
         opacity="0.6"
       />
     </svg>
@@ -62,7 +62,7 @@ export function HerionLogo({ size = 'md', variant = 'full', className = '' }) {
       <LogoMark />
       {variant === 'full' && (
         <div className="flex flex-col">
-          <span className={`font-semibold tracking-tight text-[#0F4C5C] ${text}`}>
+          <span className={`font-semibold tracking-tight text-[#0A192F] ${text}`}>
             Herion
           </span>
           {size === 'lg' || size === 'xl' ? (
@@ -87,13 +87,13 @@ export function HerionLogoCompact({ className = '' }) {
         fill="none" 
         xmlns="http://www.w3.org/2000/svg"
       >
-        <rect x="2" y="2" width="44" height="44" rx="12" fill="#0F4C5C" />
-        <path d="M14 12V36" stroke="#5DD9C1" strokeWidth="4" strokeLinecap="round"/>
-        <path d="M34 12V36" stroke="#5DD9C1" strokeWidth="4" strokeLinecap="round"/>
-        <path d="M14 24H34" stroke="#5DD9C1" strokeWidth="4" strokeLinecap="round"/>
-        <path d="M24 18L27 21L24 24L21 21L24 18Z" fill="#5DD9C1" opacity="0.6"/>
+        <rect x="2" y="2" width="44" height="44" rx="12" fill="#0A192F" />
+        <path d="M14 12V36" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"/>
+        <path d="M34 12V36" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"/>
+        <path d="M14 24H34" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"/>
+        <path d="M24 18L27 21L24 24L21 21L24 18Z" fill="#3B82F6" opacity="0.6"/>
       </svg>
-      <span className="text-xl font-semibold tracking-tight text-[#0F4C5C]">
+      <span className="text-xl font-semibold tracking-tight text-[#0A192F]">
         Herion
       </span>
     </div>

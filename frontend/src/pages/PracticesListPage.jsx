@@ -107,7 +107,7 @@ export default function PracticesListPage() {
       'pending': 'bg-amber-50 text-amber-700 border-amber-200',
       'in_progress': 'bg-sky-50 text-sky-700 border-sky-200',
       'processing': 'bg-sky-50 text-sky-700 border-sky-200',
-      'waiting_approval': 'bg-[#0F4C5C]/5 text-[#0F4C5C] border-[#0F4C5C]/20',
+      'waiting_approval': 'bg-[#0A192F]/5 text-[#0A192F] border-[#0A192F]/20',
       'approved': 'bg-emerald-50 text-emerald-700 border-emerald-200',
       'submitted': 'bg-blue-50 text-blue-700 border-blue-200',
       'completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -121,7 +121,7 @@ export default function PracticesListPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]"></div>
       </div>
     );
   }
@@ -135,7 +135,7 @@ export default function PracticesListPage() {
           <p className="text-sm text-[#475569]">Gestisci tutte le tue pratiche fiscali</p>
         </div>
         <Link to="/practices/new">
-          <Button className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20" data-testid="create-practice-btn">
+          <Button className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20" data-testid="create-practice-btn">
             <Plus className="w-4 h-4 mr-2" />
             Nuova Pratica
           </Button>
@@ -202,8 +202,8 @@ export default function PracticesListPage() {
                 <tr key={practice.id} className="hover:bg-[#FAFAFA] transition-colors" data-testid={`practice-row-${index}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-[#0F4C5C]" />
+                      <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-[#0A192F]" />
                       </div>
                       <div>
                         <p className="font-medium text-[#111110] text-sm">{practice.practice_type_label}</p>
@@ -229,8 +229,8 @@ export default function PracticesListPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Link to={`/practices/${practice.id}`}>
-                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-[#0F4C5C]/5" data-testid={`view-practice-${index}`}>
-                          <Eye className="w-4 h-4 text-[#0F4C5C]" />
+                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-[#0A192F]/5" data-testid={`view-practice-${index}`}>
+                          <Eye className="w-4 h-4 text-[#0A192F]" />
                         </Button>
                       </Link>
                       <Button 
@@ -263,7 +263,7 @@ export default function PracticesListPage() {
           </p>
           {practices.length === 0 && (
             <Link to="/practices/new">
-              <Button className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl" data-testid="empty-create-btn">
+              <Button className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl" data-testid="empty-create-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 Crea Prima Pratica
               </Button>

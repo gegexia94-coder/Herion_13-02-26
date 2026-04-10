@@ -22,17 +22,17 @@ export function TaxPilotLogo({ size = 'md', variant = 'full', className = '' }) 
       className="flex-shrink-0"
     >
       {/* Background geometric shape */}
-      <rect x="4" y="4" width="40" height="40" rx="8" fill="#0F4C5C" />
+      <rect x="4" y="4" width="40" height="40" rx="8" fill="#0A192F" />
       
       {/* Primary arrow/pilot navigation symbol */}
       <path 
         d="M24 10L38 24L24 38L18 32L26 24L18 16L24 10Z" 
-        fill="#5DD9C1"
+        fill="#3B82F6"
       />
       
       {/* Secondary modular blocks representing practices */}
-      <rect x="10" y="18" width="6" height="6" rx="1" fill="#5DD9C1" opacity="0.7" />
-      <rect x="10" y="26" width="6" height="6" rx="1" fill="#5DD9C1" opacity="0.5" />
+      <rect x="10" y="18" width="6" height="6" rx="1" fill="#3B82F6" opacity="0.7" />
+      <rect x="10" y="26" width="6" height="6" rx="1" fill="#3B82F6" opacity="0.5" />
     </svg>
   );
 
@@ -46,7 +46,7 @@ export function TaxPilotLogo({ size = 'md', variant = 'full', className = '' }) 
     <div className={`flex items-center gap-2 ${className}`}>
       <LogoMark />
       {variant === 'full' && (
-        <span className={`font-bold tracking-tight text-[#0F4C5C] ${text}`}>
+        <span className={`font-bold tracking-tight text-[#0A192F] ${text}`}>
           TaxPilot
         </span>
       )}
@@ -68,19 +68,19 @@ export function TaxPilotLogoAlt({ size = 32, className = '' }) {
       {/* Hexagonal base representing structure */}
       <path 
         d="M24 4L42 14V34L24 44L6 34V14L24 4Z" 
-        fill="#0F4C5C"
+        fill="#0A192F"
       />
       
       {/* Inner navigation arrow */}
       <path 
         d="M20 16L32 24L20 32V16Z" 
-        fill="#5DD9C1"
+        fill="#3B82F6"
       />
       
       {/* Flow lines */}
       <path 
         d="M12 20L16 24L12 28" 
-        stroke="#5DD9C1" 
+        stroke="#3B82F6" 
         strokeWidth="2" 
         strokeLinecap="round" 
         strokeLinejoin="round"

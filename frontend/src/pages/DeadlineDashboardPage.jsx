@@ -15,7 +15,7 @@ const SECTION_CONFIG = {
   waiting_delegation: { label: 'In Attesa di Delega', icon: KeyRound, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', accent: 'bg-violet-600' },
   overdue: { label: 'Scadute', icon: Timer, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300', accent: 'bg-red-700' },
   in_progress: { label: 'In Corso', icon: GitBranch, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200', accent: 'bg-sky-600' },
-  upcoming_actions: { label: 'Prossime Azioni', icon: ArrowRight, color: 'text-[#0F4C5C]', bg: 'bg-[#F0FAF8]', border: 'border-[#5DD9C1]/30', accent: 'bg-[#0F4C5C]' },
+  upcoming_actions: { label: 'Prossime Azioni', icon: ArrowRight, color: 'text-[#0A192F]', bg: 'bg-[#F0FAF8]', border: 'border-[#3B82F6]/30', accent: 'bg-[#0A192F]' },
 };
 
 const URGENCY_CONFIG = {
@@ -46,7 +46,7 @@ function DeadlineCard({ entry, onOpen }) {
           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-800 font-bold">{entry.overdue_days}g</span>
         )}
         <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569]">{entry.status_label}</span>
-        <ChevronRight className="w-3.5 h-3.5 text-[#CBD5E1] group-hover:text-[#0F4C5C] transition-colors" />
+        <ChevronRight className="w-3.5 h-3.5 text-[#CBD5E1] group-hover:text-[#0A192F] transition-colors" />
       </div>
     </div>
   );
@@ -70,7 +70,7 @@ export default function DeadlineDashboardPage() {
 
   const openPractice = (id) => navigate(`/practices/${id}`);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
   if (!data) return null;
 
   const { sections, counts, urgency } = data;
@@ -92,7 +92,7 @@ export default function DeadlineDashboardPage() {
             <Activity className="w-3.5 h-3.5" />
             Urgenza: {urg.label}
           </div>
-          <div className="text-xs text-[#94A3B8] bg-[#F7FAFC] px-3 py-1.5 rounded-full border border-[#E2E8F0]">
+          <div className="text-xs text-[#94A3B8] bg-[#F8F9FA] px-3 py-1.5 rounded-full border border-[#E2E8F0]">
             {counts.total_active} pratiche attive
           </div>
         </div>

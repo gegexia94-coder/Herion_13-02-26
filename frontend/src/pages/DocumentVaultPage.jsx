@@ -20,10 +20,10 @@ const CATEGORY_CONFIG = {
   delegation: { label: 'Delega', icon: Lock, color: 'text-amber-600', bg: 'bg-amber-50' },
   compliance: { label: 'Conformita', icon: ShieldCheck, color: 'text-teal-600', bg: 'bg-teal-50' },
   support_docs: { label: 'Supporto', icon: FileText, color: 'text-[#475569]', bg: 'bg-[#F1F5F9]' },
-  generated_pdf: { label: 'PDF Generato', icon: Download, color: 'text-[#0F4C5C]', bg: 'bg-[#F0FAF8]' },
+  generated_pdf: { label: 'PDF Generato', icon: Download, color: 'text-[#0A192F]', bg: 'bg-[#F0FAF8]' },
   receipt_protocol: { label: 'Ricevuta', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  final_dossier: { label: 'Dossier Finale', icon: Archive, color: 'text-[#0F4C5C]', bg: 'bg-[#F0FAF8]' },
-  other: { label: 'Altro', icon: FileText, color: 'text-[#94A3B8]', bg: 'bg-[#F7FAFC]' },
+  final_dossier: { label: 'Dossier Finale', icon: Archive, color: 'text-[#0A192F]', bg: 'bg-[#F0FAF8]' },
+  other: { label: 'Altro', icon: FileText, color: 'text-[#94A3B8]', bg: 'bg-[#F8F9FA]' },
 };
 
 const STATUS_CONFIG = {
@@ -34,8 +34,8 @@ const STATUS_CONFIG = {
   rejected: { label: 'Rifiutato', color: 'text-red-600', bg: 'bg-red-50' },
   archived: { label: 'Archiviato', color: 'text-[#94A3B8]', bg: 'bg-[#F1F5F9]' },
   locked: { label: 'Bloccato', color: 'text-red-700', bg: 'bg-red-50' },
-  ready_for_send: { label: 'Pronto invio', color: 'text-[#0F4C5C]', bg: 'bg-[#F0FAF8]' },
-  sent: { label: 'Inviato', color: 'text-[#5DD9C1]', bg: 'bg-[#F0FAF8]' },
+  ready_for_send: { label: 'Pronto invio', color: 'text-[#0A192F]', bg: 'bg-[#F0FAF8]' },
+  sent: { label: 'Inviato', color: 'text-[#3B82F6]', bg: 'bg-[#F0FAF8]' },
   protected_output: { label: 'Output protetto', color: 'text-violet-600', bg: 'bg-violet-50' },
 };
 
@@ -94,7 +94,7 @@ export default function DocumentVaultPage() {
     return true;
   });
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
 
   const isAdmin = ['admin', 'creator'].includes(user?.role);
 
@@ -109,7 +109,7 @@ export default function DocumentVaultPage() {
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           {[
-            { label: 'Totali', value: summary.total, Icon: FileText, color: 'text-[#0F4C5C]' },
+            { label: 'Totali', value: summary.total, Icon: FileText, color: 'text-[#0A192F]' },
             { label: 'Verificati', value: summary.verified, Icon: CheckCircle, color: 'text-emerald-600' },
             { label: 'Da verificare', value: summary.pending_review, Icon: Clock, color: 'text-amber-600' },
             { label: 'Rifiutati', value: summary.rejected, Icon: XCircle, color: 'text-red-600' },
@@ -137,7 +137,7 @@ export default function DocumentVaultPage() {
           <div className="flex gap-1 flex-wrap">
             {[{ key: 'all', label: 'Tutte' }, ...Object.entries(CATEGORY_CONFIG).slice(0, 6).map(([k, v]) => ({ key: k, label: v.label }))].map(tab => (
               <button key={tab.key} onClick={() => setCatFilter(tab.key)}
-                className={`px-2.5 py-1.5 rounded-full text-[10px] font-medium transition-all ${catFilter === tab.key ? 'bg-[#0F4C5C] text-white' : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'}`}
+                className={`px-2.5 py-1.5 rounded-full text-[10px] font-medium transition-all ${catFilter === tab.key ? 'bg-[#0A192F] text-white' : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'}`}
                 data-testid={`cat-${tab.key}`}>
                 {tab.label}
               </button>
@@ -187,7 +187,7 @@ export default function DocumentVaultPage() {
                     {doc.practice_id && (
                       <button onClick={() => navigate(`/practices/${doc.practice_id}`)}
                         className="p-1.5 rounded-lg hover:bg-[#F1F5F9] transition-colors">
-                        <ChevronRight className="w-3.5 h-3.5 text-[#CBD5E1] group-hover:text-[#0F4C5C]" />
+                        <ChevronRight className="w-3.5 h-3.5 text-[#CBD5E1] group-hover:text-[#0A192F]" />
                       </button>
                     )}
                   </div>

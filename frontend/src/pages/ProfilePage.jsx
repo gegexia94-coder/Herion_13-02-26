@@ -71,7 +71,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6" data-testid="profile-page">
@@ -83,7 +83,7 @@ export default function ProfilePage() {
       {/* Account Info (read-only) */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center"><User className="w-5 h-5 text-[#0F4C5C]" strokeWidth={1.5} /></div>
+          <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center"><User className="w-5 h-5 text-[#0A192F]" strokeWidth={1.5} /></div>
           <div><h3 className="font-semibold text-[#0F172A] text-sm">Informazioni Account</h3><p className="text-xs text-[#475569]">Dati principali del tuo account</p></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -99,7 +99,7 @@ export default function ProfilePage() {
       {/* Editable Info */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-[#5DD9C1]/10 flex items-center justify-center"><MapPin className="w-5 h-5 text-[#0F4C5C]" strokeWidth={1.5} /></div>
+          <div className="w-10 h-10 rounded-xl bg-[#3B82F6]/10 flex items-center justify-center"><MapPin className="w-5 h-5 text-[#0A192F]" strokeWidth={1.5} /></div>
           <div><h3 className="font-semibold text-[#0F172A] text-sm">Contatti e Residenza</h3><p className="text-xs text-[#475569]">Aggiorna i tuoi dati di contatto</p></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -113,7 +113,7 @@ export default function ProfilePage() {
             <Input value={editForm.address} onChange={e => setEditForm(p => ({...p, address: e.target.value}))} className="rounded-xl border-[#E2E8F0] h-11 text-sm mt-1.5" data-testid="profile-address-input" /></div>
         </div>
         <div className="mt-5 flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl text-sm px-6" data-testid="profile-save-btn">
+          <Button onClick={handleSave} disabled={saving} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl text-sm px-6" data-testid="profile-save-btn">
             <Save className="w-4 h-4 mr-2" />{saving ? 'Salvataggio...' : 'Salva modifiche'}
           </Button>
         </div>

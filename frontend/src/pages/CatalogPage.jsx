@@ -113,7 +113,7 @@ export default function CatalogPage() {
 
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
 
   return (
     <div className="space-y-6" data-testid="catalog-page">
@@ -148,7 +148,7 @@ export default function CatalogPage() {
                 onClick={() => setActiveFilter(tab.key)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   activeFilter === tab.key
-                    ? 'bg-[#0F4C5C] text-white shadow-sm'
+                    ? 'bg-[#0A192F] text-white shadow-sm'
                     : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
                 }`}
                 data-testid={`filter-${tab.key}`}
@@ -212,7 +212,7 @@ export default function CatalogPage() {
                       <ChannelIcon className="w-2.5 h-2.5" />{channel.label}
                     </span>
                     {entry.approval_required && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0F4C5C]/5 text-[#0F4C5C] flex items-center gap-1">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0A192F]/5 text-[#0A192F] flex items-center gap-1">
                         <Lock className="w-2.5 h-2.5" />Approvazione
                       </span>
                     )}
@@ -231,13 +231,13 @@ export default function CatalogPage() {
                       if (!cfg) return null;
                       const UTIcon = cfg.icon;
                       return (
-                        <span key={ut} className="text-[10px] px-2 py-0.5 rounded-full bg-[#F7FAFC] text-[#475569] border border-[#E2E8F0] flex items-center gap-1">
+                        <span key={ut} className="text-[10px] px-2 py-0.5 rounded-full bg-[#F8F9FA] text-[#475569] border border-[#E2E8F0] flex items-center gap-1">
                           <UTIcon className="w-2.5 h-2.5" />{cfg.label}
                         </span>
                       );
                     })}
                     {entry.country_scope && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F7FAFC] text-[#475569] border border-[#E2E8F0] flex items-center gap-1">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F8F9FA] text-[#475569] border border-[#E2E8F0] flex items-center gap-1">
                         <Globe className="w-2.5 h-2.5" />{entry.country_scope}
                       </span>
                     )}
@@ -246,7 +246,7 @@ export default function CatalogPage() {
                   {/* Expand Button */}
                   <button
                     onClick={() => toggleExpand(entry.practice_id)}
-                    className="flex items-center gap-1 text-[10px] text-[#0F4C5C] font-medium hover:underline"
+                    className="flex items-center gap-1 text-[10px] text-[#0A192F] font-medium hover:underline"
                     data-testid={`expand-${entry.practice_id}`}
                   >
                     {isOpen ? 'Meno dettagli' : 'Piu dettagli'}
@@ -256,7 +256,7 @@ export default function CatalogPage() {
 
                 {/* Expandable Detail */}
                 {isOpen && (
-                  <div className="border-t border-[#E2E8F0] bg-[#F7FAFC] p-5 space-y-4">
+                  <div className="border-t border-[#E2E8F0] bg-[#F8F9FA] p-5 space-y-4">
                     {/* User Explanation */}
                     <div>
                       <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Cosa fa Herion</p>
@@ -330,7 +330,7 @@ export default function CatalogPage() {
                     {/* Next Step */}
                     {entry.next_step && (
                       <div className="flex items-center gap-2 p-2.5 bg-white rounded-xl border border-[#E2E8F0]">
-                        <CheckCircle className="w-3.5 h-3.5 text-[#5DD9C1] flex-shrink-0" />
+                        <CheckCircle className="w-3.5 h-3.5 text-[#3B82F6] flex-shrink-0" />
                         <div>
                           <p className="text-[9px] font-semibold text-[#94A3B8] uppercase tracking-wider">Prossimo passo</p>
                           <p className="text-xs text-[#0F172A] font-medium">{entry.next_step}</p>

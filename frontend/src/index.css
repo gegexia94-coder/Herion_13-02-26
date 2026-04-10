@@ -6,14 +6,31 @@
 
 :root {
   --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --herion-primary: #0F4C5C;
-  --herion-accent: #5DD9C1;
-  --herion-gold: #C6A96B;
-  --herion-bg: #F7FAFC;
+
+  /* Brand Palette — Deep Petrol / Navy Premium */
+  --herion-primary: #0A192F;
+  --herion-primary-hover: #112240;
+  --herion-deep-petrol: #0B243B;
+  --herion-accent-blue: #3B82F6;
+  --herion-accent-cyan: #06B6D4;
+  --herion-accent-lilla: #8B5CF6;
+  --herion-accent-coral: #FF6B6B;
+  --herion-accent-amber: #F59E0B;
+
+  /* Surfaces */
+  --herion-bg: #F8F9FA;
   --herion-surface: #FFFFFF;
-  --herion-text: #0F172A;
+  --herion-surface-alt: #F1F3F5;
+  --herion-surface-hover: #E9ECEF;
+
+  /* Text */
+  --herion-text: #0A192F;
   --herion-text-secondary: #475569;
+  --herion-text-muted: #94A3B8;
+
+  /* Border */
   --herion-border: #E2E8F0;
+  --herion-border-focus: #3B82F6;
 }
 
 * {
@@ -30,25 +47,25 @@ body {
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 210 17% 98%;
+    --foreground: 213 72% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 213 72% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 189 72% 21%;
+    --popover-foreground: 213 72% 11%;
+    --primary: 213 72% 11%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 213 72% 11%;
+    --muted: 210 17% 95%;
     --muted-foreground: 215 16% 47%;
-    --accent: 166 58% 61%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 189 72% 21%;
+    --ring: 217 91% 60%;
     --radius: 0.75rem;
   }
 }
@@ -88,6 +105,11 @@ h1, h2, h3, h4 {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
@@ -102,6 +124,10 @@ h1, h2, h3, h4 {
 
 .animate-scale-in {
   animation: scaleIn 0.2s ease-out forwards;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
 
 .stagger-1 { animation-delay: 0.05s; opacity: 0; }
@@ -129,7 +155,7 @@ h1, h2, h3, h4 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--herion-primary);
+  outline: 2px solid var(--herion-accent-blue);
   outline-offset: 2px;
 }
 

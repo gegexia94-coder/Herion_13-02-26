@@ -47,12 +47,12 @@ export default function ProfileSettingsPage() {
   const roleLabel = { creator: 'Creator / Fondatore', admin: 'Amministratore', user: 'Utente' };
   const clientLabel = { private: 'Privato', freelancer: 'Libero Professionista', company: 'Azienda' };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6" data-testid="profile-settings-page">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><User className="w-5 h-5 text-[#5DD9C1]" /></div>
+        <div className="w-10 h-10 rounded-xl bg-[#0A192F] flex items-center justify-center"><User className="w-5 h-5 text-[#3B82F6]" /></div>
         <div>
           <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">Profilo e Impostazioni</h1>
           <p className="text-xs text-[#475569]">Gestisci le informazioni del tuo account</p>
@@ -61,7 +61,7 @@ export default function ProfileSettingsPage() {
 
       {/* Account Info (read-only) */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4"><Shield className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Identita Account</h3></div>
+        <div className="flex items-center gap-2 mb-4"><Shield className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Identita Account</h3></div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Nome completo</p>
@@ -73,7 +73,7 @@ export default function ProfileSettingsPage() {
           </div>
           <div>
             <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Ruolo</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${profile?.is_creator ? 'bg-[#0F4C5C]/10 text-[#0F4C5C]' : profile?.role === 'admin' ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700'}`}>{roleLabel[profile?.role] || profile?.role}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${profile?.is_creator ? 'bg-[#0A192F]/10 text-[#0A192F]' : profile?.role === 'admin' ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700'}`}>{roleLabel[profile?.role] || profile?.role}</span>
           </div>
           <div>
             <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Tipo cliente</p>
@@ -82,7 +82,7 @@ export default function ProfileSettingsPage() {
           {profile?.creator_uuid && (
             <div>
               <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Creator UUID</p>
-              <p className="text-xs text-[#0F4C5C] font-mono">{profile?.creator_uuid}</p>
+              <p className="text-xs text-[#0A192F] font-mono">{profile?.creator_uuid}</p>
             </div>
           )}
         </div>
@@ -90,7 +90,7 @@ export default function ProfileSettingsPage() {
 
       {/* Editable Profile */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4"><MapPin className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Informazioni Personali</h3></div>
+        <div className="flex items-center gap-2 mb-4"><MapPin className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Informazioni Personali</h3></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Telefono</label>
@@ -109,14 +109,14 @@ export default function ProfileSettingsPage() {
             <Input value={profile?.address || ''} onChange={e => setProfile({...profile, address: e.target.value})} placeholder="Via..." className="mt-1 rounded-xl border-[#E2E8F0] h-10 text-sm" data-testid="address-input" />
           </div>
         </div>
-        <Button onClick={handleProfileSave} disabled={saving} className="mt-4 bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl h-10 px-6 text-sm" data-testid="save-profile-btn">
+        <Button onClick={handleProfileSave} disabled={saving} className="mt-4 bg-[#0A192F] hover:bg-[#0B243B] rounded-xl h-10 px-6 text-sm" data-testid="save-profile-btn">
           {saving ? 'Salvataggio...' : 'Salva modifiche'}
         </Button>
       </div>
 
       {/* Change Password */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4"><Lock className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Sicurezza</h3></div>
+        <div className="flex items-center gap-2 mb-4"><Lock className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Sicurezza</h3></div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Password attuale</label>

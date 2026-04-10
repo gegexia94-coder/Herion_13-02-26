@@ -63,7 +63,7 @@ export default function GovernanceDashboardPage() {
     finally { setLoading(false); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
   if (!dashboard) return null;
 
   const tabs = [
@@ -141,7 +141,7 @@ export default function GovernanceDashboardPage() {
                   const decision = ev.details?.final_decision;
                   const decCfg = decision ? DECISION_CONFIG[decision] : null;
                   return (
-                    <div key={ev.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F7FAFC] transition-colors cursor-pointer"
+                    <div key={ev.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F8F9FA] transition-colors cursor-pointer"
                       onClick={() => ev.practice_id && navigate(`/practices/${ev.practice_id}`)} data-testid={`audit-event-${ev.id}`}>
                       <div className={`w-2 h-2 rounded-full ${sev.dot} flex-shrink-0`} />
                       <div className="flex-1 min-w-0">
@@ -172,7 +172,7 @@ export default function GovernanceDashboardPage() {
       {activeTab === 'audit' && (
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
           <div className="flex items-center gap-2 mb-4">
-            <FileText className="w-4 h-4 text-[#0F4C5C]" />
+            <FileText className="w-4 h-4 text-[#0A192F]" />
             <h3 className="text-sm font-bold text-[#0F172A]">Registro Audit Completo</h3>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569]">{auditEvents.length} eventi</span>
           </div>
@@ -181,7 +181,7 @@ export default function GovernanceDashboardPage() {
               {auditEvents.map(ev => {
                 const sev = SEVERITY_CONFIG[ev.severity] || SEVERITY_CONFIG.info;
                 return (
-                  <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl border border-[#E2E8F0] hover:bg-[#F7FAFC] transition-colors" data-testid={`full-audit-${ev.id}`}>
+                  <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl border border-[#E2E8F0] hover:bg-[#F8F9FA] transition-colors" data-testid={`full-audit-${ev.id}`}>
                     <div className={`w-2 h-2 rounded-full ${sev.dot} flex-shrink-0 mt-1.5`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -261,7 +261,7 @@ export default function GovernanceDashboardPage() {
       {activeTab === 'permissions' && (
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
           <div className="flex items-center gap-2 mb-4">
-            <Lock className="w-4 h-4 text-[#0F4C5C]" />
+            <Lock className="w-4 h-4 text-[#0A192F]" />
             <h3 className="text-sm font-bold text-[#0F172A]">Matrice dei Permessi</h3>
           </div>
           <div className="overflow-x-auto">
@@ -276,7 +276,7 @@ export default function GovernanceDashboardPage() {
               </thead>
               <tbody>
                 {Object.entries(dashboard.permissions_matrix || {}).map(([action, roles]) => (
-                  <tr key={action} className="border-b border-[#F1F5F9] hover:bg-[#F7FAFC] transition-colors">
+                  <tr key={action} className="border-b border-[#F1F5F9] hover:bg-[#F8F9FA] transition-colors">
                     <td className="py-2 px-3 text-[#0F172A] font-medium">{action.replace(/_/g, ' ')}</td>
                     {['user', 'admin', 'creator'].map(role => (
                       <td key={role} className="text-center py-2 px-3">

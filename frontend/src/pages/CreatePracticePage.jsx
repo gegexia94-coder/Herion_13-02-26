@@ -121,14 +121,14 @@ export default function CreatePracticePage() {
             <div key={num} className="flex items-center">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold transition-all ${
                 step >= num 
-                  ? 'bg-[#0F4C5C] text-white shadow-lg shadow-[#0F4C5C]/20' 
+                  ? 'bg-[#0A192F] text-white shadow-lg shadow-[#0A192F]/20' 
                   : 'bg-[#F5F5F4] text-[#A1A19E]'
               }`}>
                 {step > num ? <CheckCircle className="w-5 h-5" /> : num}
               </div>
               {num < 3 && (
                 <div className={`w-16 h-1 mx-2 rounded-full transition-colors ${
-                  step > num ? 'bg-[#0F4C5C]' : 'bg-[#E5E5E3]'
+                  step > num ? 'bg-[#0A192F]' : 'bg-[#E5E5E3]'
                 }`} />
               )}
             </div>
@@ -141,8 +141,8 @@ export default function CreatePracticePage() {
         {step === 1 && (
           <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-[#0F4C5C]" />
+              <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-[#0A192F]" />
               </div>
               <div>
                 <h3 className="font-semibold text-[#111110]">Tipo Pratica</h3>
@@ -158,8 +158,8 @@ export default function CreatePracticePage() {
                   onClick={() => setFormData({ ...formData, practice_type: type.value })}
                   className={`p-4 border rounded-xl text-left transition-all duration-200 ${
                     formData.practice_type === type.value 
-                      ? 'border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C]' 
-                      : 'border-[#E5E5E3] hover:border-[#0F4C5C]/50 hover:bg-[#FAFAFA]'
+                      ? 'border-[#0A192F] bg-[#0A192F]/5 ring-1 ring-[#0A192F]' 
+                      : 'border-[#E5E5E3] hover:border-[#0A192F]/50 hover:bg-[#FAFAFA]'
                   }`}
                   data-testid={`practice-type-${type.value}`}
                 >
@@ -174,7 +174,7 @@ export default function CreatePracticePage() {
                 type="button" 
                 onClick={() => setStep(2)}
                 disabled={!formData.practice_type}
-                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20"
+                className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20"
                 data-testid="next-step-1"
               >
                 Continua <ArrowRight className="w-4 h-4 ml-2" />
@@ -187,8 +187,8 @@ export default function CreatePracticePage() {
         {step === 2 && (
           <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
-                <User className="w-5 h-5 text-[#0F4C5C]" />
+              <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
+                <User className="w-5 h-5 text-[#0A192F]" />
               </div>
               <div>
                 <h3 className="font-semibold text-[#111110]">Dati Cliente</h3>
@@ -210,12 +210,12 @@ export default function CreatePracticePage() {
                         onClick={() => setFormData({ ...formData, client_type: type.value, vat_number: type.requiresVat ? formData.vat_number : '' })}
                         className={`p-4 border rounded-xl text-center transition-all duration-200 ${
                           formData.client_type === type.value 
-                            ? 'border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C]' 
-                            : 'border-[#E5E5E3] hover:border-[#0F4C5C]/50'
+                            ? 'border-[#0A192F] bg-[#0A192F]/5 ring-1 ring-[#0A192F]' 
+                            : 'border-[#E5E5E3] hover:border-[#0A192F]/50'
                         }`}
                         data-testid={`client-type-${type.value}`}
                       >
-                        <IconComponent className={`w-6 h-6 mx-auto mb-2 ${formData.client_type === type.value ? 'text-[#0F4C5C]' : 'text-[#A1A19E]'}`} />
+                        <IconComponent className={`w-6 h-6 mx-auto mb-2 ${formData.client_type === type.value ? 'text-[#0A192F]' : 'text-[#A1A19E]'}`} />
                         <p className="text-xs font-medium text-[#111110]">{type.label}</p>
                         <p className="text-[10px] text-[#5C5C59] mt-0.5">{type.description}</p>
                       </button>
@@ -301,7 +301,7 @@ export default function CreatePracticePage() {
                 type="button" 
                 onClick={() => setStep(3)}
                 disabled={!formData.client_name || !formData.description || !formData.client_type || (selectedClientType?.requiresVat && !formData.vat_number)}
-                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20"
+                className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20"
                 data-testid="next-step-2"
               >
                 Continua <ArrowRight className="w-4 h-4 ml-2" />
@@ -314,8 +314,8 @@ export default function CreatePracticePage() {
         {step === 3 && (
           <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/5 flex items-center justify-center">
-                <Info className="w-5 h-5 text-[#0F4C5C]" />
+              <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
+                <Info className="w-5 h-5 text-[#0A192F]" />
               </div>
               <div>
                 <h3 className="font-semibold text-[#111110]">Riepilogo</h3>
@@ -357,9 +357,9 @@ export default function CreatePracticePage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-[#0F4C5C]/5 rounded-xl border border-[#0F4C5C]/10">
+              <div className="p-4 bg-[#0A192F]/5 rounded-xl border border-[#0A192F]/10">
                 <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-[#0F4C5C] mt-0.5" />
+                  <FileText className="w-5 h-5 text-[#0A192F] mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-[#111110] mb-1">Dopo la creazione</p>
                     <p className="text-xs text-[#5C5C59]">
@@ -383,7 +383,7 @@ export default function CreatePracticePage() {
               <Button 
                 type="submit" 
                 disabled={loading}
-                className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl shadow-lg shadow-[#0F4C5C]/20"
+                className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20"
                 data-testid="submit-practice"
               >
                 {loading ? 'Creazione...' : 'Crea Pratica'}
@@ -397,8 +397,8 @@ export default function CreatePracticePage() {
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent className="rounded-2xl border-[#E5E5E3]/60 shadow-2xl max-w-md">
           <AlertDialogHeader>
-            <div className="w-12 h-12 rounded-xl bg-[#0F4C5C]/10 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-6 h-6 text-[#0F4C5C]" />
+            <div className="w-12 h-12 rounded-xl bg-[#0A192F]/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-6 h-6 text-[#0A192F]" />
             </div>
             <AlertDialogTitle className="text-xl font-semibold text-center">Conferma creazione</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-[#5C5C59]">
@@ -411,7 +411,7 @@ export default function CreatePracticePage() {
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleSubmit}
-              className="bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 rounded-xl flex-1"
+              className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl flex-1"
               data-testid="confirm-create-btn"
             >
               Conferma

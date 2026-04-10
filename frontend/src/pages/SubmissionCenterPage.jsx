@@ -14,8 +14,8 @@ const SECTION_CONFIG = {
   waiting_approval: { label: 'In Attesa di Approvazione', icon: Lock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', accent: 'bg-amber-600' },
   not_ready: { label: 'Non Pronte', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', accent: 'bg-red-600' },
   in_preparation: { label: 'In Preparazione', icon: Clock, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200', accent: 'bg-sky-600' },
-  submitted: { label: 'Inviate', icon: ArrowRight, color: 'text-[#0F4C5C]', bg: 'bg-[#F0FAF8]', border: 'border-[#5DD9C1]/30', accent: 'bg-[#0F4C5C]' },
-  completed: { label: 'Completate', icon: CheckCircle, color: 'text-[#5DD9C1]', bg: 'bg-[#F0FAF8]', border: 'border-[#5DD9C1]/30', accent: 'bg-[#5DD9C1]' },
+  submitted: { label: 'Inviate', icon: ArrowRight, color: 'text-[#0A192F]', bg: 'bg-[#F0FAF8]', border: 'border-[#3B82F6]/30', accent: 'bg-[#0A192F]' },
+  completed: { label: 'Completate', icon: CheckCircle, color: 'text-[#3B82F6]', bg: 'bg-[#F0FAF8]', border: 'border-[#3B82F6]/30', accent: 'bg-[#3B82F6]' },
   blocked: { label: 'Bloccate', icon: XCircle, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', accent: 'bg-red-700' },
   escalated: { label: 'Escalation', icon: ShieldAlert, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', accent: 'bg-orange-600' },
   failed_submission: { label: 'Invio Fallito', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', accent: 'bg-red-600' },
@@ -91,7 +91,7 @@ function SubmissionCard({ entry, onOpen, onSubmit, submitting }) {
             <button
               onClick={(e) => { e.stopPropagation(); onSubmit(entry.id); }}
               disabled={submitting === entry.id}
-              className="text-[10px] px-3 py-1.5 bg-[#0F4C5C] text-white rounded-lg font-medium hover:bg-[#0D3D4A] transition-colors disabled:opacity-50 flex items-center gap-1"
+              className="text-[10px] px-3 py-1.5 bg-[#0A192F] text-white rounded-lg font-medium hover:bg-[#0D3D4A] transition-colors disabled:opacity-50 flex items-center gap-1"
               data-testid={`submit-btn-${entry.id}`}
             >
               {submitting === entry.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
@@ -113,7 +113,7 @@ function SubmissionCard({ entry, onOpen, onSubmit, submitting }) {
 
       {/* Expanded blockers/warnings */}
       {expanded && (hasBlockers || hasWarnings) && (
-        <div className="border-t border-[#E2E8F0] bg-[#F7FAFC] p-3 space-y-2">
+        <div className="border-t border-[#E2E8F0] bg-[#F8F9FA] p-3 space-y-2">
           {hasBlockers && (
             <div>
               <p className="text-[9px] font-semibold text-red-600 uppercase tracking-wider mb-1">Elementi bloccanti</p>
@@ -136,7 +136,7 @@ function SubmissionCard({ entry, onOpen, onSubmit, submitting }) {
           )}
           {entry.next_action && (
             <div className="flex items-center gap-1.5 mt-1 p-2 bg-white rounded-lg border border-[#E2E8F0]">
-              <ArrowRight className="w-3 h-3 text-[#0F4C5C] flex-shrink-0" />
+              <ArrowRight className="w-3 h-3 text-[#0A192F] flex-shrink-0" />
               <p className="text-[10px] text-[#0F172A] font-medium">{entry.next_action}</p>
             </div>
           )}
@@ -178,7 +178,7 @@ export default function SubmissionCenterPage() {
     finally { setSubmitting(null); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
   if (!data) return null;
 
   const { sections, counts } = data;
@@ -210,7 +210,7 @@ export default function SubmissionCenterPage() {
         </div>
         <button
           onClick={loadData}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-lg text-[#475569] hover:bg-[#F7FAFC] transition-colors"
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-lg text-[#475569] hover:bg-[#F8F9FA] transition-colors"
           data-testid="refresh-btn"
         >
           <RefreshCw className="w-3.5 h-3.5" />Aggiorna
@@ -225,8 +225,8 @@ export default function SubmissionCenterPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
               activeTab === tab.key
-                ? 'bg-[#0F4C5C] text-white shadow-sm'
-                : 'bg-white border border-[#E2E8F0] text-[#475569] hover:bg-[#F7FAFC]'
+                ? 'bg-[#0A192F] text-white shadow-sm'
+                : 'bg-white border border-[#E2E8F0] text-[#475569] hover:bg-[#F8F9FA]'
             }`}
             data-testid={`tab-${tab.key}`}
           >
@@ -244,8 +244,8 @@ export default function SubmissionCenterPage() {
           { label: 'Pronte', count: counts.ready_to_submit, color: 'text-emerald-600', Icon: Send },
           { label: 'Approvazione', count: counts.waiting_approval, color: 'text-amber-600', Icon: Lock },
           { label: 'Bloccate', count: (counts.not_ready || 0) + (counts.blocked || 0), color: 'text-red-600', Icon: AlertCircle },
-          { label: 'Inviate', count: counts.submitted, color: 'text-[#0F4C5C]', Icon: ArrowRight },
-          { label: 'Completate', count: counts.completed, color: 'text-[#5DD9C1]', Icon: CheckCircle },
+          { label: 'Inviate', count: counts.submitted, color: 'text-[#0A192F]', Icon: ArrowRight },
+          { label: 'Completate', count: counts.completed, color: 'text-[#3B82F6]', Icon: CheckCircle },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-[#E2E8F0] p-3 flex items-center gap-2.5">
             <s.Icon className={`w-4 h-4 ${s.color}`} strokeWidth={1.5} />

@@ -86,7 +86,7 @@ export default function EmailCenterPage() {
           <Button variant="outline" size="sm" onClick={fetchData} className="gap-2" data-testid="email-refresh">
             <RefreshCw className="w-4 h-4" /> Aggiorna
           </Button>
-          <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="gap-2 bg-[#0F4C5C]" data-testid="email-new-btn">
+          <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="gap-2 bg-[#0A192F]" data-testid="email-new-btn">
             <Plus className="w-4 h-4" /> Nuova Bozza
           </Button>
         </div>
@@ -95,7 +95,7 @@ export default function EmailCenterPage() {
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-7 gap-2" data-testid="email-summary">
           {[
-            { label: 'Totali', value: summary.total, color: 'text-[#0F4C5C]' },
+            { label: 'Totali', value: summary.total, color: 'text-[#0A192F]' },
             { label: 'Bozze', value: summary.draft, color: 'text-sky-600' },
             { label: 'Revisione', value: summary.review, color: 'text-amber-600' },
             { label: 'Approvate', value: summary.approved, color: 'text-emerald-600' },
@@ -115,7 +115,7 @@ export default function EmailCenterPage() {
         {['all', 'draft', 'review', 'approved', 'sent', 'failed', 'blocked'].map((f) => (
           <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm"
             onClick={() => setFilter(f)}
-            className={filter === f ? 'bg-[#0F4C5C] text-white' : ''} data-testid={`email-filter-${f}`}>
+            className={filter === f ? 'bg-[#0A192F] text-white' : ''} data-testid={`email-filter-${f}`}>
             {f === 'all' ? 'Tutte' : (STATUS_CONFIG[f]?.label || f)}
           </Button>
         ))}
@@ -125,12 +125,12 @@ export default function EmailCenterPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <RefreshCw className="w-5 h-5 animate-spin text-[#0F4C5C]" />
+          <RefreshCw className="w-5 h-5 animate-spin text-[#0A192F]" />
           <span className="ml-2 text-sm text-[#64748B]">Caricamento...</span>
         </div>
       ) : drafts.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-[#E2E8F0]" data-testid="email-empty">
-          <Mail className="w-10 h-10 text-[#5DD9C1] mx-auto mb-3" />
+          <Mail className="w-10 h-10 text-[#3B82F6] mx-auto mb-3" />
           <p className="text-[#0F172A] font-medium">Nessuna email {filter !== 'all' ? STATUS_CONFIG[filter]?.label.toLowerCase() : ''}</p>
           <p className="text-sm text-[#64748B] mt-1">Crea una bozza per iniziare</p>
         </div>
@@ -150,7 +150,7 @@ export default function EmailCenterPage() {
                       <span className="font-semibold text-[#0F172A] text-sm truncate">{draft.subject}</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
                       {draft.template_name && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0F4C5C]/5 text-[#0F4C5C] font-medium">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0A192F]/5 text-[#0A192F] font-medium">
                           {draft.template_name}
                         </span>
                       )}
@@ -190,7 +190,7 @@ export default function EmailCenterPage() {
                       </Button>
                     )}
                     {isAdmin && draft.status === 'approved' && (
-                      <Button size="sm" className="text-[10px] gap-1 bg-[#0F4C5C] h-7 px-2"
+                      <Button size="sm" className="text-[10px] gap-1 bg-[#0A192F] h-7 px-2"
                         onClick={() => handleAction(draft.id, 'send')} disabled={!!actionLoading} data-testid={`email-send-${draft.id}`}>
                         {actionLoading === draft.id + 'send' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Invia
                       </Button>
@@ -215,7 +215,7 @@ function CreateDraftForm({ onCreated }) {
   return (
     <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden" data-testid="email-create-form">
       <div className="flex items-center gap-2 px-5 pt-5 pb-3">
-        <Shield className="w-5 h-5 text-[#0F4C5C]" />
+        <Shield className="w-5 h-5 text-[#0A192F]" />
         <h3 className="text-sm font-bold text-[#0F172A]">Nuova Bozza Email</h3>
       </div>
       {/* Tab switcher */}
@@ -224,7 +224,7 @@ function CreateDraftForm({ onCreated }) {
           onClick={() => setMode('template')}
           className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
             mode === 'template'
-              ? 'border-[#0F4C5C] text-[#0F4C5C]'
+              ? 'border-[#0A192F] text-[#0A192F]'
               : 'border-transparent text-[#94A3B8] hover:text-[#64748B]'
           }`}
           data-testid="email-mode-template"
@@ -235,7 +235,7 @@ function CreateDraftForm({ onCreated }) {
           onClick={() => setMode('manual')}
           className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
             mode === 'manual'
-              ? 'border-[#0F4C5C] text-[#0F4C5C]'
+              ? 'border-[#0A192F] text-[#0A192F]'
               : 'border-transparent text-[#94A3B8] hover:text-[#64748B]'
           }`}
           data-testid="email-mode-manual"
@@ -358,7 +358,7 @@ function TemplateDraftFlow({ onCreated }) {
   if (loadingInit) {
     return (
       <div className="flex items-center justify-center py-10">
-        <RefreshCw className="w-4 h-4 animate-spin text-[#0F4C5C]" />
+        <RefreshCw className="w-4 h-4 animate-spin text-[#0A192F]" />
         <span className="ml-2 text-xs text-[#64748B]">Caricamento template...</span>
       </div>
     );
@@ -374,7 +374,7 @@ function TemplateDraftFlow({ onCreated }) {
             onClick={() => { setSelectedGroup(null); setSelectedTemplate(null); setResolved(null); }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               !selectedGroup
-                ? 'bg-[#0F4C5C] text-white shadow-sm'
+                ? 'bg-[#0A192F] text-white shadow-sm'
                 : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
             }`}
             data-testid="template-group-all"
@@ -388,7 +388,7 @@ function TemplateDraftFlow({ onCreated }) {
                 onClick={() => { setSelectedGroup(g.id); setSelectedTemplate(null); setResolved(null); }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   selectedGroup === g.id
-                    ? 'bg-[#0F4C5C] text-white shadow-sm'
+                    ? 'bg-[#0A192F] text-white shadow-sm'
                     : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
                 }`}
                 data-testid={`template-group-${g.id}`}
@@ -412,18 +412,18 @@ function TemplateDraftFlow({ onCreated }) {
                 onClick={() => { setSelectedTemplate(t); setOverrides({}); }}
                 className={`text-left p-3 rounded-xl border transition-all ${
                   isSelected
-                    ? 'border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C]/20'
+                    ? 'border-[#0A192F] bg-[#0A192F]/5 ring-1 ring-[#0A192F]/20'
                     : 'border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-[#F8FAFC]'
                 }`}
                 data-testid={`template-item-${t.id}`}
               >
                 <div className="flex items-start gap-2">
-                  <GIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${isSelected ? 'text-[#0F4C5C]' : 'text-[#94A3B8]'}`} />
+                  <GIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${isSelected ? 'text-[#0A192F]' : 'text-[#94A3B8]'}`} />
                   <div className="min-w-0">
-                    <p className={`text-xs font-semibold truncate ${isSelected ? 'text-[#0F4C5C]' : 'text-[#0F172A]'}`}>{t.name}</p>
+                    <p className={`text-xs font-semibold truncate ${isSelected ? 'text-[#0A192F]' : 'text-[#0F172A]'}`}>{t.name}</p>
                     <p className="text-[10px] text-[#94A3B8] mt-0.5 truncate">{t.group_label}</p>
                   </div>
-                  {isSelected && <CheckCircle className="w-3.5 h-3.5 text-[#0F4C5C] ml-auto flex-shrink-0 mt-0.5" />}
+                  {isSelected && <CheckCircle className="w-3.5 h-3.5 text-[#0A192F] ml-auto flex-shrink-0 mt-0.5" />}
                 </div>
               </button>
             );
@@ -521,7 +521,7 @@ function TemplateDraftFlow({ onCreated }) {
             </div>
           ) : resolving ? (
             <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-center py-8">
-              <RefreshCw className="w-4 h-4 animate-spin text-[#0F4C5C]" />
+              <RefreshCw className="w-4 h-4 animate-spin text-[#0A192F]" />
               <span className="ml-2 text-xs text-[#64748B]">Generazione anteprima...</span>
             </div>
           ) : null}
@@ -532,7 +532,7 @@ function TemplateDraftFlow({ onCreated }) {
       {selectedTemplate && selectedPractice && resolved && (
         <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
           <p className="text-[10px] text-[#94A3B8]">La bozza seguira il flusso: bozza → revisione → approvazione → invio</p>
-          <Button onClick={handleCreateDraft} size="sm" className="gap-2 bg-[#0F4C5C]"
+          <Button onClick={handleCreateDraft} size="sm" className="gap-2 bg-[#0A192F]"
             disabled={submitting || !recipientEmail}
             data-testid="template-create-draft-btn">
             {submitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -621,7 +621,7 @@ function ManualDraftForm({ onCreated }) {
       </div>
       <div className="flex items-center justify-between pt-2">
         <p className="text-[10px] text-[#94A3B8]">La bozza sara sottoposta a verifica di conformita prima dell'invio</p>
-        <Button type="submit" size="sm" className="gap-2 bg-[#0F4C5C]" disabled={submitting} data-testid="manual-create-submit">
+        <Button type="submit" size="sm" className="gap-2 bg-[#0A192F]" disabled={submitting} data-testid="manual-create-submit">
           {submitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
           Crea Bozza
         </Button>

@@ -9,14 +9,14 @@ export default function WelcomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#E2E8F0]/60">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#0F4C5C] flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 4V20" stroke="#5DD9C1" strokeWidth="2.5" strokeLinecap="round"/><path d="M18 4V20" stroke="#5DD9C1" strokeWidth="2.5" strokeLinecap="round"/><path d="M6 12H18" stroke="#5DD9C1" strokeWidth="2.5" strokeLinecap="round"/></svg>
+            <div className="w-9 h-9 rounded-lg bg-[#0A192F] flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M18 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M6 12H18" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/></svg>
             </div>
             <span className="text-lg font-bold text-[#0F172A] tracking-tight">Herion</span>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login"><Button variant="ghost" className="text-sm text-[#475569] hover:text-[#0F172A] rounded-xl h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
-            <Link to="/register"><Button className="bg-[#0F4C5C] hover:bg-[#0b3844] text-white rounded-xl h-9 px-5 text-sm font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
+            <Link to="/register"><Button className="bg-[#0A192F] hover:bg-[#0B243B] text-white rounded-xl h-9 px-5 text-sm font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
           </div>
         </div>
       </nav>
@@ -24,9 +24,9 @@ export default function WelcomePage() {
       {/* Hero */}
       <section className="pt-32 pb-20 px-6" data-testid="hero-section">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#0F4C5C]/[0.04] border border-[#0F4C5C]/10 rounded-full mb-8">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#5DD9C1]" />
-            <span className="text-[11px] font-medium text-[#0F4C5C] tracking-wide">Assistente operativo fiscale</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#0A192F]/[0.04] border border-[#0A192F]/10 rounded-full mb-8">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+            <span className="text-[11px] font-medium text-[#0A192F] tracking-wide">Assistente operativo fiscale</span>
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-[#0F172A] leading-[1.2] tracking-tight mb-6">
             Herion ti aiuta a gestire pratiche fiscali, documenti e passaggi operativi in modo chiaro, ordinato e guidato.
@@ -41,8 +41,8 @@ export default function WelcomePage() {
             Attualmente operativo per il contesto fiscale italiano. Architettura predisposta per l'espansione europea.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/register"><Button className="bg-[#0F4C5C] hover:bg-[#0b3844] text-white rounded-xl h-12 px-8 text-sm font-semibold shadow-lg shadow-[#0F4C5C]/10" data-testid="hero-cta-btn">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
-            <Link to="/login"><Button variant="outline" className="border-[#0F4C5C]/20 text-[#0F4C5C] hover:bg-[#0F4C5C]/[0.03] rounded-xl h-12 px-8 text-sm font-semibold" data-testid="hero-login-btn">Accedi</Button></Link>
+            <Link to="/register"><Button className="bg-[#0A192F] hover:bg-[#0B243B] text-white rounded-xl h-12 px-8 text-sm font-semibold shadow-lg shadow-[#0A192F]/10" data-testid="hero-cta-btn">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
+            <Link to="/login"><Button variant="outline" className="border-[#0A192F]/20 text-[#0A192F] hover:bg-[#0A192F]/[0.03] rounded-xl h-12 px-8 text-sm font-semibold" data-testid="hero-login-btn">Accedi</Button></Link>
           </div>
         </div>
       </section>
@@ -65,9 +65,9 @@ export default function WelcomePage() {
               { icon: Clock, title: 'Scadenze e promemoria', desc: 'Ricordarti scadenze, approvazioni e azioni importanti al momento giusto.' },
               { icon: Building2, title: 'Casi semplici e complessi', desc: 'Distinguere i casi semplici da quelli che richiedono una verifica professionale.' },
             ].map((item, i) => (
-              <div key={i} className="p-5 bg-[#FAFCFD] rounded-2xl border border-[#E2E8F0]/80 hover:border-[#0F4C5C]/15 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-[#0F4C5C]/[0.06] flex items-center justify-center mb-4">
-                  <item.icon className="w-5 h-5 text-[#0F4C5C]" strokeWidth={1.5} />
+              <div key={i} className="p-5 bg-[#FAFCFD] rounded-2xl border border-[#E2E8F0]/80 hover:border-[#0A192F]/15 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-[#0A192F]/[0.06] flex items-center justify-center mb-4">
+                  <item.icon className="w-5 h-5 text-[#0A192F]" strokeWidth={1.5} />
                 </div>
                 <h3 className="text-sm font-semibold text-[#0F172A] mb-1.5">{item.title}</h3>
                 <p className="text-xs text-[#475569] leading-relaxed">{item.desc}</p>
@@ -95,8 +95,8 @@ export default function WelcomePage() {
               'Sapere quando una pratica puo andare avanti e quando invece va fermata e verificata meglio',
             ].map((text, i) => (
               <div key={i} className="flex items-start gap-3.5 p-4 bg-white rounded-xl border border-[#E2E8F0]/80">
-                <div className="w-6 h-6 rounded-full bg-[#5DD9C1]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 rounded-full bg-[#0F4C5C]" />
+                <div className="w-6 h-6 rounded-full bg-[#3B82F6]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-[#0A192F]" />
                 </div>
                 <p className="text-sm text-[#0F172A] leading-relaxed">{text}</p>
               </div>
@@ -116,7 +116,7 @@ export default function WelcomePage() {
               { step: '3', title: 'Ti guida fino al prossimo passo', desc: 'Prima di ogni azione importante, Herion ti mostra cosa sta succedendo, cosa manca e cosa puoi fare dopo.' },
             ].map((item, i) => (
               <div key={i} className="text-center">
-                <div className="w-12 h-12 rounded-2xl bg-[#0F4C5C] text-white flex items-center justify-center mx-auto mb-5 text-lg font-bold">{item.step}</div>
+                <div className="w-12 h-12 rounded-2xl bg-[#0A192F] text-white flex items-center justify-center mx-auto mb-5 text-lg font-bold">{item.step}</div>
                 <h3 className="text-sm font-semibold text-[#0F172A] mb-2">{item.title}</h3>
                 <p className="text-xs text-[#475569] leading-relaxed">{item.desc}</p>
               </div>
@@ -136,8 +136,8 @@ export default function WelcomePage() {
               { icon: Building2, title: 'Aziende', desc: 'Che hanno bisogno di controllo, visibilita e flussi piu ordinati nella gestione amministrativa.' },
             ].map((item, i) => (
               <div key={i} className="p-6 bg-white rounded-2xl border border-[#E2E8F0]/80 text-center hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-[#0F4C5C]/[0.06] flex items-center justify-center mx-auto mb-4">
-                  <item.icon className="w-5 h-5 text-[#0F4C5C]" strokeWidth={1.5} />
+                <div className="w-12 h-12 rounded-xl bg-[#0A192F]/[0.06] flex items-center justify-center mx-auto mb-4">
+                  <item.icon className="w-5 h-5 text-[#0A192F]" strokeWidth={1.5} />
                 </div>
                 <h3 className="text-sm font-semibold text-[#0F172A] mb-2">{item.title}</h3>
                 <p className="text-xs text-[#475569] leading-relaxed">{item.desc}</p>
@@ -175,12 +175,12 @@ export default function WelcomePage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-6 bg-[#0F4C5C]" data-testid="cta-section">
+      <section className="py-20 px-6 bg-[#0A192F]" data-testid="cta-section">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Pronto a iniziare?</h2>
           <p className="text-sm text-white/60 mb-8">Siamo nati per trasformare burocrazia, pratiche e passaggi fiscali in percorsi piu semplici da capire e piu facili da seguire.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/register"><Button className="bg-[#5DD9C1] hover:bg-[#4BC7AF] text-[#0F4C5C] rounded-xl h-12 px-8 text-sm font-bold">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
+            <Link to="/register"><Button className="bg-[#3B82F6] hover:bg-[#4BC7AF] text-[#0A192F] rounded-xl h-12 px-8 text-sm font-bold">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
             <Link to="/login"><Button variant="outline" className="border-white/20 text-white hover:bg-white/5 rounded-xl h-12 px-8 text-sm font-semibold">Accedi</Button></Link>
           </div>
         </div>
@@ -190,8 +190,8 @@ export default function WelcomePage() {
       <footer className="py-10 px-6 bg-[#0A3440] text-white/40" data-testid="footer">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#5DD9C1]/15 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 4V20" stroke="#5DD9C1" strokeWidth="2.5" strokeLinecap="round"/><path d="M18 4V20" stroke="#5DD9C1" strokeWidth="2.5" strokeLinecap="round"/><path d="M6 12H18" stroke="#5DD9C1" strokeWidth="2.5" strokeLinecap="round"/></svg>
+            <div className="w-7 h-7 rounded-md bg-[#3B82F6]/15 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M18 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M6 12H18" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/></svg>
             </div>
             <span className="text-sm font-semibold text-white/60">Herion</span>
           </div>

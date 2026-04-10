@@ -70,7 +70,7 @@ export default function AlertCenterPage() {
     finally { setActing(null); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
   if (!data) return null;
 
   const { sections, counts } = data;
@@ -93,7 +93,7 @@ export default function AlertCenterPage() {
               {counts.high} alte
             </span>
           )}
-          <span className="text-xs text-[#94A3B8] bg-[#F7FAFC] px-3 py-1.5 rounded-full border border-[#E2E8F0]">
+          <span className="text-xs text-[#94A3B8] bg-[#F8F9FA] px-3 py-1.5 rounded-full border border-[#E2E8F0]">
             {counts.open} aperte / {counts.total} totali
           </span>
         </div>
@@ -103,7 +103,7 @@ export default function AlertCenterPage() {
       <div className="flex gap-1 flex-wrap">
         {[{ key: 'all', label: 'Tutte' }, ...SECTION_ORDER.map(k => ({ key: k, label: SECTION_LABELS[k] }))].map(tab => (
           <button key={tab.key} onClick={() => setFilter(tab.key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filter === tab.key ? 'bg-[#0F4C5C] text-white' : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filter === tab.key ? 'bg-[#0A192F] text-white' : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'}`}
             data-testid={`filter-${tab.key}`}>
             {tab.label}
           </button>
@@ -121,7 +121,7 @@ export default function AlertCenterPage() {
         return (
           <div key={key} className={`bg-white rounded-2xl border ${isResolved ? 'border-[#E2E8F0] opacity-80' : 'border-[#E2E8F0]'} shadow-[0_4px_20px_rgba(15,23,42,0.04)] overflow-hidden`} data-testid={`section-${key}`}>
             <div className="flex items-center gap-2.5 p-4 border-b border-[#E2E8F0]">
-              <SectionIcon className={`w-4 h-4 ${key === 'high_critical' ? 'text-red-600' : key === 'security' ? 'text-orange-600' : key === 'resolved' ? 'text-emerald-600' : 'text-[#0F4C5C]'}`} strokeWidth={1.5} />
+              <SectionIcon className={`w-4 h-4 ${key === 'high_critical' ? 'text-red-600' : key === 'security' ? 'text-orange-600' : key === 'resolved' ? 'text-emerald-600' : 'text-[#0A192F]'}`} strokeWidth={1.5} />
               <h2 className="text-sm font-bold text-[#0F172A]">{SECTION_LABELS[key]}</h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#F1F5F9] text-[#475569]">{items.length}</span>
             </div>
@@ -143,7 +143,7 @@ export default function AlertCenterPage() {
                       </div>
                       <p className="text-[10px] text-[#475569] mb-1">{alert.explanation}</p>
                       {alert.next_action && (
-                        <div className="flex items-center gap-1 text-[9px] text-[#0F4C5C] font-medium">
+                        <div className="flex items-center gap-1 text-[9px] text-[#0A192F] font-medium">
                           <ArrowRight className="w-2.5 h-2.5" />{alert.next_action}
                         </div>
                       )}

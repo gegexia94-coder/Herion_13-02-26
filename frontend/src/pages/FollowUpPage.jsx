@@ -34,8 +34,8 @@ export default function FollowUpPage() {
       ]);
       setItems(itemsRes.data);
       setSummary(summaryRes.data);
-    } catch {
-      toast.error('Errore nel caricamento dei follow-up');
+    } catch (err) {
+      console.warn('Follow-up fetch failed silently:', err?.message);
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function FollowUpPage() {
 
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3" data-testid="follow-up-summary">
-          <SummaryCard label="Aperti" value={summary.total_open} color="text-[#0F4C5C]" bg="bg-[#0F4C5C]/5" />
+          <SummaryCard label="Aperti" value={summary.total_open} color="text-[#0A192F]" bg="bg-[#0A192F]/5" />
           <SummaryCard label="In Attesa" value={summary.pending} color="text-amber-600" bg="bg-amber-50" />
           <SummaryCard label="Scaduti" value={summary.overdue} color="text-orange-600" bg="bg-orange-50" />
           <SummaryCard label="Critici" value={summary.critical} color="text-red-600" bg="bg-red-50" />
@@ -85,7 +85,7 @@ export default function FollowUpPage() {
         {['open', 'resolved', 'all'].map((f) => (
           <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm"
             onClick={() => setFilter(f)}
-            className={filter === f ? 'bg-[#0F4C5C] text-white' : ''}
+            className={filter === f ? 'bg-[#0A192F] text-white' : ''}
             data-testid={`filter-${f}`}>
             {f === 'open' ? 'Aperti' : f === 'resolved' ? 'Risolti' : 'Tutti'}
           </Button>
@@ -94,12 +94,12 @@ export default function FollowUpPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <RefreshCw className="w-5 h-5 animate-spin text-[#0F4C5C]" />
+          <RefreshCw className="w-5 h-5 animate-spin text-[#0A192F]" />
           <span className="ml-2 text-sm text-[#64748B]">Analisi follow-up...</span>
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-[#E2E8F0]" data-testid="follow-up-empty">
-          <Shield className="w-10 h-10 text-[#5DD9C1] mx-auto mb-3" />
+          <Shield className="w-10 h-10 text-[#3B82F6] mx-auto mb-3" />
           <p className="text-[#0F172A] font-medium">Nessun follow-up {filter === 'open' ? 'aperto' : filter === 'resolved' ? 'risolto' : ''}</p>
           <p className="text-sm text-[#64748B] mt-1">Tutte le pratiche sono in ordine</p>
         </div>

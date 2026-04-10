@@ -36,7 +36,7 @@ const CATEGORY_COLORS = {
   practice: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
   document: { bg: 'bg-amber-50', text: 'text-amber-600' },
   agent: { bg: 'bg-sky-50', text: 'text-sky-600' },
-  orchestration: { bg: 'bg-[#0F4C5C]/10', text: 'text-[#0F4C5C]' },
+  orchestration: { bg: 'bg-[#0A192F]/10', text: 'text-[#0A192F]' },
   notification: { bg: 'bg-red-50', text: 'text-red-600' }
 };
 
@@ -99,7 +99,7 @@ export default function ActivityLogPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]"></div>
       </div>
     );
   }

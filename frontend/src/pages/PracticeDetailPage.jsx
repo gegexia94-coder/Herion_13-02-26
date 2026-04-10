@@ -38,7 +38,7 @@ const STATUS_CONFIG = {
   pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'In Attesa' },
   in_progress: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'In Elaborazione' },
   processing: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'In Elaborazione' },
-  waiting_approval: { bg: 'bg-[#0F4C5C]/5', text: 'text-[#0F4C5C]', border: 'border-[#0F4C5C]/20', label: 'In Attesa di Approvazione' },
+  waiting_approval: { bg: 'bg-[#0A192F]/5', text: 'text-[#0A192F]', border: 'border-[#0A192F]/20', label: 'In Attesa di Approvazione' },
   approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Approvata' },
   submitted: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Inviata' },
   completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Completata' },
@@ -125,8 +125,8 @@ function WorkflowStepper({ practice, timeline }) {
   return (
     <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="workflow-stepper">
       <div className="flex items-center gap-2 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center">
-          <GitBranch className="w-4 h-4 text-[#5DD9C1]" strokeWidth={1.5} />
+        <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center">
+          <GitBranch className="w-4 h-4 text-[#3B82F6]" strokeWidth={1.5} />
         </div>
         <div>
           <h3 className="text-sm font-bold text-[#0F172A]">Stato della Pratica</h3>
@@ -170,15 +170,15 @@ function WorkflowStepper({ practice, timeline }) {
               {/* Connector Line */}
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                  isDone ? 'bg-[#5DD9C1] text-white' :
-                  isCurrent ? 'bg-[#0F4C5C] text-white ring-4 ring-[#0F4C5C]/10' :
+                  isDone ? 'bg-[#3B82F6] text-white' :
+                  isCurrent ? 'bg-[#0A192F] text-white ring-4 ring-[#0A192F]/10' :
                   'bg-[#F1F5F9] text-[#94A3B8] border border-[#E2E8F0]'
                 }`}>
                   {isDone ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-3.5 h-3.5" strokeWidth={1.5} />}
                 </div>
                 {idx < WORKFLOW_STEPS.length - 1 && (
                   <div className={`w-0.5 flex-1 min-h-[24px] transition-colors duration-300 ${
-                    isDone ? 'bg-[#5DD9C1]' : 'bg-[#E2E8F0]'
+                    isDone ? 'bg-[#3B82F6]' : 'bg-[#E2E8F0]'
                   }`} />
                 )}
               </div>
@@ -187,10 +187,10 @@ function WorkflowStepper({ practice, timeline }) {
               <div className={`pb-5 flex-1 min-w-0 ${idx === WORKFLOW_STEPS.length - 1 ? 'pb-0' : ''}`}>
                 <div className="flex items-center gap-2">
                   <p className={`text-xs font-semibold ${
-                    isDone ? 'text-[#0F172A]' : isCurrent ? 'text-[#0F4C5C]' : 'text-[#94A3B8]'
+                    isDone ? 'text-[#0F172A]' : isCurrent ? 'text-[#0A192F]' : 'text-[#94A3B8]'
                   }`}>{step.label}</p>
-                  {isCurrent && <span className="text-[8px] px-1.5 py-0.5 bg-[#0F4C5C] text-white rounded-full font-bold uppercase tracking-wider">Attuale</span>}
-                  {isDone && <span className="text-[8px] px-1.5 py-0.5 bg-[#5DD9C1]/20 text-[#0F4C5C] rounded-full font-bold">Fatto</span>}
+                  {isCurrent && <span className="text-[8px] px-1.5 py-0.5 bg-[#0A192F] text-white rounded-full font-bold uppercase tracking-wider">Attuale</span>}
+                  {isDone && <span className="text-[8px] px-1.5 py-0.5 bg-[#3B82F6]/20 text-[#0A192F] rounded-full font-bold">Fatto</span>}
                 </div>
                 <p className={`text-[10px] mt-0.5 ${isDone || isCurrent ? 'text-[#475569]' : 'text-[#CBD5E1]'}`}>{step.description}</p>
                 {ts && (
@@ -361,7 +361,7 @@ export default function PracticeDetailPage() {
   const isWaitingApproval = practice?.status === 'waiting_approval';
   const orchestration = practice?.orchestration_result;
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0F4C5C]" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
   if (!practice) return <div className="text-center py-16"><p className="text-[#475569]">Pratica non trovata</p><Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-xl">Torna alle pratiche</Button></div>;
 
   return (
@@ -399,9 +399,9 @@ export default function PracticeDetailPage() {
 
       {/* Approval Gate */}
       {isWaitingApproval && orchestration && (
-        <div className="bg-white rounded-2xl border-2 border-[#0F4C5C]/20 p-6 shadow-[0_4px_24px_rgba(15,76,92,0.08)]" data-testid="approval-gate">
+        <div className="bg-white rounded-2xl border-2 border-[#0A192F]/20 p-6 shadow-[0_4px_24px_rgba(15,76,92,0.08)]" data-testid="approval-gate">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-11 h-11 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Lock className="w-5 h-5 text-[#5DD9C1]" /></div>
+            <div className="w-11 h-11 rounded-xl bg-[#0A192F] flex items-center justify-center"><Lock className="w-5 h-5 text-[#3B82F6]" /></div>
             <div>
               <h3 className="text-base font-bold text-[#0F172A]">Approvazione Richiesta</h3>
               <p className="text-xs text-[#475569]">Verifica il riepilogo e approva per procedere con l'invio</p>
@@ -410,15 +410,15 @@ export default function PracticeDetailPage() {
 
           {/* Risk + Delegation Status */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
-            <div className="p-3 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0]">
+            <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0]">
               <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Rischio</p>
               {riskBadge(orchestration.risk_level)}
             </div>
-            <div className="p-3 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0]">
+            <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0]">
               <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Delega</p>
               <p className="text-xs font-medium text-[#0F172A]">{orchestration.delegation_label || orchestration.delegation_status}</p>
             </div>
-            <div className="p-3 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0]">
+            <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0]">
               <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Agenti</p>
               <p className="text-xs font-medium text-[#0F172A]">{orchestration.agents_used?.length || 0} completati</p>
             </div>
@@ -451,7 +451,7 @@ export default function PracticeDetailPage() {
           {orchestration.admin_summary && (
             <div className="mb-5">
               <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Riepilogo Herion Admin</p>
-              <div className="p-4 bg-[#F7FAFC] rounded-xl border border-[#E2E8F0] text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto" data-testid="admin-summary">
+              <div className="p-4 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0] text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto" data-testid="admin-summary">
                 {orchestration.admin_summary}
               </div>
             </div>
@@ -459,7 +459,7 @@ export default function PracticeDetailPage() {
 
           {/* Approval Actions */}
           <div className="flex gap-3 pt-2 border-t border-[#E2E8F0]">
-            <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 h-11 text-sm font-semibold" data-testid="approve-practice-btn">
+            <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 h-11 text-sm font-semibold" data-testid="approve-practice-btn">
               {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approvazione in corso...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Approva e Procedi</>}
             </Button>
           </div>
@@ -473,7 +473,7 @@ export default function PracticeDetailPage() {
       {/* User/Client Identity Card */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="user-practice-identity">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0F4C5C] to-[#1A6B7C] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0A192F] to-[#112240] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
             {practice.client_name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
@@ -508,7 +508,7 @@ export default function PracticeDetailPage() {
           {/* Agent Activity Panel */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="agent-activity-panel">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
+              <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#3B82F6]" /></div>
               <div><h3 className="text-sm font-bold text-[#0F172A]">Attivita degli Agenti</h3><p className="text-[10px] text-[#475569]">Cronologia trasparente di ogni azione sulla pratica</p></div>
             </div>
 
@@ -520,7 +520,7 @@ export default function PracticeDetailPage() {
                   const isExpanded = expandedLogs[log.id];
                   return (
                     <div key={log.id} className="border border-[#E2E8F0] rounded-xl overflow-hidden transition-all" data-testid={`agent-log-${log.id}`}>
-                      <button onClick={() => toggleLog(log.id)} className="w-full flex items-center gap-3 p-3 hover:bg-[#F7FAFC] transition-colors text-left">
+                      <button onClick={() => toggleLog(log.id)} className="w-full flex items-center gap-3 p-3 hover:bg-[#F8F9FA] transition-colors text-left">
                         <div className={`w-8 h-8 rounded-lg ${ac.bg} flex items-center justify-center flex-shrink-0`}><Icon className={`w-4 h-4 ${ac.color}`} strokeWidth={1.5} /></div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -539,7 +539,7 @@ export default function PracticeDetailPage() {
                       </button>
                       {isExpanded && log.output_data && (
                         <div className="px-3 pb-3 border-t border-[#E2E8F0]">
-                          <div className="mt-2 p-3 bg-[#F7FAFC] rounded-lg text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">{typeof log.output_data === 'string' ? log.output_data : JSON.stringify(log.output_data, null, 2)}</div>
+                          <div className="mt-2 p-3 bg-[#F8F9FA] rounded-lg text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">{typeof log.output_data === 'string' ? log.output_data : JSON.stringify(log.output_data, null, 2)}</div>
                         </div>
                       )}
                     </div>
@@ -559,16 +559,16 @@ export default function PracticeDetailPage() {
           {canOrchestrate && (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
+                <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" /></div>
                 <div><h3 className="text-sm font-bold text-[#0F172A]">Esecuzione Controllata</h3><p className="text-[10px] text-[#475569]">9 agenti specializzati coordinati da Herion Admin</p></div>
               </div>
               {isAdmin && (
                 <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 mb-3">
                   {BRANDED_AGENTS.map(a => (
                     <button key={a.type} onClick={() => setSelectedAgent(a.type)}
-                      className={`p-2 border rounded-xl text-center transition-all ${selectedAgent === a.type ? 'border-[#0F4C5C] bg-[#0F4C5C]/[0.03] ring-1 ring-[#0F4C5C]' : 'border-[#E2E8F0] hover:border-[#0F4C5C]/30'}`}
+                      className={`p-2 border rounded-xl text-center transition-all ${selectedAgent === a.type ? 'border-[#0A192F] bg-[#0A192F]/[0.03] ring-1 ring-[#0A192F]' : 'border-[#E2E8F0] hover:border-[#0A192F]/30'}`}
                       data-testid={`agent-select-${a.type}`}>
-                      <a.icon className={`w-3.5 h-3.5 mx-auto mb-0.5 ${selectedAgent === a.type ? 'text-[#0F4C5C]' : 'text-[#94A3B8]'}`} strokeWidth={1.5} />
+                      <a.icon className={`w-3.5 h-3.5 mx-auto mb-0.5 ${selectedAgent === a.type ? 'text-[#0A192F]' : 'text-[#94A3B8]'}`} strokeWidth={1.5} />
                       <p className="text-[8px] font-semibold text-[#0F172A] leading-tight">{a.name}</p>
                     </button>
                   ))}
@@ -581,7 +581,7 @@ export default function PracticeDetailPage() {
                     {agentLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Elaborazione...</> : <><Play className="w-3.5 h-3.5 mr-1.5" />Singolo Agente</>}
                   </Button>
                 )}
-                <Button onClick={handleOrchestrate} disabled={orchestrating} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-xs" data-testid="orchestrate-btn">
+                <Button onClick={handleOrchestrate} disabled={orchestrating} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-xs" data-testid="orchestrate-btn">
                   {orchestrating ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Esecuzione in corso...</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Avvia Esecuzione Controllata</>}
                 </Button>
               </div>
@@ -598,7 +598,7 @@ export default function PracticeDetailPage() {
             </div>
             {documents.length > 0 ? (
               <div className="space-y-1.5">{documents.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between p-2.5 border border-[#E2E8F0] rounded-xl hover:bg-[#F7FAFC] transition-colors" data-testid={`document-${doc.id}`}>
+                <div key={doc.id} className="flex items-center justify-between p-2.5 border border-[#E2E8F0] rounded-xl hover:bg-[#F8F9FA] transition-colors" data-testid={`document-${doc.id}`}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-[#F1F5F9] flex items-center justify-center"><File className="w-3 h-3 text-[#475569]" /></div>
                     <div><p className="text-xs font-medium text-[#0F172A]">{doc.original_filename}</p><p className="text-[9px] text-[#475569]">{DOC_CATEGORIES.find(c => c.key === doc.category)?.label || ''} &middot; {format(new Date(doc.created_at), 'dd MMM yyyy', { locale: it })}</p></div>
@@ -620,8 +620,8 @@ export default function PracticeDetailPage() {
           {readiness && (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="readiness-panel">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-[#5DD9C1]" strokeWidth={1.5} />
+                <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-[#3B82F6]" strokeWidth={1.5} />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#0F172A]">Stato di Prontezza</h3>
@@ -633,17 +633,17 @@ export default function PracticeDetailPage() {
               <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-3 ${
                 readiness.is_ready ? 'bg-emerald-50 border border-emerald-200' :
                 readiness.readiness_state === 'waiting_approval' ? 'bg-amber-50 border border-amber-200' :
-                readiness.readiness_state === 'completed' || readiness.readiness_state === 'submitted' ? 'bg-[#F0FAF8] border border-[#5DD9C1]/30' :
-                'bg-[#F7FAFC] border border-[#E2E8F0]'
+                readiness.readiness_state === 'completed' || readiness.readiness_state === 'submitted' ? 'bg-[#F0FAF8] border border-[#3B82F6]/30' :
+                'bg-[#F8F9FA] border border-[#E2E8F0]'
               }`}>
                 {readiness.is_ready ? <CheckCircle className="w-4 h-4 text-emerald-600" /> :
-                 readiness.readiness_state === 'completed' ? <CheckCircle className="w-4 h-4 text-[#5DD9C1]" /> :
+                 readiness.readiness_state === 'completed' ? <CheckCircle className="w-4 h-4 text-[#3B82F6]" /> :
                  readiness.readiness_state === 'waiting_approval' ? <Lock className="w-4 h-4 text-amber-600" /> :
                  <Clock className="w-4 h-4 text-[#94A3B8]" />}
                 <div>
                   <p className={`text-xs font-bold ${
                     readiness.is_ready ? 'text-emerald-700' :
-                    readiness.readiness_state === 'completed' ? 'text-[#0F4C5C]' :
+                    readiness.readiness_state === 'completed' ? 'text-[#0A192F]' :
                     readiness.readiness_state === 'waiting_approval' ? 'text-amber-700' :
                     'text-[#475569]'
                   }`}>{
@@ -660,7 +660,7 @@ export default function PracticeDetailPage() {
               {/* Status rows */}
               <div className="space-y-2 mb-3">
                 {/* Delegation */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
                   <div className="flex items-center gap-2">
                     <KeyRound className="w-3.5 h-3.5 text-violet-500" />
                     <span className="text-[10px] font-medium text-[#475569]">Delega</span>
@@ -682,7 +682,7 @@ export default function PracticeDetailPage() {
                 </div>
 
                 {/* Approval */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
                   <div className="flex items-center gap-2">
                     <Lock className="w-3.5 h-3.5 text-amber-500" />
                     <span className="text-[10px] font-medium text-[#475569]">Approvazione</span>
@@ -702,7 +702,7 @@ export default function PracticeDetailPage() {
                 </div>
 
                 {/* Documents */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
                   <div className="flex items-center gap-2">
                     <FileText className="w-3.5 h-3.5 text-emerald-500" />
                     <span className="text-[10px] font-medium text-[#475569]">Documenti</span>
@@ -711,9 +711,9 @@ export default function PracticeDetailPage() {
                 </div>
 
                 {/* Routing */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
                   <div className="flex items-center gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 text-[#0F4C5C]" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#0A192F]" />
                     <span className="text-[10px] font-medium text-[#475569]">Canale</span>
                   </div>
                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${readiness.routing_clear ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
@@ -815,7 +815,7 @@ export default function PracticeDetailPage() {
               {/* Dimensions */}
               <div className="space-y-1.5 mb-3">
                 {guardResult.dimensions?.map((dim, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]">
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
                     <span className="text-[10px] font-medium text-[#475569]">{dim.label}</span>
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                       dim.status === 'passed' ? 'bg-emerald-50 text-emerald-700' :
@@ -829,12 +829,12 @@ export default function PracticeDetailPage() {
               {/* Safe Alternatives */}
               {guardResult.safe_alternatives?.length > 0 && (
                 <div className="border-t border-[#E2E8F0] pt-3">
-                  <p className="text-[9px] font-semibold text-[#0F4C5C] uppercase tracking-wider mb-2">Alternative Sicure Suggerite</p>
+                  <p className="text-[9px] font-semibold text-[#0A192F] uppercase tracking-wider mb-2">Alternative Sicure Suggerite</p>
                   <div className="space-y-1.5">
                     {guardResult.safe_alternatives.map((alt, i) => (
                       <div key={i} className={`flex items-start gap-2 p-2 rounded-lg ${
                         alt.priority === 'critical' ? 'bg-red-50/60' :
-                        alt.priority === 'high' ? 'bg-amber-50/60' : 'bg-[#F7FAFC]'
+                        alt.priority === 'high' ? 'bg-amber-50/60' : 'bg-[#F8F9FA]'
                       }`} data-testid={`guard-alt-${i}`}>
                         <ArrowRight className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
                           alt.priority === 'critical' ? 'text-red-500' :
@@ -856,7 +856,7 @@ export default function PracticeDetailPage() {
           {docMatrix && docMatrix.has_matrix && (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="document-matrix-panel">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center">
                   <FileText className="w-4 h-4 text-white" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -879,7 +879,7 @@ export default function PracticeDetailPage() {
                   <span className="text-[10px] font-bold text-[#0F172A]">{docMatrix.completeness?.uploaded_required || 0}/{docMatrix.completeness?.total_required || 0}</span>
                 </div>
                 <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-[#0F4C5C] transition-all duration-700" style={{
+                  <div className="h-full rounded-full bg-[#0A192F] transition-all duration-700" style={{
                     width: `${docMatrix.completeness?.total_required ? (docMatrix.completeness.uploaded_required / docMatrix.completeness.total_required) * 100 : 0}%`
                   }} />
                 </div>
@@ -888,10 +888,10 @@ export default function PracticeDetailPage() {
               {/* Required Documents */}
               {docMatrix.required?.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-[9px] font-semibold text-[#0F4C5C] uppercase tracking-wider mb-1.5">Documenti Richiesti</p>
+                  <p className="text-[9px] font-semibold text-[#0A192F] uppercase tracking-wider mb-1.5">Documenti Richiesti</p>
                   <div className="space-y-1">
                     {docMatrix.required.map((doc, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]" data-testid={`matrix-req-${doc.doc_key}`}>
+                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]" data-testid={`matrix-req-${doc.doc_key}`}>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {doc.complete ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" /> : <Circle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
                           <div className="min-w-0">
@@ -974,7 +974,7 @@ export default function PracticeDetailPage() {
           {/* Timeline */}
           {timeline.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-timeline">
-              <div className="flex items-center gap-2 mb-3"><History className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Cronologia</h3></div>
+              <div className="flex items-center gap-2 mb-3"><History className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Cronologia</h3></div>
               <ScrollArea className="h-[220px]">
                 <div className="relative pl-5">
                   <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[#E2E8F0]" />
@@ -983,8 +983,8 @@ export default function PracticeDetailPage() {
                     const isLast = i === timeline.length - 1;
                     return (
                       <div key={event.id} className={`relative flex gap-3 ${i < timeline.length - 1 ? 'pb-3' : ''}`}>
-                        <div className={`absolute left-[-13px] w-4 h-4 rounded-full flex items-center justify-center ${isLast ? 'bg-[#0F4C5C]' : 'bg-[#F1F5F9] border border-[#E2E8F0]'}`}>
-                          <Icon className={`w-2.5 h-2.5 ${isLast ? 'text-[#5DD9C1]' : 'text-[#94A3B8]'}`} strokeWidth={2} />
+                        <div className={`absolute left-[-13px] w-4 h-4 rounded-full flex items-center justify-center ${isLast ? 'bg-[#0A192F]' : 'bg-[#F1F5F9] border border-[#E2E8F0]'}`}>
+                          <Icon className={`w-2.5 h-2.5 ${isLast ? 'text-[#3B82F6]' : 'text-[#94A3B8]'}`} strokeWidth={2} />
                         </div>
                         <div className="min-w-0">
                           <p className={`text-[10px] font-medium ${isLast ? 'text-[#0F172A]' : 'text-[#475569]'}`}>{event.event_label}</p>
@@ -1001,7 +1001,7 @@ export default function PracticeDetailPage() {
           {/* Q&A Chat */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-chat">
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#5DD9C1]" /></div>
+              <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#3B82F6]" /></div>
               <div><h3 className="text-sm font-bold text-[#0F172A]">Chiedi a Herion</h3><p className="text-[10px] text-[#475569]">Domande sulla pratica</p></div>
             </div>
             <ScrollArea className="h-[240px] mb-3">
@@ -1012,39 +1012,39 @@ export default function PracticeDetailPage() {
                     <p className="text-xs text-[#475569] mb-2">Chiedi qualsiasi cosa su questa pratica</p>
                     <div className="space-y-1">
                       {['Qual e lo stato attuale?', 'Quali documenti mancano?', 'Qual e il prossimo passo?'].map((q, i) => (
-                        <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[10px] text-[#0F4C5C] p-2 bg-[#0F4C5C]/[0.03] rounded-lg hover:bg-[#0F4C5C]/[0.06] transition-colors" data-testid={`chat-suggestion-${i}`}>{q}</button>
+                        <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[10px] text-[#0A192F] p-2 bg-[#0A192F]/[0.03] rounded-lg hover:bg-[#0A192F]/[0.06] transition-colors" data-testid={`chat-suggestion-${i}`}>{q}</button>
                       ))}
                     </div>
                   </div>
                 )}
                 {chatHistory.map(msg => (
                   <div key={msg.id}>
-                    <div className="flex justify-end mb-1"><div className="bg-[#0F4C5C] text-white px-3 py-2 rounded-xl rounded-br-md text-xs max-w-[85%]">{msg.question}</div></div>
+                    <div className="flex justify-end mb-1"><div className="bg-[#0A192F] text-white px-3 py-2 rounded-xl rounded-br-md text-xs max-w-[85%]">{msg.question}</div></div>
                     <div className="flex gap-2 mb-1">
-                      <div className="w-6 h-6 rounded-md bg-[#5DD9C1]/15 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[#0F4C5C]" /></div>
-                      <div className="bg-[#F7FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl rounded-bl-md text-xs text-[#0F172A] max-w-[85%] whitespace-pre-wrap">
-                        <p className="text-[9px] font-semibold text-[#0F4C5C] mb-1">{msg.answered_by}</p>
+                      <div className="w-6 h-6 rounded-md bg-[#3B82F6]/15 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[#0A192F]" /></div>
+                      <div className="bg-[#F8F9FA] border border-[#E2E8F0] px-3 py-2 rounded-xl rounded-bl-md text-xs text-[#0F172A] max-w-[85%] whitespace-pre-wrap">
+                        <p className="text-[9px] font-semibold text-[#0A192F] mb-1">{msg.answered_by}</p>
                         {msg.answer}
                       </div>
                     </div>
                   </div>
                 ))}
                 {chatLoading && (
-                  <div className="flex gap-2"><div className="w-6 h-6 rounded-md bg-[#5DD9C1]/15 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3 text-[#0F4C5C]" /></div>
-                    <div className="bg-[#F7FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl text-xs"><Loader2 className="w-3.5 h-3.5 animate-spin text-[#0F4C5C]" /></div></div>
+                  <div className="flex gap-2"><div className="w-6 h-6 rounded-md bg-[#3B82F6]/15 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3 text-[#0A192F]" /></div>
+                    <div className="bg-[#F8F9FA] border border-[#E2E8F0] px-3 py-2 rounded-xl text-xs"><Loader2 className="w-3.5 h-3.5 animate-spin text-[#0A192F]" /></div></div>
                 )}
                 <div ref={chatEndRef} />
               </div>
             </ScrollArea>
             <form onSubmit={handleChat} className="flex gap-2">
               <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Fai una domanda..." className="rounded-xl border-[#E2E8F0] h-9 text-xs flex-1" disabled={chatLoading} data-testid="chat-input" />
-              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl h-9 w-9 p-0" data-testid="chat-send-btn"><Send className="w-3.5 h-3.5" /></Button>
+              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl h-9 w-9 p-0" data-testid="chat-send-btn"><Send className="w-3.5 h-3.5" /></Button>
             </form>
           </div>
 
           {/* Activity Log */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center gap-2 mb-3"><AlertCircle className="w-4 h-4 text-[#0F4C5C]" /><h3 className="text-sm font-bold text-[#0F172A]">Registro Attivita</h3></div>
+            <div className="flex items-center gap-2 mb-3"><AlertCircle className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Registro Attivita</h3></div>
             <ScrollArea className="h-[200px]">
               <div className="space-y-1.5">
                 {activityLogs.length > 0 ? activityLogs.map(log => (
@@ -1067,25 +1067,25 @@ export default function PracticeDetailPage() {
             <AlertDialogTitle className="text-lg font-bold text-center">Cambia stato</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-[#475569] text-sm">Questa azione verra registrata nel log.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleStatusChange} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-sm">Conferma</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleStatusChange} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm">Conferma</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showAgentDialog} onOpenChange={setShowAgentDialog}>
         <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-sm">
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-[#0F4C5C]/10 flex items-center justify-center mx-auto mb-3"><Sparkles className="w-5 h-5 text-[#0F4C5C]" /></div>
+            <div className="w-11 h-11 rounded-xl bg-[#0A192F]/10 flex items-center justify-center mx-auto mb-3"><Sparkles className="w-5 h-5 text-[#0A192F]" /></div>
             <AlertDialogTitle className="text-lg font-bold text-center">Esegui Agente</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-[#475569] text-sm">Agente: <span className="font-medium text-[#0F172A]">{BRANDED_AGENTS.find(a => a.type === selectedAgent)?.branded}</span></AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleAgentExecute} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-sm">Esegui</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleAgentExecute} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm">Esegui</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
         <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-md">
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-[#0F4C5C] flex items-center justify-center mx-auto mb-3"><Lock className="w-5 h-5 text-[#5DD9C1]" /></div>
+            <div className="w-11 h-11 rounded-xl bg-[#0A192F] flex items-center justify-center mx-auto mb-3"><Lock className="w-5 h-5 text-[#3B82F6]" /></div>
             <AlertDialogTitle className="text-lg font-bold text-center">Conferma Approvazione</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-[#475569] text-sm">
               Confermando, autorizzi l'invio della pratica <span className="font-semibold text-[#0F172A]">{practice.practice_type_label}</span> per <span className="font-semibold text-[#0F172A]">{practice.client_name}</span>.
@@ -1095,7 +1095,7 @@ export default function PracticeDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprove} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-sm" data-testid="confirm-approve-btn">Approva e Invia</AlertDialogAction>
+            <AlertDialogAction onClick={handleApprove} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm" data-testid="confirm-approve-btn">Approva e Invia</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1114,7 +1114,7 @@ export default function PracticeDetailPage() {
               <SelectContent className="rounded-xl">{DOC_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleFileUpload} className="bg-[#0F4C5C] hover:bg-[#0b3844] rounded-xl flex-1 text-sm">Carica</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleFileUpload} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm">Carica</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

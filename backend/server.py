@@ -652,6 +652,31 @@ async def upload_document(practice_id: str, file: UploadFile = File(...), catego
     doc_record.pop("_id", None)
     return doc_record
 
+# NOTE: Static routes must come BEFORE parameterized routes to avoid route conflicts
+@api_router.get("/documents/matrix-types")
+async def get_all_document_matrix_types_early(user: dict = Depends(get_current_user)):
+    """Get all practice types that have a document matrix defined."""
+    types = []
+    for practice_type, matrix in DOCUMENT_MATRIX.items():
+        catalog_entry = await db.practice_catalog.find_one({"practice_id": practice_type}, {"_id": 0, "name": 1, "support_level": 1})
+        types.append({
+            "practice_type": practice_type,
+            "name": catalog_entry.get("name", practice_type) if catalog_entry else practice_type,
+            "support_level": catalog_entry.get("support_level") if catalog_entry else "unknown",
+            "required_count": len(matrix.get("required", [])),
+            "optional_count": len(matrix.get("optional", [])),
+            "conditional_count": len(matrix.get("conditional", [])),
+            "output_count": len(matrix.get("expected_outputs", [])),
+            "has_signed_docs": any(d.get("signed_required") for d in matrix.get("required", []) + matrix.get("conditional", [])),
+            "has_confidential_docs": any(d.get("sensitivity") == "confidential" for d in matrix.get("required", []) + matrix.get("conditional", [])),
+        })
+    return types
+
+@api_router.get("/documents/sensitivity-levels")
+async def get_sensitivity_levels_early(user: dict = Depends(get_current_user)):
+    """Get the sensitivity level definitions and visibility rules."""
+    return SENSITIVITY_LEVELS_CONFIG
+
 @api_router.get("/documents/{document_id}")
 async def get_document(document_id: str, user: dict = Depends(get_current_user)):
     doc = await db.documents.find_one({"id": document_id, "user_id": user["id"], "is_deleted": False})
@@ -3091,15 +3116,34 @@ async def herion_guard_evaluate(practice_id: str, action: str = "submit", actor_
         dimensions.append({"key": "risk_profile", "label": "Profilo di Rischio", "status": "warning", "detail": "Rischio non determinato"})
         warnings_count += 1
 
-    # 7. Document Completeness
-    doc_blockers = [b for b in readiness.get("blockers", []) if "Documento" in b or "documento" in b]
-    if not doc_blockers:
-        dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "passed", "detail": f"{readiness.get('document_count', 0)} documenti presenti"})
+    # 7. Document Completeness (enhanced with Document Matrix)
+    practice_type = practice.get("practice_type") or practice.get("template_source")
+    matrix = DOCUMENT_MATRIX.get(practice_type)
+    if matrix:
+        matrix_result = await get_document_matrix_for_practice(practice_id)
+        completeness = matrix_result.get("completeness", {})
+        if completeness.get("can_proceed") and completeness.get("all_required_uploaded"):
+            dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "passed", "detail": f"{completeness.get('uploaded_required', 0)}/{completeness.get('total_required', 0)} documenti richiesti caricati"})
+        elif completeness.get("missing_signatures"):
+            dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "blocked", "detail": f"Firme mancanti: {', '.join(completeness['missing_signatures'][:2])}"})
+            blockers_count += 1
+            for sig in completeness["missing_signatures"][:2]:
+                safe_alternatives.append({"action": "upload_signed", "label": f"Caricare versione firmata: {sig}", "detail": f"Il documento {sig} richiede firma digitale (P7M o PAdES).", "priority": "high"})
+        else:
+            missing = completeness.get("missing_required", [])
+            dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "blocked", "detail": f"{len(missing)} documenti mancanti"})
+            blockers_count += 1
+            for m in missing[:3]:
+                safe_alternatives.append({"action": "upload_document", "label": f"Caricare: {m}", "detail": f"Documento richiesto: {m}", "priority": "high"})
     else:
-        dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "blocked", "detail": f"{len(doc_blockers)} documenti mancanti"})
-        blockers_count += 1
-        for db_item in doc_blockers[:3]:
-            safe_alternatives.append({"action": "upload_document", "label": f"Caricare: {db_item.replace('Documento mancante: ', '')}", "detail": db_item, "priority": "high"})
+        doc_blockers = [b for b in readiness.get("blockers", []) if "Documento" in b or "documento" in b]
+        if not doc_blockers:
+            dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "passed", "detail": f"{readiness.get('document_count', 0)} documenti presenti"})
+        else:
+            dimensions.append({"key": "document_completeness", "label": "Completezza Documenti", "status": "blocked", "detail": f"{len(doc_blockers)} documenti mancanti"})
+            blockers_count += 1
+            for db_item in doc_blockers[:3]:
+                safe_alternatives.append({"action": "upload_document", "label": f"Caricare: {db_item.replace('Documento mancante: ', '')}", "detail": db_item, "priority": "high"})
 
     # Determine verdict
     if blockers_count == 0 and warnings_count == 0:
@@ -3485,6 +3529,327 @@ async def resolve_follow_up(follow_up_id: str, user: dict = Depends(get_current_
     })
 
     return {"message": "Follow-up risolto", "id": follow_up_id}
+
+
+# ========================
+# DOCUMENT INTELLIGENCE LAYER
+# ========================
+
+# Full Document Matrix — per practice type
+DOCUMENT_MATRIX = {
+    "VAT_OPEN_PF": {
+        "required": [
+            {"doc_key": "identity_document", "label": "Documento di identita", "description": "Carta d'identita o passaporto in corso di validita", "formats": ["pdf", "jpg", "png"], "max_size_mb": 10, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "codice_fiscale", "label": "Codice Fiscale / Tessera Sanitaria", "description": "Codice fiscale o tessera sanitaria con CF leggibile", "formats": ["pdf", "jpg", "png"], "max_size_mb": 5, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "modello_aa9_12", "label": "Modello AA9/12 compilato", "description": "Modello di dichiarazione per inizio attivita, variazione o cessazione (persone fisiche)", "formats": ["pdf"], "max_size_mb": 5, "blocking": True, "sensitivity": "fiscal", "signed_required": True},
+        ],
+        "optional": [
+            {"doc_key": "pec_certificate", "label": "Certificato PEC", "description": "Certificato di posta elettronica certificata", "formats": ["pdf"], "max_size_mb": 5, "sensitivity": "standard"},
+        ],
+        "conditional": [
+            {"doc_key": "delegation_doc", "label": "Delega firmata", "description": "Richiesta se la pratica viene gestita per conto di terzi", "condition": "delegation_required", "formats": ["pdf", "p7m"], "max_size_mb": 10, "blocking": True, "sensitivity": "legal", "signed_required": True},
+        ],
+        "expected_outputs": [
+            {"output_key": "receipt_ae", "label": "Ricevuta Agenzia delle Entrate", "description": "Ricevuta di avvenuta registrazione", "format": "pdf"},
+            {"output_key": "vat_number_certificate", "label": "Attribuzione Partita IVA", "description": "Certificato con numero P.IVA attribuito", "format": "pdf"},
+        ],
+    },
+    "VAT_VARIATION_PF": {
+        "required": [
+            {"doc_key": "identity_document", "label": "Documento di identita", "description": "Carta d'identita o passaporto in corso di validita", "formats": ["pdf", "jpg", "png"], "max_size_mb": 10, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "modello_aa9_12_variation", "label": "Modello AA9/12 (variazione)", "description": "Modello compilato per la variazione dati", "formats": ["pdf"], "max_size_mb": 5, "blocking": True, "sensitivity": "fiscal", "signed_required": True},
+        ],
+        "optional": [],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "receipt_ae_variation", "label": "Ricevuta variazione", "description": "Ricevuta di avvenuta variazione dall'Agenzia delle Entrate", "format": "pdf"},
+        ],
+    },
+    "VAT_CLOSURE_PF": {
+        "required": [
+            {"doc_key": "identity_document", "label": "Documento di identita", "description": "Carta d'identita o passaporto", "formats": ["pdf", "jpg", "png"], "max_size_mb": 10, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "modello_aa9_12_closure", "label": "Modello AA9/12 (cessazione)", "description": "Modello compilato per la cessazione attivita", "formats": ["pdf"], "max_size_mb": 5, "blocking": True, "sensitivity": "fiscal", "signed_required": True},
+            {"doc_key": "dichiarazioni_fiscali", "label": "Ultime dichiarazioni fiscali", "description": "Dichiarazioni fiscali degli ultimi esercizi per verifica pendenze", "formats": ["pdf"], "max_size_mb": 20, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [
+            {"doc_key": "bilancio_finale", "label": "Bilancio finale", "description": "Bilancio finale dell'attivita", "formats": ["pdf", "xlsx"], "max_size_mb": 20, "sensitivity": "fiscal"},
+        ],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "receipt_ae_closure", "label": "Ricevuta cessazione", "description": "Ricevuta di avvenuta cessazione P.IVA", "format": "pdf"},
+        ],
+    },
+    "F24_PREPARATION": {
+        "required": [
+            {"doc_key": "dati_contabili", "label": "Dati contabili / prospetto importi", "description": "Prospetto con codici tributo, importi e periodi di riferimento", "formats": ["pdf", "xlsx", "csv"], "max_size_mb": 10, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [
+            {"doc_key": "f24_precedente", "label": "F24 precedente", "description": "Modello F24 di un periodo precedente come riferimento", "formats": ["pdf"], "max_size_mb": 5, "sensitivity": "fiscal"},
+        ],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "f24_compilato", "label": "Modello F24 compilato", "description": "F24 pronto per la validazione e il pagamento", "format": "pdf"},
+        ],
+    },
+    "F24_WEB": {
+        "required": [
+            {"doc_key": "dati_contabili", "label": "Dati contabili / prospetto importi", "description": "Dati per la compilazione F24 Web", "formats": ["pdf", "xlsx", "csv"], "max_size_mb": 10, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "receipt_f24_web", "label": "Ricevuta invio F24 Web", "description": "Ricevuta di invio dal portale F24 Web", "format": "pdf"},
+        ],
+    },
+    "VAT_DECLARATION": {
+        "required": [
+            {"doc_key": "registri_iva", "label": "Registri IVA (vendite e acquisti)", "description": "Registri IVA completi per il periodo dichiarativo", "formats": ["pdf", "xlsx"], "max_size_mb": 50, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+            {"doc_key": "fatture_periodo", "label": "Fatture del periodo", "description": "Fatture emesse e ricevute del periodo", "formats": ["pdf", "xml", "zip"], "max_size_mb": 100, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+            {"doc_key": "dati_contabili_iva", "label": "Riepilogo contabile IVA", "description": "Riepilogo contabile per la dichiarazione", "formats": ["pdf", "xlsx"], "max_size_mb": 20, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [
+            {"doc_key": "dichiarazione_precedente", "label": "Dichiarazione IVA precedente", "description": "Dichiarazione del periodo precedente come riferimento", "formats": ["pdf"], "max_size_mb": 10, "sensitivity": "fiscal"},
+        ],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "dichiarazione_iva_draft", "label": "Bozza dichiarazione IVA", "description": "Bozza della dichiarazione preparata per revisione", "format": "pdf"},
+            {"output_key": "receipt_ae_iva", "label": "Ricevuta invio dichiarazione", "description": "Ricevuta di invio telematico", "format": "pdf"},
+        ],
+    },
+    "EINVOICING": {
+        "required": [
+            {"doc_key": "fattura_xml", "label": "Fattura elettronica XML", "description": "File XML della fattura in formato FatturaPA", "formats": ["xml", "p7m"], "max_size_mb": 5, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [
+            {"doc_key": "allegati_fattura", "label": "Allegati fattura", "description": "Documenti allegati alla fattura elettronica", "formats": ["pdf", "jpg", "png"], "max_size_mb": 20, "sensitivity": "standard"},
+        ],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "receipt_sdi", "label": "Ricevuta SDI", "description": "Notifica di consegna dal Sistema di Interscambio", "format": "xml"},
+        ],
+    },
+    "INPS_GESTIONE_SEP": {
+        "required": [
+            {"doc_key": "identity_document", "label": "Documento di identita", "description": "Carta d'identita o passaporto", "formats": ["pdf", "jpg", "png"], "max_size_mb": 10, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "codice_fiscale", "label": "Codice Fiscale", "description": "Codice fiscale leggibile", "formats": ["pdf", "jpg", "png"], "max_size_mb": 5, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "attestazione_piva", "label": "Attestazione P.IVA attiva", "description": "Prova dell'apertura della Partita IVA", "formats": ["pdf"], "max_size_mb": 5, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "receipt_inps", "label": "Ricevuta iscrizione INPS", "description": "Conferma di iscrizione alla Gestione Separata", "format": "pdf"},
+        ],
+    },
+    "INPS_CASSETTO": {
+        "required": [],
+        "optional": [],
+        "conditional": [],
+        "expected_outputs": [
+            {"output_key": "estratto_previdenziale", "label": "Estratto previdenziale", "description": "Riepilogo situazione contributiva", "format": "pdf"},
+        ],
+    },
+    "COMPANY_CLOSURE": {
+        "required": [
+            {"doc_key": "atto_costitutivo", "label": "Atto costitutivo / Statuto", "description": "Atto costitutivo e statuto della societa", "formats": ["pdf"], "max_size_mb": 20, "blocking": True, "sensitivity": "legal", "signed_required": False},
+            {"doc_key": "bilancio_finale_liquidazione", "label": "Bilancio finale di liquidazione", "description": "Bilancio finale approvato dall'assemblea dei soci", "formats": ["pdf"], "max_size_mb": 20, "blocking": True, "sensitivity": "fiscal", "signed_required": True},
+            {"doc_key": "verbale_approvazione", "label": "Verbale di approvazione bilancio finale", "description": "Verbale dell'assemblea che approva il bilancio finale", "formats": ["pdf"], "max_size_mb": 20, "blocking": True, "sensitivity": "legal", "signed_required": True},
+            {"doc_key": "identity_liquidatore", "label": "Documento identita liquidatore", "description": "Carta d'identita del liquidatore in carica", "formats": ["pdf", "jpg", "png"], "max_size_mb": 10, "blocking": True, "sensitivity": "personal", "signed_required": False},
+            {"doc_key": "codice_fiscale_societa", "label": "Codice Fiscale / P.IVA societa", "description": "Visura o certificato con CF/P.IVA della societa", "formats": ["pdf"], "max_size_mb": 5, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+            {"doc_key": "certificato_pendenze", "label": "Certificato assenza pendenze tributarie", "description": "Certificato dall'Agenzia delle Entrate attestante l'assenza di debiti fiscali", "formats": ["pdf"], "max_size_mb": 10, "blocking": True, "sensitivity": "fiscal", "signed_required": False},
+        ],
+        "optional": [
+            {"doc_key": "piano_riparto", "label": "Piano di riparto", "description": "Piano di distribuzione del residuo attivo ai soci", "formats": ["pdf"], "max_size_mb": 10, "sensitivity": "fiscal"},
+            {"doc_key": "comunicazione_creditori", "label": "Comunicazione ai creditori", "description": "Prova di avvenuta comunicazione ai creditori", "formats": ["pdf"], "max_size_mb": 10, "sensitivity": "legal"},
+            {"doc_key": "visura_camerale", "label": "Visura camerale aggiornata", "description": "Visura camerale con stato di liquidazione", "formats": ["pdf"], "max_size_mb": 5, "sensitivity": "standard"},
+        ],
+        "conditional": [
+            {"doc_key": "delega_firmata", "label": "Delega firmata al professionista", "description": "Delega per la presentazione della pratica al Registro Imprese. Richiesta se la pratica viene gestita tramite intermediario.", "condition": "delegation_required", "formats": ["pdf", "p7m"], "max_size_mb": 10, "blocking": True, "sensitivity": "legal", "signed_required": True},
+            {"doc_key": "procura_speciale", "label": "Procura speciale", "description": "Procura speciale notarile se richiesta dalla Camera di Commercio", "condition": "high_risk", "formats": ["pdf", "p7m"], "max_size_mb": 10, "blocking": False, "sensitivity": "confidential", "signed_required": True},
+        ],
+        "expected_outputs": [
+            {"output_key": "ricevuta_registroimprese", "label": "Ricevuta Registro delle Imprese", "description": "Ricevuta di avvenuta presentazione della domanda di cancellazione", "format": "pdf"},
+            {"output_key": "protocollo_cciaa", "label": "Numero di protocollo CCIAA", "description": "Numero di protocollo assegnato dalla Camera di Commercio", "format": "text"},
+            {"output_key": "attestazione_cancellazione", "label": "Attestazione di cancellazione", "description": "Conferma definitiva di cancellazione dal Registro delle Imprese", "format": "pdf"},
+            {"output_key": "dossier_finale", "label": "Dossier finale completo", "description": "Fascicolo completo con tutta la documentazione archiviata", "format": "pdf"},
+        ],
+    },
+}
+
+# Sensitivity levels and visibility rules (full config for Document Intelligence Layer)
+SENSITIVITY_LEVELS_CONFIG = {
+    "standard": {"label": "Standard", "visibility": ["user", "admin", "creator"], "sending_allowed": True, "requires_encryption": False},
+    "personal": {"label": "Dati Personali", "visibility": ["user", "admin", "creator"], "sending_allowed": True, "requires_encryption": False},
+    "fiscal": {"label": "Dati Fiscali", "visibility": ["user", "admin", "creator"], "sending_allowed": True, "requires_encryption": False},
+    "legal": {"label": "Documento Legale", "visibility": ["admin", "creator"], "sending_allowed": False, "requires_encryption": False},
+    "confidential": {"label": "Riservato", "visibility": ["creator"], "sending_allowed": False, "requires_encryption": True},
+}
+
+# Allowed file extensions for signature-aware handling
+SIGNATURE_FORMATS = {
+    "p7m": {"label": "Firma Digitale P7M (CAdES)", "is_signed": True, "description": "Busta crittografica con firma digitale CAdES"},
+    "pdf": {"label": "PDF", "is_signed": False, "can_be_signed": True, "description": "Puo contenere firma digitale PAdES"},
+}
+
+
+async def get_document_matrix_for_practice(practice_id: str) -> dict:
+    """Get the full document matrix for a practice based on its type."""
+    practice = await db.practices.find_one({"id": practice_id}, {"_id": 0})
+    if not practice:
+        return {"error": "Pratica non trovata"}
+
+    practice_type = practice.get("practice_type") or practice.get("template_source")
+    matrix = DOCUMENT_MATRIX.get(practice_type, {})
+
+    if not matrix:
+        return {
+            "practice_id": practice_id,
+            "practice_type": practice_type,
+            "has_matrix": False,
+            "message": "Nessuna matrice documentale definita per questo tipo di pratica",
+            "required": [], "optional": [], "conditional": [], "expected_outputs": [],
+        }
+
+    # Check which conditional docs apply
+    active_conditional = []
+    for cond_doc in matrix.get("conditional", []):
+        condition = cond_doc.get("condition", "")
+        applies = False
+        if condition == "delegation_required" and practice.get("delegation_required"):
+            applies = True
+        elif condition == "high_risk" and practice.get("risk_level") == "high":
+            applies = True
+        elif condition == "approval_required" and practice.get("approval_required"):
+            applies = True
+        if applies:
+            active_conditional.append({**cond_doc, "condition_met": True})
+        else:
+            active_conditional.append({**cond_doc, "condition_met": False})
+
+    # Check uploaded documents against matrix
+    uploaded_docs = await db.documents.find({"practice_id": practice_id}, {"_id": 0}).to_list(100)
+    uploaded_keys = {d.get("doc_key") or d.get("filename", "").split(".")[0].lower() for d in uploaded_docs}
+
+    # Check completion status per document
+    required_status = []
+    for doc in matrix.get("required", []):
+        is_present = doc["doc_key"] in uploaded_keys
+        # Check signature requirement
+        matching_doc = next((d for d in uploaded_docs if (d.get("doc_key") or "") == doc["doc_key"]), None)
+        signature_ok = True
+        if doc.get("signed_required") and matching_doc:
+            fn = (matching_doc.get("filename") or "").lower()
+            signature_ok = fn.endswith(".p7m") or matching_doc.get("is_signed", False)
+        required_status.append({
+            **doc,
+            "uploaded": is_present,
+            "signature_valid": signature_ok if is_present else None,
+            "complete": is_present and (signature_ok if doc.get("signed_required") else True),
+        })
+
+    optional_status = []
+    for doc in matrix.get("optional", []):
+        is_present = doc["doc_key"] in uploaded_keys
+        optional_status.append({**doc, "uploaded": is_present})
+
+    conditional_status = []
+    for doc in active_conditional:
+        is_present = doc["doc_key"] in uploaded_keys
+        matching_doc = next((d for d in uploaded_docs if (d.get("doc_key") or "") == doc["doc_key"]), None)
+        signature_ok = True
+        if doc.get("signed_required") and matching_doc:
+            fn = (matching_doc.get("filename") or "").lower()
+            signature_ok = fn.endswith(".p7m") or matching_doc.get("is_signed", False)
+        conditional_status.append({
+            **doc,
+            "uploaded": is_present,
+            "signature_valid": signature_ok if is_present else None,
+            "complete": is_present and (signature_ok if doc.get("signed_required") else True) if doc["condition_met"] else True,
+        })
+
+    # Output tracking
+    output_status = []
+    for out in matrix.get("expected_outputs", []):
+        received = await db.documents.find_one(
+            {"practice_id": practice_id, "doc_key": out["output_key"]}, {"_id": 0}
+        )
+        output_status.append({**out, "received": received is not None, "received_at": received.get("uploaded_at") if received else None})
+
+    # Calculate completeness
+    total_blocking = [d for d in required_status if d.get("blocking")]
+    total_blocking += [d for d in conditional_status if d.get("blocking") and d.get("condition_met")]
+    blocking_complete = all(d.get("complete") for d in total_blocking) if total_blocking else True
+    required_complete = all(d.get("complete") for d in required_status)
+    missing_required = [d["label"] for d in required_status if not d.get("uploaded")]
+    missing_signatures = [d["label"] for d in required_status if d.get("uploaded") and d.get("signed_required") and not d.get("signature_valid")]
+    missing_conditional = [d["label"] for d in conditional_status if d.get("condition_met") and d.get("blocking") and not d.get("complete")]
+    outputs_received = sum(1 for o in output_status if o.get("received"))
+
+    return {
+        "practice_id": practice_id,
+        "practice_type": practice_type,
+        "has_matrix": True,
+        "required": required_status,
+        "optional": optional_status,
+        "conditional": conditional_status,
+        "expected_outputs": output_status,
+        "completeness": {
+            "all_required_uploaded": required_complete,
+            "all_blocking_complete": blocking_complete,
+            "missing_required": missing_required,
+            "missing_signatures": missing_signatures,
+            "missing_conditional": missing_conditional,
+            "total_required": len(required_status),
+            "uploaded_required": sum(1 for d in required_status if d.get("uploaded")),
+            "total_outputs": len(output_status),
+            "outputs_received": outputs_received,
+            "can_proceed": blocking_complete and not missing_conditional,
+        },
+    }
+
+
+@api_router.get("/documents/matrix/{practice_id}")
+async def get_practice_document_matrix(practice_id: str, user: dict = Depends(get_current_user)):
+    """Get the document matrix for a specific practice with completion status."""
+    result = await get_document_matrix_for_practice(practice_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    # Filter by role visibility
+    role = user.get("role", "user")
+    for doc_list_key in ["required", "optional", "conditional"]:
+        for doc in result.get(doc_list_key, []):
+            sensitivity = doc.get("sensitivity", "standard")
+            vis_config = SENSITIVITY_LEVELS_CONFIG.get(sensitivity, SENSITIVITY_LEVELS_CONFIG["standard"])
+            doc["visible_to_current_user"] = role in vis_config["visibility"]
+            doc["sensitivity_label"] = vis_config["label"]
+
+    return result
+
+
+@api_router.get("/documents/matrix-types")
+async def get_all_document_matrix_types(user: dict = Depends(get_current_user)):
+    """Get all practice types that have a document matrix defined."""
+    types = []
+    for practice_type, matrix in DOCUMENT_MATRIX.items():
+        catalog_entry = await db.practice_catalog.find_one({"practice_id": practice_type}, {"_id": 0, "name": 1, "support_level": 1})
+        types.append({
+            "practice_type": practice_type,
+            "name": catalog_entry.get("name", practice_type) if catalog_entry else practice_type,
+            "support_level": catalog_entry.get("support_level") if catalog_entry else "unknown",
+            "required_count": len(matrix.get("required", [])),
+            "optional_count": len(matrix.get("optional", [])),
+            "conditional_count": len(matrix.get("conditional", [])),
+            "output_count": len(matrix.get("expected_outputs", [])),
+            "has_signed_docs": any(d.get("signed_required") for d in matrix.get("required", []) + matrix.get("conditional", [])),
+            "has_confidential_docs": any(d.get("sensitivity") == "confidential" for d in matrix.get("required", []) + matrix.get("conditional", [])),
+        })
+    return types
+
+
+@api_router.get("/documents/sensitivity-levels")
+async def get_sensitivity_levels(user: dict = Depends(get_current_user)):
+    """Get the sensitivity level definitions and visibility rules."""
+    return SENSITIVITY_LEVELS_CONFIG
 
 
 # ========================
@@ -4069,26 +4434,26 @@ async def startup():
     catalog_count = await db.practice_catalog.count_documents({})
     if catalog_count == 0:
         catalog_entries = [
-            {"practice_id": "INFO_FISCAL_GENERIC", "name": "Richiesta informazioni fiscali generiche", "description": "Richiesta di chiarimenti su adempimenti fiscali di base.", "user_type": ["private", "freelancer", "company"], "country_scope": "EU", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "informational", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["intake", "research", "advisor"], "blocking_conditions": [], "escalation_conditions": ["ambiguita normativa"], "next_step": "Invio informazioni", "user_explanation": "Richiesta di informazioni fiscali di base. Herion raccoglie la domanda e fornisce indicazioni chiare."},
-            {"practice_id": "DOC_MISSING_REQUEST", "name": "Richiesta documenti mancanti", "description": "Notifica all'utente sui documenti necessari per procedere.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "flow", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Attesa caricamento documenti", "user_explanation": "Ti indichiamo quali documenti servono per completare la tua pratica."},
-            {"practice_id": "DOC_PRELIMINARY_SEND", "name": "Invio documenti preliminari", "description": "Invio di documentazione preliminare a un destinatario.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "external_recipient", "required_documents": ["identity"], "delegation_required": False, "approval_required": True, "agents": ["documents", "routing", "advisor"], "blocking_conditions": ["documenti mancanti"], "escalation_conditions": [], "next_step": "Conferma ricezione", "user_explanation": "Preparazione e invio della documentazione preliminare richiesta."},
-            {"practice_id": "PRACTICE_FOLLOWUP", "name": "Promemoria e follow-up pratica", "description": "Promemoria sullo stato di avanzamento di una pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["monitor", "deadline", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Verifica stato pratica", "user_explanation": "Ricevi aggiornamenti e promemoria sullo stato della tua pratica."},
-            {"practice_id": "BLOCKED_RECOVERY", "name": "Recupero pratica bloccata", "description": "Recupero di una pratica in stato bloccato.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "internal", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["flow", "monitor", "documents"], "blocking_conditions": [], "escalation_conditions": ["blocco persistente"], "next_step": "Identificazione causa blocco", "user_explanation": "Identifichiamo cosa blocca la pratica e ti guidiamo nella risoluzione."},
-            {"practice_id": "DOSSIER_DELIVERY", "name": "Consegna dossier finale", "description": "Consegna del fascicolo completo della pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_delivery", "required_documents": ["practice_documents"], "delegation_required": False, "approval_required": True, "agents": ["documents", "advisor"], "blocking_conditions": ["documenti incompleti"], "escalation_conditions": [], "next_step": "Download o invio dossier", "user_explanation": "Il fascicolo completo della pratica viene preparato e consegnato."},
-            {"practice_id": "STATUS_UPDATE", "name": "Aggiornamento stato pratica", "description": "Comunicazione di aggiornamento sullo stato della pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["monitor", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Prossima azione", "user_explanation": "Ricevi un riepilogo aggiornato sullo stato della tua pratica."},
-            {"practice_id": "DOC_COMPLETENESS", "name": "Verifica completezza documenti", "description": "Controllo che tutti i documenti necessari siano presenti.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "internal", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "flow"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Risultato verifica", "user_explanation": "Verifichiamo che tutti i documenti necessari siano stati caricati."},
-            {"practice_id": "USER_APPROVAL_REQ", "name": "Richiesta approvazione utente", "description": "Richiesta di approvazione esplicita prima di procedere.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": True, "agents": ["flow", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Attesa approvazione", "user_explanation": "Prima di procedere, ti chiediamo di verificare e approvare il riepilogo."},
-            {"practice_id": "PDF_REPORT_DELIVERY", "name": "Consegna PDF/report finale", "description": "Generazione e consegna del report PDF finale.", "user_type": ["private", "freelancer", "company"], "country_scope": "all", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_delivery", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Download report", "user_explanation": "Il report finale della pratica viene generato e messo a disposizione."},
-            {"practice_id": "VAT_OPEN_PF", "name": "Apertura Partita IVA persone fisiche", "description": "Preparazione della pratica di apertura partita IVA per individui e freelance.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["intake", "research", "routing", "documents", "flow"], "blocking_conditions": ["documenti identita mancanti", "codice fiscale mancante"], "escalation_conditions": ["multi-paese", "struttura societaria complessa"], "next_step": "Preparazione modello AA9/12", "user_explanation": "Ti guidiamo nella preparazione della pratica di apertura partita IVA presso l'Agenzia delle Entrate."},
-            {"practice_id": "VAT_VARIATION_PF", "name": "Variazione Partita IVA persone fisiche", "description": "Modifica dei dati della partita IVA per persone fisiche.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": ["variazione complessa"], "next_step": "Preparazione variazione", "user_explanation": "Preparazione della variazione dei dati della tua partita IVA."},
-            {"practice_id": "VAT_CLOSURE_PF", "name": "Chiusura Partita IVA persone fisiche", "description": "Preparazione della chiusura della partita IVA.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow", "delegate"], "blocking_conditions": ["debiti pendenti non verificati"], "escalation_conditions": ["pendenze fiscali complesse"], "next_step": "Verifica pendenze e preparazione chiusura", "user_explanation": "Ti guidiamo nella chiusura della partita IVA, verificando che tutto sia in ordine."},
-            {"practice_id": "F24_PREPARATION", "name": "Preparazione e validazione F24", "description": "Supporto nella compilazione e verifica del modello F24.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "tax_payment", "required_documents": ["accounting"], "delegation_required": False, "approval_required": True, "agents": ["ledger", "documents", "compliance", "advisor"], "blocking_conditions": ["dati contabili insufficienti"], "escalation_conditions": ["importi significativi non verificati"], "next_step": "Compilazione F24", "user_explanation": "Prepariamo e verifichiamo il modello F24 per i tuoi pagamenti fiscali."},
-            {"practice_id": "F24_WEB", "name": "Supporto F24 Web", "description": "Supporto per la compilazione F24 tramite portale web.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_payment", "required_documents": ["accounting"], "delegation_required": False, "approval_required": True, "agents": ["routing", "research", "ledger", "flow"], "blocking_conditions": ["accesso portale non verificato"], "escalation_conditions": [], "next_step": "Accesso e compilazione F24 Web", "user_explanation": "Ti guidiamo nell'uso del portale F24 Web dell'Agenzia delle Entrate."},
-            {"practice_id": "VAT_DECLARATION", "name": "Supporto dichiarazione IVA", "description": "Preparazione della dichiarazione IVA periodica.", "user_type": ["freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["vat_documents", "invoices", "accounting"], "delegation_required": False, "approval_required": True, "agents": ["research", "documents", "compliance", "flow"], "blocking_conditions": ["registri IVA incompleti"], "escalation_conditions": ["operazioni intracomunitarie complesse"], "next_step": "Preparazione dichiarazione", "user_explanation": "Prepariamo la tua dichiarazione IVA verificando registri e documenti."},
-            {"practice_id": "EINVOICING", "name": "Supporto fatturazione elettronica", "description": "Supporto per l'emissione e gestione delle fatture elettroniche.", "user_type": ["freelancer", "company"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["invoices"], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "documents", "advisor"], "blocking_conditions": [], "escalation_conditions": ["fatturazione internazionale complessa"], "next_step": "Configurazione fatturazione elettronica", "user_explanation": "Ti supportiamo nella gestione della fatturazione elettronica tramite il portale dell'Agenzia delle Entrate."},
-            {"practice_id": "INPS_GESTIONE_SEP", "name": "Iscrizione Gestione Separata INPS", "description": "Supporto per l'iscrizione alla Gestione Separata INPS.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": [], "next_step": "Preparazione iscrizione INPS", "user_explanation": "Ti guidiamo nell'iscrizione alla Gestione Separata INPS per liberi professionisti."},
-            {"practice_id": "INPS_CASSETTO", "name": "Supporto cassetto previdenziale", "description": "Supporto per la consultazione del cassetto previdenziale.", "user_type": ["freelancer"], "country_scope": "IT", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "advisor", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Accesso cassetto previdenziale", "user_explanation": "Ti aiutiamo a consultare e comprendere il tuo cassetto previdenziale INPS."},
-            {"practice_id": "COMPANY_CLOSURE", "name": "Chiusura societaria post-liquidazione", "description": "Gestione completa del flusso di chiusura societaria dopo liquidazione in Italia.", "user_type": ["company"], "country_scope": "IT", "risk_level": "medium", "support_level": "partially_supported", "expected_channel": "official_portal", "destination_type": "chamber_registry", "required_documents": ["company_documents", "accounting", "identity", "tax", "compliance"], "optional_documents": ["delegation", "payment", "support_docs"], "conditional_documents": ["delegation"], "delegation_required": True, "approval_required": True, "agents": ["intake", "research", "deadline", "flow", "routing", "delegate", "documents", "compliance", "ledger"], "blocking_conditions": ["liquidazione non completata", "documenti societari mancanti", "bilancio finale non approvato", "debiti tributari non risolti"], "escalation_conditions": ["contenziosi pendenti", "debiti non risolti", "irregolarita nella liquidazione"], "workflow_steps": ["Verifica requisiti chiusura", "Raccolta documenti societari", "Verifica bilancio finale di liquidazione", "Controllo conformita fiscale", "Preparazione delega", "Verifica delega", "Preparazione dossier chiusura", "Approvazione utente", "Invio al Registro delle Imprese"], "readiness_criteria": ["Bilancio finale approvato", "Tutti i debiti tributari risolti", "Documenti societari completi", "Delega valida", "Nessun contenzioso pendente"], "next_step": "Verifica requisiti chiusura", "user_explanation": "Herion prepara e gestisce il percorso di chiusura post-liquidazione. Verifichiamo i requisiti, raccogliamo i documenti necessari, controlliamo la conformita fiscale e prepariamo il dossier per il Registro delle Imprese.", "admin_notes": "Pratica semi-supportata: richiede preparazione completa ma invio tramite portale ufficiale. Verificare sempre lo stato della liquidazione e l'assenza di contenziosi.", "is_template": True},
+            {"practice_id": "INFO_FISCAL_GENERIC", "name": "Richiesta informazioni fiscali generiche", "description": "Richiesta di chiarimenti su adempimenti fiscali di base.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Supporto informativo attivo per utenti in Italia.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "informational", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["intake", "research", "advisor"], "blocking_conditions": [], "escalation_conditions": ["ambiguita normativa"], "next_step": "Invio informazioni", "user_explanation": "Richiesta di informazioni fiscali di base. Herion raccoglie la domanda e fornisce indicazioni chiare. Operativo per il contesto fiscale italiano."},
+            {"practice_id": "DOC_MISSING_REQUEST", "name": "Richiesta documenti mancanti", "description": "Notifica all'utente sui documenti necessari per procedere.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Servizio interno di piattaforma, operativo in Italia.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "flow", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Attesa caricamento documenti", "user_explanation": "Ti indichiamo quali documenti servono per completare la tua pratica nel contesto italiano."},
+            {"practice_id": "DOC_PRELIMINARY_SEND", "name": "Invio documenti preliminari", "description": "Invio di documentazione preliminare a un destinatario.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Invio documenti preparatori per pratiche italiane.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "external_recipient", "required_documents": ["identity"], "delegation_required": False, "approval_required": True, "agents": ["documents", "routing", "advisor"], "blocking_conditions": ["documenti mancanti"], "escalation_conditions": [], "next_step": "Conferma ricezione", "user_explanation": "Preparazione e invio della documentazione preliminare. Operativo per pratiche fiscali italiane."},
+            {"practice_id": "PRACTICE_FOLLOWUP", "name": "Promemoria e follow-up pratica", "description": "Promemoria sullo stato di avanzamento di una pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Servizio interno di monitoraggio e promemoria.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["monitor", "deadline", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Verifica stato pratica", "user_explanation": "Ricevi aggiornamenti e promemoria sullo stato della tua pratica."},
+            {"practice_id": "BLOCKED_RECOVERY", "name": "Recupero pratica bloccata", "description": "Recupero di una pratica in stato bloccato.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Recupero pratica bloccata, operativo in Italia.", "risk_level": "basic", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "internal", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["flow", "monitor", "documents"], "blocking_conditions": [], "escalation_conditions": ["blocco persistente"], "next_step": "Identificazione causa blocco", "user_explanation": "Identifichiamo cosa blocca la pratica e ti guidiamo nella risoluzione."},
+            {"practice_id": "DOSSIER_DELIVERY", "name": "Consegna dossier finale", "description": "Consegna del fascicolo completo della pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Consegna fascicolo per pratiche italiane.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_delivery", "required_documents": ["practice_documents"], "delegation_required": False, "approval_required": True, "agents": ["documents", "advisor"], "blocking_conditions": ["documenti incompleti"], "escalation_conditions": [], "next_step": "Download o invio dossier", "user_explanation": "Il fascicolo completo della pratica viene preparato e consegnato. Attivo per il contesto operativo italiano."},
+            {"practice_id": "STATUS_UPDATE", "name": "Aggiornamento stato pratica", "description": "Comunicazione di aggiornamento sullo stato della pratica.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Aggiornamento interno di piattaforma.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["monitor", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Prossima azione", "user_explanation": "Ricevi un riepilogo aggiornato sullo stato della tua pratica."},
+            {"practice_id": "DOC_COMPLETENESS", "name": "Verifica completezza documenti", "description": "Controllo che tutti i documenti necessari siano presenti.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Verifica interna della completezza documentale.", "risk_level": "basic", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "internal", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "flow"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Risultato verifica", "user_explanation": "Verifichiamo che tutti i documenti necessari per la tua pratica italiana siano stati caricati."},
+            {"practice_id": "USER_APPROVAL_REQ", "name": "Richiesta approvazione utente", "description": "Richiesta di approvazione esplicita prima di procedere.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Flusso di approvazione interno alla piattaforma.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_communication", "required_documents": [], "delegation_required": False, "approval_required": True, "agents": ["flow", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Attesa approvazione", "user_explanation": "Prima di procedere, ti chiediamo di verificare e approvare il riepilogo della pratica."},
+            {"practice_id": "PDF_REPORT_DELIVERY", "name": "Consegna PDF/report finale", "description": "Generazione e consegna del report PDF finale.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_internal", "scope_note": "Generazione report per pratiche italiane.", "risk_level": "basic", "support_level": "supported", "expected_channel": "email", "destination_type": "user_delivery", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["documents", "advisor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Download report", "user_explanation": "Il report finale della pratica viene generato e messo a disposizione."},
+            {"practice_id": "VAT_OPEN_PF", "name": "Apertura Partita IVA persone fisiche", "description": "Preparazione della pratica di apertura partita IVA per individui e freelance in Italia.", "user_type": ["freelancer"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Pratica fiscale italiana attiva. Riferimento: Agenzia delle Entrate, modello AA9/12.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["intake", "research", "routing", "documents", "flow"], "blocking_conditions": ["documenti identita mancanti", "codice fiscale mancante"], "escalation_conditions": ["struttura societaria complessa"], "next_step": "Preparazione modello AA9/12", "user_explanation": "Ti guidiamo nella preparazione della pratica di apertura Partita IVA presso l'Agenzia delle Entrate italiana. Servizio attualmente operativo solo per l'Italia."},
+            {"practice_id": "VAT_VARIATION_PF", "name": "Variazione Partita IVA persone fisiche", "description": "Modifica dei dati della partita IVA per persone fisiche in Italia.", "user_type": ["freelancer"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Pratica fiscale italiana attiva. Variazione dati P.IVA.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": ["variazione complessa"], "next_step": "Preparazione variazione", "user_explanation": "Preparazione della variazione dei dati della tua Partita IVA italiana. Operativo per il contesto fiscale italiano."},
+            {"practice_id": "VAT_CLOSURE_PF", "name": "Chiusura Partita IVA persone fisiche", "description": "Preparazione della chiusura della partita IVA in Italia.", "user_type": ["freelancer"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Pratica fiscale italiana attiva. Chiusura P.IVA.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow", "delegate"], "blocking_conditions": ["debiti pendenti non verificati"], "escalation_conditions": ["pendenze fiscali complesse"], "next_step": "Verifica pendenze e preparazione chiusura", "user_explanation": "Ti guidiamo nella chiusura della Partita IVA italiana, verificando pendenze e requisiti. Operativo solo per l'Italia."},
+            {"practice_id": "F24_PREPARATION", "name": "Preparazione e validazione F24", "description": "Supporto nella compilazione e verifica del modello F24 italiano.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Modello F24 italiano — strumento di pagamento fiscale nazionale.", "risk_level": "medium", "support_level": "supported", "expected_channel": "preparation_only", "destination_type": "tax_payment", "required_documents": ["accounting"], "delegation_required": False, "approval_required": True, "agents": ["ledger", "documents", "compliance", "advisor"], "blocking_conditions": ["dati contabili insufficienti"], "escalation_conditions": ["importi significativi non verificati"], "next_step": "Compilazione F24", "user_explanation": "Prepariamo e verifichiamo il modello F24 per i tuoi pagamenti fiscali italiani."},
+            {"practice_id": "F24_WEB", "name": "Supporto F24 Web", "description": "Supporto per la compilazione F24 tramite portale web dell'Agenzia delle Entrate.", "user_type": ["private", "freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Portale F24 Web dell'Agenzia delle Entrate italiana.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_payment", "required_documents": ["accounting"], "delegation_required": False, "approval_required": True, "agents": ["routing", "research", "ledger", "flow"], "blocking_conditions": ["accesso portale non verificato"], "escalation_conditions": [], "next_step": "Accesso e compilazione F24 Web", "user_explanation": "Ti guidiamo nell'uso del portale F24 Web dell'Agenzia delle Entrate. Disponibile solo per l'Italia."},
+            {"practice_id": "VAT_DECLARATION", "name": "Supporto dichiarazione IVA", "description": "Preparazione della dichiarazione IVA periodica italiana.", "user_type": ["freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Dichiarazione IVA italiana. Portale Agenzia delle Entrate.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["vat_documents", "invoices", "accounting"], "delegation_required": False, "approval_required": True, "agents": ["research", "documents", "compliance", "flow"], "blocking_conditions": ["registri IVA incompleti"], "escalation_conditions": ["operazioni intracomunitarie complesse"], "next_step": "Preparazione dichiarazione", "user_explanation": "Prepariamo la tua dichiarazione IVA verificando registri e documenti secondo le regole fiscali italiane."},
+            {"practice_id": "EINVOICING", "name": "Supporto fatturazione elettronica", "description": "Supporto per l'emissione e gestione delle fatture elettroniche tramite SDI.", "user_type": ["freelancer", "company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Fatturazione elettronica italiana tramite SDI.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "tax_authority", "required_documents": ["invoices"], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "documents", "advisor"], "blocking_conditions": [], "escalation_conditions": ["fatturazione internazionale complessa"], "next_step": "Configurazione fatturazione elettronica", "user_explanation": "Ti supportiamo nella gestione della fatturazione elettronica tramite il Sistema di Interscambio (SDI) italiano."},
+            {"practice_id": "INPS_GESTIONE_SEP", "name": "Iscrizione Gestione Separata INPS", "description": "Supporto per l'iscrizione alla Gestione Separata INPS.", "user_type": ["freelancer"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "INPS — ente previdenziale italiano.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": ["identity", "tax_declarations"], "delegation_required": False, "approval_required": True, "agents": ["research", "routing", "documents", "flow"], "blocking_conditions": ["partita IVA non attiva"], "escalation_conditions": [], "next_step": "Preparazione iscrizione INPS", "user_explanation": "Ti guidiamo nell'iscrizione alla Gestione Separata INPS per liberi professionisti italiani."},
+            {"practice_id": "INPS_CASSETTO", "name": "Supporto cassetto previdenziale", "description": "Supporto per la consultazione del cassetto previdenziale INPS.", "user_type": ["freelancer"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "INPS — cassetto previdenziale italiano.", "risk_level": "medium", "support_level": "supported", "expected_channel": "official_portal", "destination_type": "social_security", "required_documents": [], "delegation_required": False, "approval_required": False, "agents": ["research", "routing", "advisor", "monitor"], "blocking_conditions": [], "escalation_conditions": [], "next_step": "Accesso cassetto previdenziale", "user_explanation": "Ti aiutiamo a consultare e comprendere il tuo cassetto previdenziale INPS."},
+            {"practice_id": "COMPANY_CLOSURE", "name": "Chiusura societaria post-liquidazione", "description": "Gestione completa del flusso di chiusura societaria dopo liquidazione in Italia.", "user_type": ["company"], "country_scope": "IT", "operational_status": "active_italy_scope", "scope_note": "Pratica italiana attiva. Camera di Commercio e Registro delle Imprese italiano.", "risk_level": "medium", "support_level": "partially_supported", "expected_channel": "official_portal", "destination_type": "chamber_registry", "required_documents": ["company_documents", "accounting", "identity", "tax", "compliance"], "optional_documents": ["delegation", "payment", "support_docs"], "conditional_documents": ["delegation"], "delegation_required": True, "approval_required": True, "agents": ["intake", "research", "deadline", "flow", "routing", "delegate", "documents", "compliance", "ledger"], "blocking_conditions": ["liquidazione non completata", "documenti societari mancanti", "bilancio finale non approvato", "debiti tributari non risolti"], "escalation_conditions": ["contenziosi pendenti", "debiti non risolti", "irregolarita nella liquidazione"], "workflow_steps": ["Verifica requisiti chiusura", "Raccolta documenti societari", "Verifica bilancio finale di liquidazione", "Controllo conformita fiscale", "Preparazione delega", "Verifica delega", "Preparazione dossier chiusura", "Approvazione utente", "Invio al Registro delle Imprese"], "readiness_criteria": ["Bilancio finale approvato", "Tutti i debiti tributari risolti", "Documenti societari completi", "Delega valida", "Nessun contenzioso pendente"], "next_step": "Verifica requisiti chiusura", "user_explanation": "Herion prepara e gestisce il percorso di chiusura post-liquidazione per societa italiane. Verifichiamo requisiti, raccogliamo documenti, controlliamo la conformita fiscale e prepariamo il dossier per il Registro delle Imprese italiano.", "admin_notes": "Pratica semi-supportata: richiede preparazione completa ma invio tramite portale ufficiale. Verificare sempre lo stato della liquidazione e l'assenza di contenziosi.", "is_template": True},
         ]
         for entry in catalog_entries:
             entry["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -4099,21 +4464,21 @@ async def startup():
     registry_count = await db.authority_registry.count_documents({})
     if registry_count == 0:
         registry_entries = [
-            {"registry_id": "AE_VAT_OPEN_PF", "name": "Agenzia delle Entrate - Apertura P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_OPEN_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Modello AA9/12 per apertura, variazione o chiusura P.IVA persone fisiche"},
-            {"registry_id": "AE_VAT_VARIATION_PF", "name": "Agenzia delle Entrate - Variazione P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_VARIATION_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Variazione dati tramite modello AA9/12"},
-            {"registry_id": "AE_VAT_CLOSURE_PF", "name": "Agenzia delle Entrate - Chiusura P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_CLOSURE_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Chiusura P.IVA tramite modello AA9/12"},
-            {"registry_id": "AE_F24_STANDARD", "name": "Agenzia delle Entrate - F24 Ordinario", "destination_type": "tax_payment", "country": "IT", "related_practices": ["F24_PREPARATION"], "portal_url": "https://www.agenziaentrate.gov.it/portale/modello-f24", "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Modello F24 ordinario per pagamenti fiscali e contributivi"},
-            {"registry_id": "AE_F24_WEB", "name": "Agenzia delle Entrate - F24 Web", "destination_type": "tax_payment", "country": "IT", "related_practices": ["F24_WEB"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/f24-web", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Compilazione e invio F24 tramite servizio web"},
-            {"registry_id": "AE_VAT_DECLARATION", "name": "Agenzia delle Entrate - Dichiarazioni IVA", "destination_type": "tax_authority", "country": "IT", "related_practices": ["VAT_DECLARATION"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/iva", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Dichiarazioni IVA periodiche e annuali"},
-            {"registry_id": "AE_EINVOICING", "name": "Agenzia delle Entrate - Fatture e Corrispettivi", "destination_type": "tax_authority", "country": "IT", "related_practices": ["EINVOICING"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/fatture-e-corrispettivi", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Portale fatturazione elettronica"},
-            {"registry_id": "INPS_GESTIONE_SEP", "name": "INPS - Iscrizione Gestione Separata", "destination_type": "social_security", "country": "IT", "related_practices": ["INPS_GESTIONE_SEP"], "portal_url": "https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-servizi.iscrizione-gestione-separata--liberi-professionisti-50104.iscrizione-gestione-separata--liberi-professionisti.html", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Iscrizione Gestione Separata per liberi professionisti"},
-            {"registry_id": "INPS_CASSETTO", "name": "INPS - Cassetto Previdenziale", "destination_type": "social_security", "country": "IT", "related_practices": ["INPS_CASSETTO"], "portal_url": "https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-servizi.cassetto-previdenziale-per-liberi-professionisti-50466.cassetto-previdenziale-per-liberi-professionisti.html", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Consultazione cassetto previdenziale"},
-            {"registry_id": "SUAP_GENERIC", "name": "SUAP / Impresa in un Giorno", "destination_type": "public_portal", "country": "IT", "related_practices": [], "portal_url": "https://www.impresainungiorno.gov.it/", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Pratiche SUAP - richiedono verifica specifica per tipologia"},
-            {"registry_id": "USER_EMAIL_DELIVERY", "name": "Consegna email utente", "destination_type": "internal", "country": "multi", "related_practices": ["DOSSIER_DELIVERY", "STATUS_UPDATE", "PRACTICE_FOLLOWUP"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": True, "preparation_only": False, "escalation_default": False, "notes": "Comunicazioni a basso rischio verso l'utente"},
-            {"registry_id": "EXTERNAL_INFO_REQ", "name": "Destinatario informazioni esterne", "destination_type": "external_recipient", "country": "multi", "related_practices": ["INFO_FISCAL_GENERIC"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Richieste informative verso destinatari esterni validati"},
-            {"registry_id": "ESCALATION_HUMAN", "name": "Escalation revisione professionale", "destination_type": "professional_review", "country": "multi", "related_practices": [], "portal_url": None, "required_channel": "escalation", "allowed_channels": ["escalation", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Casi che richiedono revisione professionale umana"},
-            {"registry_id": "PREPARATION_ONLY", "name": "Solo preparazione interna", "destination_type": "internal", "country": "multi", "related_practices": ["DOC_COMPLETENESS", "BLOCKED_RECOVERY"], "portal_url": None, "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Raccolta dati e documenti senza invio"},
-            {"registry_id": "CCIAA_COMPANY_CLOSURE", "name": "Camera di Commercio - Chiusura Societaria", "destination_type": "chamber_registry", "country": "IT", "related_practices": ["COMPANY_CLOSURE"], "portal_url": "https://www.registroimprese.it/", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Cancellazione dal Registro delle Imprese presso la Camera di Commercio. Richiede dossier completo e delega valida."},
+            {"registry_id": "AE_VAT_OPEN_PF", "name": "Agenzia delle Entrate - Apertura P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Autorita fiscale italiana attiva.", "related_practices": ["VAT_OPEN_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Modello AA9/12 per apertura, variazione o chiusura P.IVA persone fisiche"},
+            {"registry_id": "AE_VAT_VARIATION_PF", "name": "Agenzia delle Entrate - Variazione P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Autorita fiscale italiana attiva.", "related_practices": ["VAT_VARIATION_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Variazione dati tramite modello AA9/12"},
+            {"registry_id": "AE_VAT_CLOSURE_PF", "name": "Agenzia delle Entrate - Chiusura P.IVA Persone Fisiche", "destination_type": "tax_authority", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Autorita fiscale italiana attiva.", "related_practices": ["VAT_CLOSURE_PF"], "portal_url": "https://www.agenziaentrate.gov.it/portale/schede/istanze/aa9_11-apertura-variazione-chiusura-pf/modello-e-istr-pi-pf", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Chiusura P.IVA tramite modello AA9/12"},
+            {"registry_id": "AE_F24_STANDARD", "name": "Agenzia delle Entrate - F24 Ordinario", "destination_type": "tax_payment", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Strumento di pagamento fiscale italiano.", "related_practices": ["F24_PREPARATION"], "portal_url": "https://www.agenziaentrate.gov.it/portale/modello-f24", "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Modello F24 ordinario per pagamenti fiscali e contributivi"},
+            {"registry_id": "AE_F24_WEB", "name": "Agenzia delle Entrate - F24 Web", "destination_type": "tax_payment", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Portale F24 Web italiano.", "related_practices": ["F24_WEB"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/f24-web", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Compilazione e invio F24 tramite servizio web"},
+            {"registry_id": "AE_VAT_DECLARATION", "name": "Agenzia delle Entrate - Dichiarazioni IVA", "destination_type": "tax_authority", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Dichiarazioni IVA italiane.", "related_practices": ["VAT_DECLARATION"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/iva", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Dichiarazioni IVA periodiche e annuali"},
+            {"registry_id": "AE_EINVOICING", "name": "Agenzia delle Entrate - Fatture e Corrispettivi", "destination_type": "tax_authority", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Fatturazione elettronica italiana SDI.", "related_practices": ["EINVOICING"], "portal_url": "https://www.agenziaentrate.gov.it/portale/web/guest/fatture-e-corrispettivi", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Portale fatturazione elettronica"},
+            {"registry_id": "INPS_GESTIONE_SEP", "name": "INPS - Iscrizione Gestione Separata", "destination_type": "social_security", "country": "IT", "registry_status": "active_italy_scope", "status_note": "INPS — previdenza italiana.", "related_practices": ["INPS_GESTIONE_SEP"], "portal_url": "https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-servizi.iscrizione-gestione-separata--liberi-professionisti-50104.iscrizione-gestione-separata--liberi-professionisti.html", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Iscrizione Gestione Separata per liberi professionisti"},
+            {"registry_id": "INPS_CASSETTO", "name": "INPS - Cassetto Previdenziale", "destination_type": "social_security", "country": "IT", "registry_status": "active_italy_scope", "status_note": "INPS — previdenza italiana.", "related_practices": ["INPS_CASSETTO"], "portal_url": "https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-servizi.cassetto-previdenziale-per-liberi-professionisti-50466.cassetto-previdenziale-per-liberi-professionisti.html", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Consultazione cassetto previdenziale"},
+            {"registry_id": "SUAP_GENERIC", "name": "SUAP / Impresa in un Giorno", "destination_type": "public_portal", "country": "IT", "registry_status": "needs_validation", "status_note": "Richiede validazione specifica per tipo di pratica SUAP.", "related_practices": [], "portal_url": "https://www.impresainungiorno.gov.it/", "required_channel": "official_portal", "allowed_channels": ["official_portal", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Pratiche SUAP - richiedono verifica specifica per tipologia"},
+            {"registry_id": "USER_EMAIL_DELIVERY", "name": "Consegna email utente", "destination_type": "internal", "country": "IT", "registry_status": "active_internal", "status_note": "Canale interno della piattaforma.", "related_practices": ["DOSSIER_DELIVERY", "STATUS_UPDATE", "PRACTICE_FOLLOWUP"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": True, "preparation_only": False, "escalation_default": False, "notes": "Comunicazioni a basso rischio verso l'utente"},
+            {"registry_id": "EXTERNAL_INFO_REQ", "name": "Destinatario informazioni esterne", "destination_type": "external_recipient", "country": "IT", "registry_status": "active_internal", "status_note": "Richieste informative interne.", "related_practices": ["INFO_FISCAL_GENERIC"], "portal_url": None, "required_channel": "email", "allowed_channels": ["email"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Richieste informative verso destinatari esterni validati"},
+            {"registry_id": "ESCALATION_HUMAN", "name": "Escalation revisione professionale", "destination_type": "professional_review", "country": "IT", "registry_status": "active_internal", "status_note": "Escalation interna a revisione professionale.", "related_practices": [], "portal_url": None, "required_channel": "escalation", "allowed_channels": ["escalation", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": True, "notes": "Casi che richiedono revisione professionale umana"},
+            {"registry_id": "PREPARATION_ONLY", "name": "Solo preparazione interna", "destination_type": "internal", "country": "IT", "registry_status": "active_internal", "status_note": "Preparazione interna senza invio.", "related_practices": ["DOC_COMPLETENESS", "BLOCKED_RECOVERY"], "portal_url": None, "required_channel": "preparation_only", "allowed_channels": ["preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Raccolta dati e documenti senza invio"},
+            {"registry_id": "CCIAA_COMPANY_CLOSURE", "name": "Camera di Commercio - Chiusura Societaria", "destination_type": "chamber_registry", "country": "IT", "registry_status": "active_italy_scope", "status_note": "Camera di Commercio italiana — Registro delle Imprese.", "related_practices": ["COMPANY_CLOSURE"], "portal_url": "https://www.registroimprese.it/", "required_channel": "official_portal", "allowed_channels": ["official_portal", "PEC", "preparation_only"], "auto_submission": False, "preparation_only": True, "escalation_default": False, "notes": "Cancellazione dal Registro delle Imprese presso la Camera di Commercio. Richiede dossier completo e delega valida."},
         ]
         for entry in registry_entries:
             entry["created_at"] = datetime.now(timezone.utc).isoformat()

@@ -126,4 +126,9 @@ export const resolveFollowUp = (id) => api.patch(`/follow-ups/${id}`);
 // Template Instance
 export const createPracticeFromTemplate = (data) => api.post('/practices/from-template', data);
 
+// Document Intelligence Layer
+export const getDocumentMatrix = (practiceId) => api.get(`/documents/matrix/${practiceId}`);
+export const getDocumentMatrixTypes = () => api.get('/documents/matrix-types');
+export const getSensitivityLevels = () => api.get('/documents/sensitivity-levels');
+
 export default api;

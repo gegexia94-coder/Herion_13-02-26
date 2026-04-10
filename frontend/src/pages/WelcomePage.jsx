@@ -29,13 +29,16 @@ export default function WelcomePage() {
             <span className="text-[11px] font-medium text-[#0F4C5C] tracking-wide">Assistente operativo fiscale</span>
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-[#0F172A] leading-[1.2] tracking-tight mb-6">
-            Herion ti aiuta a gestire pratiche fiscali, documenti e passaggi operativi in modo piu chiaro, ordinato e guidato.
+            Herion ti aiuta a gestire pratiche fiscali, documenti e passaggi operativi in modo chiaro, ordinato e guidato.
           </h1>
-          <p className="text-base sm:text-lg text-[#475569] leading-relaxed max-w-2xl mx-auto mb-10">
+          <p className="text-base sm:text-lg text-[#475569] leading-relaxed max-w-2xl mx-auto mb-4">
             Dalla raccolta dei dati alla verifica dei documenti, fino ai passaggi che possono essere preparati o inviati, Herion ti accompagna passo dopo passo, riducendo confusione, errori e perdite di tempo.
           </p>
-          <p className="text-sm text-[#64748B] max-w-xl mx-auto mb-10">
-            Pensato per privati, freelance e aziende, Herion unisce organizzazione, controllo e supporto operativo in un unico spazio semplice da usare.
+          <p className="text-sm text-[#64748B] max-w-xl mx-auto mb-4">
+            Pensato per privati, freelance e aziende in Italia. Herion unisce organizzazione, controllo e supporto operativo in un unico spazio.
+          </p>
+          <p className="text-[11px] text-[#94A3B8] max-w-md mx-auto mb-10">
+            Attualmente operativo per il contesto fiscale italiano. Architettura predisposta per l'espansione europea.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link to="/register"><Button className="bg-[#0F4C5C] hover:bg-[#0b3844] text-white rounded-xl h-12 px-8 text-sm font-semibold shadow-lg shadow-[#0F4C5C]/10" data-testid="hero-cta-btn">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>

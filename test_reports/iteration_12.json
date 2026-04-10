@@ -1,0 +1,149 @@
+{
+  "summary": "Herion Iteration 12 Testing Complete - Document Intelligence Layer & Italy-Only Cleanup. 20/20 backend tests passed, all frontend features verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/documents/matrix-types and /api/documents/sensitivity-levels",
+        "issue": "Route ordering issue - parameterized route /documents/{document_id} was catching these requests. FIXED by moving static routes before parameterized route.",
+        "priority": "FIXED"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_herion_v12_document_matrix.py",
+    "/app/test_reports/pytest/pytest_results_v12.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_herion_v12_document_matrix.py",
+    "/app/backend/server.py (route ordering fix for /documents/matrix-types and /documents/sensitivity-levels)"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!",
+    "creator": "gegexia94@gmail.com / PROTECTED (env only)"
+  },
+  "seed_data_creation": "Nexus S.r.l. practice (ID: e18f8d72-ea8f-445b-951a-bbd082e60648) seeded from COMPANY_CLOSURE template",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 12 tested Phase A (Italy-only cleanup) and Phase B (Document Intelligence Layer). All 20 backend tests pass. Frontend verified: Document Matrix panel shows 6 required docs, 1 conditional (delegation with P7M), 4 expected outputs for COMPANY_CLOSURE. Guard panel integrates with document_completeness dimension. Catalog shows Italy scope badge and operational_status per card. Registry has no 'multi' country entries. Creator password is PROTECTED in test_credentials.md.",
+  "features_tested": {
+    "phase_a_italy_cleanup": {
+      "catalog_italy_scope": {
+        "status": "PASS",
+        "details": "All 20 catalog entries have country_scope=IT"
+      },
+      "catalog_operational_status": {
+        "status": "PASS",
+        "details": "All entries have operational_status (active_italy_scope or active_internal)"
+      },
+      "registry_status": {
+        "status": "PASS",
+        "details": "All registry entries have registry_status field"
+      },
+      "registry_no_multi": {
+        "status": "PASS",
+        "details": "No registry entries have country='multi' - all are IT"
+      }
+    },
+    "phase_b_document_intelligence": {
+      "document_matrix_api": {
+        "status": "PASS",
+        "endpoint": "GET /api/documents/matrix/{practice_id}",
+        "features": [
+          "Returns complete matrix with required/optional/conditional/outputs",
+          "Completeness shows missing_required, missing_signatures, can_proceed",
+          "COMPANY_CLOSURE has 6 required docs, 1 conditional (delegation), 4 outputs"
+        ]
+      },
+      "document_matrix_types_api": {
+        "status": "PASS",
+        "endpoint": "GET /api/documents/matrix-types",
+        "details": "Returns all 10 practice types with matrix metadata"
+      },
+      "sensitivity_levels_api": {
+        "status": "PASS",
+        "endpoint": "GET /api/documents/sensitivity-levels",
+        "details": "Returns 5 sensitivity levels (standard, personal, fiscal, legal, confidential) with visibility rules"
+      },
+      "signature_handling": {
+        "status": "PASS",
+        "details": "2 required docs need signatures (bilancio_finale_liquidazione, verbale_approvazione), conditional delegation accepts P7M format"
+      },
+      "guard_document_integration": {
+        "status": "PASS",
+        "details": "Guard evaluation includes document_completeness dimension using Document Matrix"
+      }
+    },
+    "frontend_verification": {
+      "welcome_page_italy_positioning": {
+        "status": "PASS",
+        "details": "Welcome page mentions Italy-first positioning"
+      },
+      "catalog_page_italy_badge": {
+        "status": "PASS",
+        "details": "Shows 'Ambito operativo attuale: Italia' badge"
+      },
+      "catalog_operational_status_badges": {
+        "status": "PASS",
+        "details": "Cards show operational status badges (e.g., 'Attivo Italia')"
+      },
+      "practice_detail_document_matrix_panel": {
+        "status": "PASS",
+        "details": "Shows 6 required docs, 4 expected outputs, 1 conditional doc, completeness status"
+      },
+      "practice_detail_guard_panel": {
+        "status": "PASS",
+        "details": "Shows verdict (Bloccato), score (14%), dimensions, safe alternatives"
+      }
+    },
+    "existing_features_still_working": {
+      "follow_up_system": {
+        "status": "PASS",
+        "endpoints": ["GET /api/follow-ups", "GET /api/follow-ups/summary"]
+      },
+      "guard_system": {
+        "status": "PASS",
+        "endpoints": ["GET /api/guard/evaluate/{practice_id}", "GET /api/guard/summary"]
+      },
+      "creator_password_protection": {
+        "status": "PASS",
+        "details": "test_credentials.md shows PROTECTED, not actual password"
+      }
+    }
+  },
+  "backend_tests_summary": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "test_classes": [
+      "TestAdminLogin (1 test)",
+      "TestCatalogItalyScope (2 tests)",
+      "TestRegistryItalyScope (2 tests)",
+      "TestDocumentMatrixAPI (6 tests)",
+      "TestDocumentMatrixTypes (1 test)",
+      "TestSensitivityLevels (1 test)",
+      "TestGuardDocumentMatrixIntegration (1 test)",
+      "TestCreatorPasswordProtection (1 test)",
+      "TestFollowUpSystemStillWorking (2 tests)",
+      "TestGuardSystemStillWorking (2 tests)",
+      "TestNexusPracticeExists (1 test)"
+    ]
+  },
+  "bug_fix_applied": {
+    "issue": "Route ordering conflict - /documents/{document_id} was catching /documents/matrix-types and /documents/sensitivity-levels",
+    "fix": "Moved static routes before parameterized route in server.py",
+    "file": "/app/backend/server.py",
+    "lines_changed": "609-686"
+  }
+}

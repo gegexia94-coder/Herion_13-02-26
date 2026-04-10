@@ -20,6 +20,16 @@ const SUPPORT_CONFIG = {
   supported: { label: 'Supportato', color: 'text-emerald-700', bg: 'bg-emerald-50' },
   partially_supported: { label: 'Parziale', color: 'text-amber-700', bg: 'bg-amber-50' },
   not_supported: { label: 'Non supportato', color: 'text-red-700', bg: 'bg-red-50' },
+  escalation: { label: 'Escalation', color: 'text-orange-700', bg: 'bg-orange-50' },
+  future_scope_only: { label: 'Futuro', color: 'text-slate-500', bg: 'bg-slate-50' },
+};
+
+const STATUS_CONFIG = {
+  active_italy_scope: { label: 'Attivo Italia', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  active_internal: { label: 'Servizio Interno', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200' },
+  needs_validation: { label: 'In Validazione', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+  future_scope_only: { label: 'Futuro', color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' },
+  inactive: { label: 'Non Attivo', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' },
 };
 
 const CHANNEL_CONFIG = {
@@ -110,7 +120,12 @@ export default function CatalogPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Catalogo Servizi</h1>
-        <p className="text-sm text-[#475569]">Tutti i servizi fiscali e amministrativi gestiti da Herion</p>
+        <p className="text-sm text-[#475569]">Servizi fiscali e amministrativi operativi per l'Italia</p>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium flex items-center gap-1" data-testid="catalog-scope-badge">
+            <Globe className="w-3 h-3" />Ambito operativo attuale: Italia
+          </span>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -185,6 +200,14 @@ export default function CatalogPage() {
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${support.bg} ${support.color}`}>
                       {support.label}
                     </span>
+                    {entry.operational_status && (() => {
+                      const sc = STATUS_CONFIG[entry.operational_status] || STATUS_CONFIG.active_italy_scope;
+                      return (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${sc.bg} ${sc.color} ${sc.border}`} data-testid={`status-${entry.practice_id}`}>
+                          {sc.label}
+                        </span>
+                      );
+                    })()}
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569] flex items-center gap-1">
                       <ChannelIcon className="w-2.5 h-2.5" />{channel.label}
                     </span>
@@ -237,7 +260,10 @@ export default function CatalogPage() {
                     {/* User Explanation */}
                     <div>
                       <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Cosa fa Herion</p>
-                      <p className="text-xs text-[#0F172A] leading-relaxed">{entry.user_explanation}</p>
+                      <p className="text-xs text-[#0F172A] leading-relaxed">{entry.user_explanation || entry.description}</p>
+                      {entry.scope_note && (
+                        <p className="text-[10px] text-[#94A3B8] italic mt-1">{entry.scope_note}</p>
+                      )}
                     </div>
 
                     {/* Required Documents */}

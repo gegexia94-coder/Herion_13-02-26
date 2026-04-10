@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline, updateDelegation, getPracticeReadiness, getGuardEvaluation } from '@/services/api';
+import { getPractice, updatePractice, uploadDocument, getPracticeDocuments, executeAgent, getPracticeActivityLogs, downloadPracticePdf, orchestrateAgents, sendPracticeChat, getPracticeChatHistory, approvePractice, getPracticeTimeline, updateDelegation, getPracticeReadiness, getGuardEvaluation, getDocumentMatrix } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -244,6 +244,7 @@ export default function PracticeDetailPage() {
   const [delegationLoading, setDelegationLoading] = useState(false);
   const [readiness, setReadiness] = useState(null);
   const [guardResult, setGuardResult] = useState(null);
+  const [docMatrix, setDocMatrix] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -260,6 +261,8 @@ export default function PracticeDetailPage() {
       try { const r = await getPracticeReadiness(id); setReadiness(r.data); } catch {}
       // Load Herion Guard evaluation
       try { const g = await getGuardEvaluation(id); setGuardResult(g.data); } catch {}
+      // Load Document Matrix
+      try { const dm = await getDocumentMatrix(id); setDocMatrix(dm.data); } catch {}
     } catch { toast.error('Errore nel caricamento'); }
     finally { setLoading(false); }
   }, [id]);
@@ -844,6 +847,125 @@ export default function PracticeDetailPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Document Matrix Panel */}
+          {docMatrix && docMatrix.has_matrix && (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="document-matrix-panel">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-[#0F4C5C] flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-white" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0F172A]">Matrice Documentale</h3>
+                  <p className="text-[10px] text-[#475569]">Requisiti, firme e completezza</p>
+                </div>
+                <div className="ml-auto">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    docMatrix.completeness?.can_proceed ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                  }`} data-testid="matrix-status">
+                    {docMatrix.completeness?.can_proceed ? 'Completa' : 'Incompleta'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress */}
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-medium text-[#475569]">Documenti richiesti</span>
+                  <span className="text-[10px] font-bold text-[#0F172A]">{docMatrix.completeness?.uploaded_required || 0}/{docMatrix.completeness?.total_required || 0}</span>
+                </div>
+                <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-[#0F4C5C] transition-all duration-700" style={{
+                    width: `${docMatrix.completeness?.total_required ? (docMatrix.completeness.uploaded_required / docMatrix.completeness.total_required) * 100 : 0}%`
+                  }} />
+                </div>
+              </div>
+
+              {/* Required Documents */}
+              {docMatrix.required?.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[9px] font-semibold text-[#0F4C5C] uppercase tracking-wider mb-1.5">Documenti Richiesti</p>
+                  <div className="space-y-1">
+                    {docMatrix.required.map((doc, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F7FAFC]" data-testid={`matrix-req-${doc.doc_key}`}>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {doc.complete ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" /> : <Circle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-medium text-[#0F172A] block truncate">{doc.label}</span>
+                            <span className="text-[9px] text-[#94A3B8]">{doc.sensitivity_label || doc.sensitivity}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {doc.signed_required && (
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium ${doc.signature_valid === false ? 'bg-red-50 text-red-600' : doc.signature_valid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                              {doc.signature_valid === false ? 'Firma mancante' : doc.signature_valid ? 'Firmato' : 'Firma richiesta'}
+                            </span>
+                          )}
+                          {doc.blocking && !doc.complete && (
+                            <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 font-medium">Bloccante</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Conditional Documents */}
+              {docMatrix.conditional?.filter(d => d.condition_met).length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider mb-1.5">Documenti Condizionali</p>
+                  <div className="space-y-1">
+                    {docMatrix.conditional.filter(d => d.condition_met).map((doc, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-amber-50/40" data-testid={`matrix-cond-${doc.doc_key}`}>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {doc.complete ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-medium text-[#0F172A] block truncate">{doc.label}</span>
+                            <span className="text-[9px] text-[#94A3B8]">{doc.description?.substring(0, 60)}...</span>
+                          </div>
+                        </div>
+                        {doc.signed_required && (
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium ${doc.signature_valid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                            {doc.signature_valid ? 'Firmato' : 'Firma richiesta'}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Expected Outputs */}
+              {docMatrix.expected_outputs?.length > 0 && (
+                <div className="border-t border-[#E2E8F0] pt-3">
+                  <p className="text-[9px] font-semibold text-[#475569] uppercase tracking-wider mb-1.5">Output Attesi</p>
+                  <div className="space-y-1">
+                    {docMatrix.expected_outputs.map((out, i) => (
+                      <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg" data-testid={`matrix-out-${out.output_key}`}>
+                        {out.received ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <Clock className="w-3 h-3 text-[#94A3B8]" />}
+                        <span className={`text-[10px] ${out.received ? 'text-emerald-700 font-medium' : 'text-[#94A3B8]'}`}>{out.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Missing Signatures Alert */}
+              {docMatrix.completeness?.missing_signatures?.length > 0 && (
+                <div className="mt-3 p-2.5 rounded-lg bg-red-50 border border-red-100">
+                  <p className="text-[10px] font-semibold text-red-700 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Firme digitali mancanti
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {docMatrix.completeness.missing_signatures.map((s, i) => (
+                      <li key={i} className="text-[9px] text-red-600">- {s}: richiesta firma P7M o PAdES</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

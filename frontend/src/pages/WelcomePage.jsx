@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { HerionBrand, HerionMarkLight, HerionIcon } from '@/components/HerionLogo';
 
 const HERO_SLIDES = [
-  { heading: 'Chiarezza in ogni operazione', body: 'Ogni pratica ha un percorso visibile, ogni passaggio ha una spiegazione. Niente piu confusione.' },
-  { heading: 'Autonomia con supporto continuo', body: 'Herion ti guida senza sostituirti. Decidi tu, ma con tutte le informazioni necessarie davanti.' },
-  { heading: 'Suggerimenti economici aggiornati', body: 'Scadenze, adempimenti e opportunita fiscali sempre sotto controllo, senza doverli cercare.' },
-  { heading: 'Comunicazione organizzata', body: 'Email, documenti e notifiche in un unico flusso. Meno caos, piu risposte puntuali.' },
-  { heading: 'Una direzione piu chiara', body: 'Ogni giorno sai dove sei, cosa manca e qual e il prossimo passo. Herion tiene tutto in ordine per te.' },
+  { heading: 'Prepara tutto per te', body: 'Herion raccoglie documenti, verifica la completezza e prepara il dossier. Tu approvi e invii.' },
+  { heading: 'Ti guida passo dopo passo', body: 'Ogni pratica ha un percorso chiaro. Sai sempre cosa manca, cosa fare e dove andare.' },
+  { heading: 'Distingue il suo lavoro dal tuo', body: 'Herion ti dice cosa ha fatto, cosa puo fare per te e cosa devi fare tu personalmente.' },
+  { heading: 'Ti ricorda le scadenze', body: 'Promemoria, aggiornamenti e notifiche per non perdere nessun adempimento.' },
+  { heading: 'Non sostituisce, accompagna', body: 'Herion non firma al posto tuo e non invia senza la tua approvazione. Lavora con te, non al posto tuo.' },
 ];
 
 function HeroCarousel() {
@@ -92,12 +92,12 @@ export default function WelcomePage() {
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-[var(--text-primary)] leading-[1.15] tracking-tight mb-5">
-            Meno confusione.<br />
-            Piu controllo sulle tue pratiche.
+            Il tuo commercialista digitale.<br />
+            Sempre al tuo fianco.
           </h1>
 
           <p className="text-base text-[var(--text-secondary)] leading-relaxed max-w-xl mb-10">
-            Herion e nato per rendere la vita piu semplice. Ti accompagna nella gestione fiscale e amministrativa con chiarezza, autonomia e supporto costante.
+            Herion ti aiuta a gestire pratiche fiscali e amministrative con chiarezza. Prepara i documenti, verifica la completezza e ti guida fino all'invio ufficiale.
           </p>
 
           <Link to="/register">
@@ -121,12 +121,12 @@ export default function WelcomePage() {
       {/* ─── CHI SIAMO ─── */}
       <section className="py-16 px-6 bg-[var(--bg-soft)]" data-testid="about-section">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Chi siamo</h2>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Come funziona</h2>
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
-            Herion nasce dall'idea che gestire pratiche fiscali e amministrative non debba essere un'esperienza frustrante. Troppo spesso i passaggi si accumulano, i documenti si perdono e la chiarezza viene meno.
+            Herion funziona come un commercialista digitale. Raccoglie i tuoi documenti, verifica che tutto sia in ordine, prepara il dossier e ti guida verso l'invio ufficiale.
           </p>
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-            Per questo abbiamo creato uno spazio operativo dove ogni fase e visibile, ogni azione e guidata e il supporto non si ferma mai. Non un servizio che ti sostituisce, ma un compagno che ti aiuta a muoverti con piu ordine e meno fatica, giorno dopo giorno.
+            Non firma al posto tuo, non accede ai portali con le tue credenziali e non invia nulla senza la tua approvazione esplicita. Ti dice sempre cosa ha fatto, cosa puo fare e cosa tocca a te.
           </p>
         </div>
       </section>
@@ -136,9 +136,9 @@ export default function WelcomePage() {
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { title: 'Organizzazione', body: 'Dati, documenti e scadenze in un unico flusso. Niente piu fogli sparsi o email dimenticate.' },
-              { title: 'Controllo', body: 'Sai sempre dove sei, cosa manca e cosa serve. Ogni pratica ha un percorso chiaro e trasparente.' },
-              { title: 'Supporto', body: 'Herion ti accompagna nel tempo. Non e una consulenza isolata, ma un alleato continuo.' },
+              { title: 'Prepara', body: 'Raccoglie documenti, verifica completezza, organizza il dossier. Tu controlli e approvi.' },
+              { title: 'Guida', body: 'Ti dice dove andare, cosa serve e cosa succede dopo. Ogni passo e chiaro.' },
+              { title: 'Distingue', body: 'Separa quello che fa Herion da quello che devi fare tu. Nessuna ambiguita.' },
             ].map((card, i) => (
               <div key={i} className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
                 <div className={`w-8 h-8 rounded-lg mb-3 flex items-center justify-center ${i === 0 ? 'bg-[var(--surface-accent-1)]/30' : i === 1 ? 'bg-[var(--surface-accent-2)]/30' : 'bg-[var(--bg-soft)]'}`}>
@@ -155,9 +155,9 @@ export default function WelcomePage() {
       {/* ─── PRODUCT PREVIEW ─── */}
       <section className="py-16 px-6 bg-white" data-testid="preview-section">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">Costruito per la chiarezza</h2>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">Cosa puo fare Herion per te</h2>
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-lg mx-auto mb-8">
-            Una piattaforma dove pratiche, agenti intelligenti, documenti e comunicazioni si integrano in un unico flusso operativo. Tutto visibile, tutto sotto controllo.
+            Un commercialista digitale che lavora con te su ogni pratica. Dalla raccolta documenti alla guida verso l'invio ufficiale.
           </p>
           <div className="grid grid-cols-3 gap-3 text-center">
             {[

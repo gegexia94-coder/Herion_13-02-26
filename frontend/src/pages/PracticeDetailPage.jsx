@@ -403,7 +403,7 @@ export default function PracticeDetailPage() {
             />
           )}
 
-          {/* ── GUIDANCE: What to do now ── */}
+          {/* ── GUIDANCE: What Herion did / What user must do ── */}
           {!canStart && (
             <GuidanceCard status={status} practice={practice} channel={channel} catalog={catalog} missingDocs={missingDocs} docLabels={DOC_KEY_LABELS} />
           )}
@@ -541,7 +541,7 @@ export default function PracticeDetailPage() {
             </div>
           )}
 
-          {/* ── AGENT LOGS (collapsed by default) ── */}
+          {/* ── AGENT LOGS — what Herion did ── */}
           {practice.agent_logs?.length > 0 && (
             <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
               <button
@@ -550,30 +550,33 @@ export default function PracticeDetailPage() {
                 data-testid="agent-logs-toggle"
               >
                 <div className="flex items-center gap-2">
-                  <Bot className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                  <p className="text-[11px] font-bold text-[var(--text-primary)]">Dettaglio attivita agenti</p>
-                  <span className="text-[9px] font-bold text-[var(--text-muted)] bg-[var(--bg-app)] px-1.5 py-0.5 rounded-full">{practice.agent_logs.length}</span>
+                  <Bot className="w-3.5 h-3.5 text-[#0ABFCF]" />
+                  <p className="text-[11px] font-bold text-[var(--text-primary)]">Cosa ha fatto Herion</p>
+                  <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Preparato da Herion</span>
                 </div>
                 {showAgentLogs ? <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
               </button>
               {showAgentLogs && (
-                <div className="border-t px-5 py-3 space-y-1.5" style={{ borderColor: 'var(--border-soft)' }}>
-                  {practice.agent_logs.map((log) => (
-                    <div key={log.id} className="flex items-center gap-2.5 py-1.5" data-testid={`agent-log-${log.id}`}>
-                      <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
-                        log.status === 'completed' ? 'bg-emerald-50' : 'bg-red-50'
-                      }`}>
-                        {log.status === 'completed'
-                          ? <CheckCircle className="w-3 h-3 text-emerald-500" />
-                          : <XCircle className="w-3 h-3 text-red-500" />
-                        }
+                <div className="border-t px-5 py-3 space-y-2" style={{ borderColor: 'var(--border-soft)' }}>
+                  {practice.agent_logs.map((log) => {
+                    const isOk = log.status === 'completed';
+                    return (
+                      <div key={log.id} className="flex items-start gap-2.5 py-1.5" data-testid={`agent-log-${log.id}`}>
+                        <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                          isOk ? 'bg-emerald-50' : 'bg-red-50'
+                        }`}>
+                          {isOk ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-semibold text-[var(--text-primary)]">{log.branded_name || log.agent_type}</p>
+                          <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed">{log.explanation}</p>
+                          {log.output_data && typeof log.output_data === 'string' && log.output_data.length > 10 && (
+                            <p className="text-[9px] text-[var(--text-muted)] mt-0.5 truncate">{log.output_data.substring(0, 120)}...</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-semibold text-[var(--text-primary)]">{log.branded_name || log.agent_type}</p>
-                        <p className="text-[9px] text-[var(--text-muted)] truncate">{log.explanation}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -778,7 +781,7 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
 
       {/* What is this practice */}
       <div className="mb-4">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Cos'e questa pratica</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Di cosa si tratta</p>
         <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">
           {catalog?.user_explanation || practice.description || 'Pratica fiscale/amministrativa.'}
         </p>
@@ -787,7 +790,7 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
       {/* Required documents */}
       {requiredDocs.length > 0 && (
         <div className="mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Documenti necessari</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Documenti che ti servono</p>
           <div className="space-y-1">
             {requiredDocs.map((doc, i) => (
               <div key={i} className="flex items-center gap-2 py-1">
@@ -801,21 +804,23 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
         </div>
       )}
 
-      {/* How the flow works */}
+      {/* How it works - accountant framing */}
       <div className="mb-4">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Come funziona</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Cosa fara Herion per te</p>
         <div className="space-y-1.5">
           {[
-            'Carichi i documenti richiesti',
-            'Herion analizza e verifica tutto automaticamente',
-            'Tu verifichi il risultato e approvi',
+            { text: 'Raccoglie e organizza i tuoi documenti', label: 'Herion' },
+            { text: 'Verifica completezza e conformita', label: 'Herion' },
+            { text: 'Tu verifichi il risultato e approvi', label: 'Tu' },
             channel?.auto_submission === false
-              ? "Invii la pratica all'ente competente"
-              : 'La pratica viene completata',
+              ? { text: "Invii la pratica all'ente con le tue credenziali", label: 'Tu' }
+              : { text: 'La pratica viene completata', label: 'Herion' },
           ].map((step, i) => (
             <div key={i} className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[var(--bg-app)] text-[9px] font-bold text-[var(--text-muted)] flex items-center justify-center flex-shrink-0">{i + 1}</span>
-              <p className="text-[11px] text-[var(--text-secondary)]">{step}</p>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                step.label === 'Tu' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+              }`}>{step.label}</span>
+              <p className="text-[11px] text-[var(--text-secondary)]">{step.text}</p>
             </div>
           ))}
         </div>
@@ -824,7 +829,7 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
       {/* Where it goes */}
       {channel && (
         <div className="mb-5 p-3 bg-[var(--bg-soft)] rounded-lg">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Destinazione</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Ente di destinazione</p>
           <p className="text-[11px] font-semibold text-[var(--text-primary)]">{channel.name}</p>
           {channel.required_channel && channel.required_channel !== 'preparation_only' && (
             <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">
@@ -832,8 +837,9 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
             </p>
           )}
           {channel.auto_submission === false && (
-            <p className="text-[10px] text-amber-600 font-medium mt-0.5">
-              L'invio ufficiale dovra essere effettuato da te.
+            <p className="text-[10px] text-amber-600 font-medium mt-1">
+              L'invio ufficiale va fatto da te sul portale dell'ente.
+              Herion prepara tutto, tu invii.
             </p>
           )}
         </div>
@@ -853,97 +859,137 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
 
 
 function GuidanceCard({ status, practice, channel, catalog, missingDocs, docLabels }) {
-  let title = '';
-  let description = '';
-  let herionAction = '';
-  let isExternal = false;
+  // Messaging labels as per real-accountant model
+  const hasAgentLogs = practice?.agent_logs?.length > 0;
+  const orchestration = practice?.orchestration_result;
+  const isExternal = channel?.auto_submission === false;
+
+  // What Herion already did
+  let herionDid = [];
+  if (hasAgentLogs) herionDid.push('Analisi completata da ' + practice.agent_logs.length + ' agenti specializzati');
+  if (orchestration) herionDid.push('Riepilogo preparato per la tua verifica');
+
+  // What Herion can do under delegation
+  let herionCan = [];
+  if (['draft', 'waiting_user_documents', 'documents_received'].includes(status)) {
+    herionCan = ['Raccogliere e organizzare i documenti', 'Verificare la completezza', 'Preparare il dossier per l\'invio'];
+  } else if (['internal_processing', 'in_progress'].includes(status)) {
+    herionCan = ['Validare conformita e requisiti', 'Preparare il riepilogo'];
+  } else if (['waiting_user_review', 'waiting_approval'].includes(status)) {
+    herionCan = ['Guidarti al portale ufficiale dopo la tua approvazione'];
+  } else if (status === 'ready_for_submission') {
+    herionCan = ['Monitorare lo stato dopo l\'invio', 'Inviarti promemoria'];
+  }
+
+  // What user must do
+  let userMust = '';
+  let userMustLabel = '';
   let bgClass = 'bg-[var(--bg-soft)]';
 
   switch (status) {
     case 'waiting_user_documents':
     case 'documents_received':
-      title = 'Carica i documenti necessari';
-      description = missingDocs.length > 0
-        ? `Mancano ${missingDocs.length} documenti: ${missingDocs.map(d => docLabels[d] || d).join(', ')}.`
-        : 'Tutti i documenti richiesti sono presenti. Puoi avviare l\'analisi.';
-      herionAction = 'Dopo il caricamento, Herion analizze tutto automaticamente.';
+      userMust = missingDocs.length > 0
+        ? `Carica i documenti mancanti: ${missingDocs.map(d => docLabels[d] || d).join(', ')}.`
+        : 'Tutti i documenti sono presenti. Avvia l\'analisi di Herion.';
+      userMustLabel = missingDocs.length > 0 ? 'Richiede la tua azione' : 'Preparato da Herion';
       bgClass = missingDocs.length > 0 ? 'bg-amber-50/50' : 'bg-emerald-50/50';
       break;
     case 'internal_processing':
     case 'in_progress':
     case 'processing':
-      title = 'Herion sta analizzando la pratica';
-      description = 'Gli agenti specializzati stanno verificando documenti, conformita e requisiti.';
-      herionAction = 'Al termine, ti chiederemo di verificare il risultato.';
+      userMust = 'Nessuna azione richiesta ora. Herion sta lavorando.';
+      userMustLabel = 'Herion sta lavorando';
       bgClass = 'bg-blue-50/50';
       break;
     case 'internal_validation_passed':
     case 'waiting_user_review':
     case 'waiting_approval':
-      title = 'La tua verifica e richiesta';
-      description = 'L\'analisi di Herion e completa. Leggi il riepilogo qui sotto e approva.';
-      herionAction = channel?.auto_submission === false
-        ? 'Dopo la tua approvazione, dovrai inviare la pratica tu stesso.'
-        : 'Dopo la tua approvazione, la pratica sara pronta.';
+      userMust = 'Leggi il riepilogo qui sotto e approva per procedere.';
+      userMustLabel = 'Richiede la tua azione';
       bgClass = 'bg-amber-50/50';
       break;
     case 'internal_validation_failed':
-      title = 'Problemi trovati durante la verifica';
-      description = 'Herion ha riscontrato problemi. Controlla i dettagli e correggi.';
-      herionAction = 'Dopo le correzioni, potrai riavviare l\'analisi.';
+      userMust = 'Ci sono problemi da risolvere. Controlla i dettagli sotto.';
+      userMustLabel = 'Richiede la tua azione';
       bgClass = 'bg-red-50/50';
       break;
     case 'waiting_signature':
-      title = 'Firma digitale richiesta';
-      description = 'Alcuni documenti richiedono la tua firma digitale prima di procedere.';
-      herionAction = 'Dopo la firma, la pratica sara pronta per l\'invio.';
+      userMust = 'Firma i documenti richiesti con la tua firma digitale.';
+      userMustLabel = 'Richiede la tua azione';
       bgClass = 'bg-amber-50/50';
       break;
     case 'ready_for_submission':
-      title = 'Pronta per l\'invio';
-      isExternal = channel?.auto_submission === false;
-      description = isExternal
-        ? 'Devi inviare questa pratica all\'ente competente tu stesso.'
-        : 'La pratica e pronta per essere completata.';
-      herionAction = isExternal && channel?.portal_url
-        ? `Vai su ${channel.name} per completare l'invio.`
-        : '';
+      userMust = isExternal
+        ? 'Invia la pratica all\'ente competente tramite il portale ufficiale.'
+        : 'Conferma per completare la pratica.';
+      userMustLabel = isExternal ? 'Passaggio ufficiale esterno' : 'Richiede la tua azione';
       bgClass = 'bg-[#0ABFCF]/5';
       break;
     case 'submitted_manually':
     case 'submitted_via_channel':
-      title = 'Pratica inviata';
-      description = 'Hai confermato l\'invio. In attesa di conferma dall\'ente.';
-      herionAction = 'Quando ricevi conferma dall\'ente, puoi chiudere la pratica.';
+      userMust = 'La pratica e stata inviata. Quando ricevi conferma dall\'ente, chiudi la pratica.';
+      userMustLabel = 'In attesa risposta ufficiale';
       bgClass = 'bg-blue-50/50';
       break;
     case 'waiting_external_response':
-      title = 'In attesa di risposta dall\'ente';
-      description = 'La pratica e stata inviata. Stiamo attendendo la risposta ufficiale.';
-      herionAction = 'Quando ricevi la risposta, aggiorna lo stato.';
+      userMust = 'In attesa di risposta dall\'ente. La conferma arrivera tramite il canale ufficiale.';
+      userMustLabel = 'In attesa risposta ufficiale';
       bgClass = 'bg-purple-50/50';
       break;
     case 'completed':
     case 'accepted_by_entity':
-      return null; // No guidance needed for completed
+      return null;
     case 'blocked':
     case 'escalated':
-      title = 'Pratica bloccata';
-      description = 'Intervento richiesto. Controlla i dettagli sotto o chiedi a Herion.';
-      herionAction = '';
+      userMust = 'Questa pratica ha bisogno di un tuo intervento. Leggi sotto o chiedi a Herion.';
+      userMustLabel = 'Richiede la tua azione';
       bgClass = 'bg-red-50/50';
       break;
     default:
       return null;
   }
 
+  // Where official response arrives
+  let officialResponseInfo = null;
+  if (['ready_for_submission', 'submitted_manually', 'submitted_via_channel', 'waiting_external_response'].includes(status) && channel) {
+    if (channel.required_channel === 'official_portal') {
+      officialResponseInfo = 'La risposta ufficiale arrivera nella tua area riservata sul portale dell\'ente.';
+    } else if (channel.required_channel === 'PEC') {
+      officialResponseInfo = 'La risposta ufficiale arrivera alla tua PEC.';
+    }
+  }
+
   return (
     <div className={`${bgClass} rounded-xl px-5 py-4`} data-testid="guidance-card">
-      <p className="text-[13px] font-semibold text-[var(--text-primary)]">{title}</p>
-      <p className="text-[11px] text-[var(--text-secondary)] mt-1">{description}</p>
-      {herionAction && (
-        <p className="text-[10px] text-[var(--text-muted)] mt-1.5 flex items-center gap-1.5">
-          <ArrowRight className="w-3 h-3 flex-shrink-0" />{herionAction}
+      {/* Label badge */}
+      <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 ${
+        userMustLabel === 'Richiede la tua azione' ? 'bg-amber-100 text-amber-700' :
+        userMustLabel === 'Passaggio ufficiale esterno' ? 'bg-purple-100 text-purple-700' :
+        userMustLabel === 'In attesa risposta ufficiale' ? 'bg-blue-100 text-blue-700' :
+        userMustLabel === 'Herion sta lavorando' ? 'bg-blue-100 text-blue-600' :
+        'bg-emerald-100 text-emerald-700'
+      }`} data-testid="guidance-label">
+        {userMustLabel}
+      </span>
+
+      <p className="text-[12px] text-[var(--text-primary)] mt-1 leading-relaxed">{userMust}</p>
+
+      {/* What Herion already did */}
+      {herionDid.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {herionDid.map((item, i) => (
+            <span key={i} className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+              <CheckCircle className="w-2.5 h-2.5" />{item}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Where official response arrives */}
+      {officialResponseInfo && (
+        <p className="text-[10px] text-[var(--text-muted)] mt-2 flex items-center gap-1.5">
+          <Info className="w-3 h-3 flex-shrink-0" />{officialResponseInfo}
         </p>
       )}
     </div>

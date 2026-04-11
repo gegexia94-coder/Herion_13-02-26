@@ -16,11 +16,11 @@ export default function SupportPage() {
         <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Domande Frequenti</p>
         <div className="space-y-2">
           {[
-            { q: 'Come creo una nuova pratica?', a: 'Vai su Dashboard e clicca "Nuova Pratica". Compila i dati richiesti e il sistema ti guidera nei passaggi successivi.' },
-            { q: 'Cosa significa "In Attesa di Approvazione"?', a: 'Il sistema ha completato l\'analisi della tua pratica. Ora devi verificare il riepilogo e approvare per procedere con l\'invio.' },
-            { q: 'Come carico un documento?', a: 'Apri la pratica, nella sezione Documenti clicca "Carica". Seleziona il file e la categoria corretta.' },
-            { q: 'Cosa faccio se una pratica e bloccata?', a: 'Le pratiche bloccate hanno un avviso rosso. Leggi il motivo del blocco e segui le indicazioni per risolvere. Se hai dubbi, usa la chat nella pratica.' },
-            { q: 'Come funziona la priorita?', a: 'Herion calcola automaticamente la priorita in base a scadenze, stato della pratica e livello di rischio. Le pratiche urgenti appaiono sempre in cima.' },
+            { q: 'Come creo una nuova pratica?', a: 'Vai su Dashboard e clicca "Nuova Pratica". Herion ti spieghera cosa serve e ti guidera passo dopo passo.' },
+            { q: 'Cosa fa Herion esattamente?', a: 'Herion raccoglie i tuoi documenti, verifica che siano completi, prepara il dossier e ti guida verso il portale ufficiale per l\'invio. Non firma al posto tuo e non invia senza la tua approvazione.' },
+            { q: 'Devo inviare io la pratica all\'ente?', a: 'Dipende dalla pratica. Herion ti dice chiaramente se l\'invio va fatto da te (es. tramite SPID sul portale dell\'Agenzia delle Entrate) oppure se puo essere completato direttamente.' },
+            { q: 'Come carico un documento?', a: 'Apri la pratica, troverai la lista dei documenti richiesti con l\'etichetta "Da caricare". Clicca "Carica" e seleziona il file.' },
+            { q: 'Cosa faccio se una pratica e bloccata?', a: 'Le pratiche bloccate mostrano un avviso con la causa del problema. Segui le indicazioni o chiedi a Herion dalla chat nella pratica per capire come procedere.' },
           ].map((item, i) => (
             <details key={i} className="bg-white rounded-xl border p-4 group" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid={`faq-${i}`}>
               <summary className="flex items-center gap-3 cursor-pointer list-none text-[13px] font-semibold text-[var(--text-primary)]">

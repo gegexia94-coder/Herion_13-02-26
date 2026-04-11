@@ -69,7 +69,19 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - Email Templates: GET /api/emails/templates, POST .../resolve, POST /api/emails/draft-from-template
 - Governance, Alerts, Vault, Follow-ups, Activity logs — unchanged
 
+#### Visual Agent Pipeline System (Batch 10 — 2026-04-11)
+- **AgentPipeline component** (`/app/frontend/src/components/AgentPipeline.jsx`)
+  - Horizontal pipeline displaying all 12 backend agents: Intake → Ledger → Compliance → Documents → Delegate → Deadline → Flow → Routing → Research → Monitor → Advisor → Guard
+  - Visual states per agent: not_started (gray), in_progress (blue pulse), completed (green checkmark), failed (red X), waiting_approval (amber)
+  - Connector lines between nodes change color based on previous agent state
+  - Progress bar with completion percentage
+  - Interactive node popovers showing agent output data on click
+  - "Avvia Pipeline" / "Riesegui Pipeline" button for running workflow
+  - "Approva Pratica" button when practice status is waiting_approval
+- Integrated into PracticeDetailPage above the existing WorkflowStepper
+
 ### Testing Status
+- Iteration 17: 100% pass — Visual Agent Pipeline verified (all states, buttons, popovers, Italian text)
 - Iteration 16: 100% pass — Operational control center verified
 - All previous iterations: 100%
 
@@ -78,7 +90,6 @@ Build a transparent, AI-driven tax management web application called "Herion". M
 - Resend — Real email sending (API key in backend/.env)
 
 ### Remaining Backlog
-- P1: Visual agent pipeline component in Practice Detail page (step-by-step workflow visualization)
 - P1: Resend domain verification for production sending
 - P2: Country-specific tax rules implementation
 - P2: Advanced analytics / Creator profit dashboard

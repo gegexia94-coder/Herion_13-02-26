@@ -1,76 +1,67 @@
 # Herion - Controlled Execution Platform (AI Practice Manager)
 
 ## Original Problem Statement
-Build "Herion AI" — a controlled execution platform with orchestration of multiple specialized agents for fiscal and administrative practice management. All UI text in Italian. Codebase in English. Herion acts as a digital accountant: prepares practices, checks completeness, organizes documents, guides users through official channels, monitors status, and distinguishes internal actions from official external actions.
+Build "Herion AI" — a controlled execution platform acting as a digital accountant (commercialista digitale) for fiscal and administrative practice management. All UI in Italian, code in English.
 
 ## Architecture
-- **Frontend**: React + Tailwind CSS + Shadcn UI + Manrope font
+- **Frontend**: React + Tailwind CSS + Shadcn UI
 - **Backend**: FastAPI + MongoDB
 - **Auth**: Cookie-based JWT
-- **AI**: OpenAI GPT-5.2 via Emergent LLM Key (acts as "commercialista digitale")
+- **AI**: OpenAI GPT-5.2 via Emergent LLM Key
 - **Email**: Resend integration
-- **Design**: Light, guided, human-first. Brand teal #0ABFCF. Geometric H SVG logo.
-- **Navigation**: 7-item left sidebar
-- **Core Principle**: At every step, user knows what Herion did, what Herion can do, what Herion cannot do, what user must do, where official responses arrive, and what happens next.
+- **Brand**: Geometric H SVG logo, teal #0ABFCF
 
-## Delegation Model
-Herion operates under explicit delegation. It can:
-- Collect and organize documents
-- Validate completeness
-- Prepare submission package
-- Guide user to official portal
-- Monitor progress
-- Request missing items
-- Escalate to operator if needed
-
-Herion CANNOT:
-- Sign on behalf of user
-- Access government portals with user's credentials
-- Submit officially without valid channel
-- Claim entity acceptance without external proof
+## Core Principle
+Herion acts like a real accountant: prepares, verifies, guides. Clearly separates Herion actions, user actions, delegated actions, and external entity actions.
 
 ## What's Been Implemented
 
-### Language + Agent Behavior (Batch 16 — 2026-04-11)
-- **Commercialista Digitale Framing**: Welcome page headline "Il tuo commercialista digitale. Sempre al tuo fianco." Carousel explains: Prepara, Guida, Distingue, Ricorda, Non sostituisce.
-- **Herion/Tu Labels**: Understanding gate clearly labels each step as "Herion" or "Tu" to distinguish responsibilities
-- **Messaging Labels**: GuidanceCard shows badges: "Preparato da Herion", "Richiede la tua azione", "Passaggio ufficiale esterno", "In attesa risposta ufficiale", "Herion sta lavorando"
-- **Agent Behavior**: Agent logs section renamed "Cosa ha fatto Herion" with "Preparato da Herion" badge. Each agent shows explanation of what it did.
-- **Chat Prompt**: Updated to "commercialista digitale" framing with delegation awareness (what Herion did, can do, cannot do)
-- **Admin Prompt**: Cleaned of markdown headers (## and **), produces plain-text structured output
-- **Support FAQs**: Updated to explain delegation model ("Cosa fa Herion esattamente?", "Devo inviare io la pratica?")
-- **Official Response Info**: Guidance tells user where official response will arrive (portale/PEC)
+### Workspace + Delegation + Official Action System (Batch 17 — 2026-04-11)
+- **GET /api/practices/{id}/workspace**: Real source of truth endpoint returning current_agent, current_activity, completed_activities, next_activity, blockers, documents_summary, delegation, official_action, proof_layer, approval with father_review, timeline_summary, ui_guidance
+- **Father Agent Review**: During approval, Father agent becomes active supervisor with compatibility_check, requirements_check, document_received_check, entity_validation_check, estimated timing, approval_recommendation, path/goal/timing summaries
+- **Delegation System**: POST /delegate (grant with level: assist/partial/full, scope, entity_scope), POST /revoke-delegation, audit trail in delegation_audit collection
+- **Official Action Model**: Each practice exposes entity_name, action_label, submission_channel, credentials_required, can_herion_prepare, can_herion_submit, requires_user_direct_step
+- **Proof/Receipt Layer**: POST /proof (protocol_number, receipt_pdf, etc.), proof status tracking (missing/pending/received/verified)
+- **Official Step Completion**: POST /complete-official-step with outcome tracking and audit
+- **UI Guidance**: Every state generates headline + subheadline + next_step for frontend
+- **Human-Readable Labels**: All workspace data uses Italian labels, not technical codes
 
-### Empty States, Agent Widget, Progress, Brand (Batch 15 — 2026-04-11)
-- Guided empty states everywhere, agent activity widget, 6-dot progress, geometric H logo
+### Language + Agent Behavior (Batch 16)
+- Commercialista digitale positioning, Herion/Tu labels, messaging labels, updated chat/admin prompts
 
-### Phase 1-4 Refactor (Batch 14 — 2026-04-11)
-- Understanding gate, 6-step flow, document clarity, status semantics, channel layer, new endpoints
+### Empty States, Widget, Progress, Brand (Batch 15)
+- Guided empty states, agent widget, 6-dot progress, geometric H logo
 
-### Earlier Batches (1-13)
-- Priority system, human-first UX, agent pipeline, auth, catalog, governance, email, etc.
+### Phase 1-4 Refactor (Batch 14)
+- Understanding gate, 6-step flow, document clarity, status semantics, channel layer
+
+### Earlier (Batches 1-13)
+- Priority system, auth, catalog, governance, email, etc.
 
 ## Testing Status
+- Iteration 24: 100% (19/19) — Workspace + Delegation + Official Action
 - Iteration 23: 100% — Language + Agent Behavior
 - Iteration 22: 100% — Empty States, Widget, Progress, Logo
 - Iteration 21: 100% — Phase 1-4 refactor
-- Iterations 16-20: 100%
+
+## Key API Endpoints (New)
+- GET /api/practices/{id}/workspace — Full practice workspace
+- POST /api/practices/{id}/delegate — Grant delegation
+- POST /api/practices/{id}/revoke-delegation — Revoke delegation
+- POST /api/practices/{id}/proof — Upload receipt/proof
+- POST /api/practices/{id}/complete-official-step — Mark official step done
 
 ## Remaining Backlog
 
-### P0 — Next (pending checkpoint)
-- Backend Agent Workspace endpoint (meaningful operational data)
-- Delegation flow formalization (explicit scope selection per practice)
-- Receipt/proof layer (protocol number, submission receipt, confirmation PDF)
-- Structured notification system (documents missing, signature required, receipt upload required, etc.)
+### P0 — Frontend Integration
+- Build "Official Step" UI component in PracticeDetailPage using workspace data
+- Wire practice detail to workspace endpoint for real-time agent/activity display
+- Add delegation UI (grant/revoke controls)
 
-### P1 — Communication
-- Separate official communications from Herion notifications visually
-- Channel-aware notification routing
+### P1 — Notifications
+- Structured notifications: documents_missing, signature_required, ready_for_submission, official_step_required, receipt_upload_required, waiting_external_response
 
-### P2 — Infrastructure
-- Resend domain verification for production
-- Performance optimization
-
-### P3 — Future
-- Country-specific tax rules, advanced analytics, multi-language, catalog expansion
+### P2 — Future
+- Embedded SPID/CIE auth flow (modal/redirect)
+- Advanced analytics
+- Multi-language, catalog expansion

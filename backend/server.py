@@ -679,6 +679,8 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "risk_level": None,
         "delegation_status": None,
         "delegation_info": {"status": "not_required", "label": "Non richiesta"},
+        "delegation": {"enabled": False, "level": "assist", "scope": [], "granted_by_user": False},
+        "proof_layer": {"expected": False, "status": "missing"},
         "approval_snapshot_id": None,
         "approved_at": None,
         "submitted_at": None,
@@ -2057,6 +2059,582 @@ async def mark_practice_completed(practice_id: str, user: dict = Depends(get_cur
         f"La pratica '{practice.get('practice_type_label')}' e stata completata.", "success")
     await refresh_practice_priority(practice_id)
     return {"message": "Pratica completata", "status": "completed"}
+
+
+# ========================
+# DELEGATION + OFFICIAL ACTION SYSTEM
+# ========================
+
+DELEGATION_SCOPES = {
+    "prepare_documents": "Preparazione documenti",
+    "validate_completeness": "Verifica completezza",
+    "upload_to_portal": "Caricamento su portale",
+    "send_official_submission": "Invio ufficiale",
+    "download_receipt": "Scaricamento ricevuta",
+    "monitor_response": "Monitoraggio risposta",
+    "request_missing_items": "Richiesta documenti mancanti",
+    "escalate_to_operator": "Escalation a operatore",
+}
+
+PROOF_TYPES = {
+    "protocol_number": "Numero di protocollo",
+    "receipt_pdf": "Ricevuta PDF",
+    "pec_delivery": "Consegna PEC",
+    "portal_confirmation": "Conferma portale",
+    "payment_receipt": "Ricevuta pagamento",
+}
+
+
+class DelegationRequest(BaseModel):
+    level: str = "assist"  # assist | partial | full
+    scope: list = ["prepare_documents", "validate_completeness"]
+    entity_scope: Optional[list] = None
+    action_scope: Optional[list] = None
+    expires_in_days: Optional[int] = 30
+
+
+class RevokeDelegationRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+class ProofUploadRequest(BaseModel):
+    proof_type: str  # protocol_number, receipt_pdf, etc.
+    reference_code: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class OfficialStepCompleteRequest(BaseModel):
+    step_outcome: str = "success"  # success | failed | partial
+    proof_type: Optional[str] = None
+    reference_code: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@api_router.post("/practices/{practice_id}/delegate")
+async def delegate_practice(practice_id: str, req: DelegationRequest, user: dict = Depends(get_current_user)):
+    """Grant Herion delegation on a practice."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    now = datetime.now(timezone.utc)
+    expires = (now + timedelta(days=req.expires_in_days)).isoformat() if req.expires_in_days else None
+
+    delegation = {
+        "enabled": True,
+        "level": req.level,
+        "scope": req.scope,
+        "entity_scope": req.entity_scope,
+        "action_scope": req.action_scope,
+        "granted_by_user": True,
+        "granted_at": now.isoformat(),
+        "expires_at": expires,
+        "revocable": True,
+        "revoked": False,
+    }
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {"delegation": delegation, "updated_at": now.isoformat()}}
+    )
+
+    # Audit trail
+    await db.delegation_audit.insert_one({
+        "id": str(uuid.uuid4()),
+        "practice_id": practice_id,
+        "user_id": user["id"],
+        "action": "delegation_granted",
+        "performed_by": "user",
+        "level": req.level,
+        "scope": req.scope,
+        "timestamp": now.isoformat(),
+    })
+
+    await add_timeline_event(practice_id, user["id"], "delegation_requested", {
+        "level": req.level, "scope": req.scope
+    })
+    await log_activity(user["id"], "delegation", "delegation_granted", {
+        "practice_id": practice_id, "level": req.level
+    })
+
+    return {"message": "Delega concessa", "delegation": delegation}
+
+
+@api_router.post("/practices/{practice_id}/revoke-delegation")
+async def revoke_delegation_practice(practice_id: str, req: RevokeDelegationRequest, user: dict = Depends(get_current_user)):
+    """Revoke Herion delegation on a practice."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    now = datetime.now(timezone.utc).isoformat()
+    delegation = practice.get("delegation", {})
+    delegation["enabled"] = False
+    delegation["revoked"] = True
+    delegation["revoked_at"] = now
+    delegation["revoke_reason"] = req.reason
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {"delegation": delegation, "updated_at": now}}
+    )
+
+    await db.delegation_audit.insert_one({
+        "id": str(uuid.uuid4()),
+        "practice_id": practice_id,
+        "user_id": user["id"],
+        "action": "delegation_revoked",
+        "performed_by": "user",
+        "reason": req.reason,
+        "timestamp": now,
+    })
+
+    await log_activity(user["id"], "delegation", "delegation_revoked", {"practice_id": practice_id})
+    return {"message": "Delega revocata", "delegation": delegation}
+
+
+@api_router.post("/practices/{practice_id}/proof")
+async def upload_proof(practice_id: str, req: ProofUploadRequest, user: dict = Depends(get_current_user)):
+    """Upload proof/receipt for an official action."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    now = datetime.now(timezone.utc).isoformat()
+    proof = {
+        "expected": True,
+        "proof_type": req.proof_type,
+        "status": "received",
+        "reference_code": req.reference_code,
+        "received_at": now,
+        "verified_by_herion": False,
+        "notes": req.notes,
+    }
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {"proof_layer": proof, "updated_at": now}}
+    )
+
+    await add_timeline_event(practice_id, user["id"], "status_changed", {
+        "note": f"Ricevuta caricata: {PROOF_TYPES.get(req.proof_type, req.proof_type)}"
+    })
+    await log_activity(user["id"], "proof", "proof_uploaded", {
+        "practice_id": practice_id, "proof_type": req.proof_type
+    })
+    return {"message": "Ricevuta registrata", "proof_layer": proof}
+
+
+@api_router.post("/practices/{practice_id}/complete-official-step")
+async def complete_official_step(practice_id: str, req: OfficialStepCompleteRequest, user: dict = Depends(get_current_user)):
+    """User confirms completion of an official external step."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {"updated_at": now}
+
+    if req.step_outcome == "success":
+        updates["status"] = "submitted_manually"
+        updates["status_label"] = STATUS_LABELS["submitted_manually"]
+        updates["submitted_at"] = now
+        if req.proof_type:
+            updates["proof_layer"] = {
+                "expected": True,
+                "proof_type": req.proof_type,
+                "status": "received" if req.reference_code else "pending",
+                "reference_code": req.reference_code,
+                "received_at": now if req.reference_code else None,
+                "verified_by_herion": False,
+            }
+    elif req.step_outcome == "failed":
+        updates["status"] = "blocked"
+        updates["status_label"] = STATUS_LABELS["blocked"]
+
+    await db.practices.update_one({"id": practice_id}, {"$set": updates})
+
+    # Audit
+    await db.delegation_audit.insert_one({
+        "id": str(uuid.uuid4()),
+        "practice_id": practice_id,
+        "user_id": user["id"],
+        "action": "official_step_completed",
+        "performed_by": "user",
+        "entity": practice.get("channel_info", {}).get("name") if isinstance(practice.get("channel_info"), dict) else None,
+        "outcome": req.step_outcome,
+        "proof_type": req.proof_type,
+        "reference_code": req.reference_code,
+        "timestamp": now,
+    })
+
+    await add_timeline_event(practice_id, user["id"], "submitted" if req.step_outcome == "success" else "blocked", {
+        "submission_type": "official_step",
+        "outcome": req.step_outcome,
+        "notes": req.notes,
+    })
+    await log_activity(user["id"], "official_step", "official_step_completed", {
+        "practice_id": practice_id, "outcome": req.step_outcome
+    })
+    await refresh_practice_priority(practice_id)
+
+    return {"message": "Passaggio ufficiale registrato", "outcome": req.step_outcome, "status": updates.get("status", practice.get("status"))}
+
+
+# ========================
+# PRACTICE WORKSPACE ENDPOINT
+# ========================
+
+AGENT_LABELS = {
+    "intake": {"name": "Herion Intake", "role": "Raccolta e classificazione"},
+    "ledger": {"name": "Herion Ledger", "role": "Analisi contabile"},
+    "compliance": {"name": "Herion Compliance", "role": "Verifica conformita"},
+    "documents": {"name": "Herion Documents", "role": "Gestione documenti"},
+    "delegate": {"name": "Herion Delegate", "role": "Verifica delega"},
+    "deadline": {"name": "Herion Deadline", "role": "Controllo scadenze"},
+    "flow": {"name": "Herion Flow", "role": "Gestione flusso"},
+    "routing": {"name": "Herion Routing", "role": "Instradamento"},
+    "research": {"name": "Herion Research", "role": "Ricerca normativa"},
+    "monitor": {"name": "Herion Monitor", "role": "Monitoraggio"},
+    "advisor": {"name": "Herion Advisor", "role": "Spiegazione"},
+    "guard": {"name": "Herion Guard", "role": "Protezione confini"},
+    "father": {"name": "Herion Supervisore", "role": "Verifica finale prima dell'approvazione"},
+}
+
+ACTIVITY_LABELS = {
+    "upload_documents": {"label": "Carica i documenti richiesti", "description": "Per procedere, carica i documenti indicati come mancanti."},
+    "review_draft": {"label": "Verifica il riepilogo", "description": "Herion ha completato l'analisi. Leggi il riepilogo e decidi se approvare."},
+    "approve_submission": {"label": "Approva per procedere", "description": "Dopo la tua approvazione, la pratica passera alla fase successiva."},
+    "sign_document": {"label": "Firma il documento", "description": "Alcuni documenti richiedono la tua firma digitale."},
+    "official_step": {"label": "Completa il passaggio ufficiale", "description": "Accedi al portale dell'ente con le tue credenziali e completa l'invio."},
+    "upload_proof": {"label": "Carica la ricevuta", "description": "Dopo l'invio, carica la ricevuta o il numero di protocollo."},
+    "wait_response": {"label": "In attesa di risposta", "description": "La pratica e stata inviata. Attendi la risposta dall'ente."},
+    "complete_practice": {"label": "Chiudi la pratica", "description": "Conferma il completamento quando hai ricevuto la conferma dall'ente."},
+}
+
+
+def build_father_review(practice: dict, catalog: dict, channel: dict, docs_count: int, missing_docs: list) -> dict:
+    """Build the Father agent supervisory review for approval phase."""
+    status = practice.get("status", "")
+    is_approval = status in ("waiting_user_review", "waiting_approval")
+    if not is_approval:
+        return {"active": False}
+
+    orchestration = practice.get("orchestration_result") or {}
+    all_completed = orchestration.get("steps") and all(s.get("status") == "completed" for s in orchestration.get("steps", []))
+    risk_level = orchestration.get("risk_level", "medium")
+    delegation_status = orchestration.get("delegation_status", "not_required")
+    has_missing = len(missing_docs) > 0
+
+    # Compatibility check
+    if catalog and channel:
+        compat = "I documenti ricevuti sono compatibili con la pratica richiesta"
+    elif catalog:
+        compat = "Pratica riconosciuta nel catalogo, canale ufficiale da verificare"
+    else:
+        compat = "Pratica non presente nel catalogo standard, verifica manuale consigliata"
+
+    # Requirements check
+    if all_completed and not has_missing:
+        req_check = "Tutti i requisiti principali risultano verificati"
+    elif has_missing:
+        req_check = f"Attenzione: {len(missing_docs)} documenti mancanti ({', '.join(missing_docs[:3])})"
+    else:
+        req_check = "Verifica requisiti parziale. Alcuni agenti non hanno completato l'analisi."
+
+    # Document check
+    doc_check = f"Ricevuti {docs_count} documenti" + (". Documentazione essenziale presente." if not has_missing else f". Mancano ancora {len(missing_docs)} documenti.")
+
+    # Entity validation
+    if channel:
+        entity_check = f"La pratica e coerente con i requisiti di {channel.get('name', 'ente destinatario')}"
+    else:
+        entity_check = "Ente destinatario non specificato. Verifica necessaria."
+
+    # Approval recommendation
+    can_approve = all_completed and not has_missing and risk_level != "high"
+    if can_approve:
+        recommendation = "Approvazione consigliata"
+        summary = "Abbiamo verificato che la pratica puo procedere in sicurezza"
+    elif risk_level == "high":
+        recommendation = "Approvazione sconsigliata - rischio alto"
+        summary = "Il livello di rischio e alto. Consigliamo una revisione approfondita prima di procedere."
+    elif has_missing:
+        recommendation = "Approvazione prematura - documenti mancanti"
+        summary = f"Mancano ancora {len(missing_docs)} documenti. Consigliamo di completare la documentazione."
+    else:
+        recommendation = "Approvazione possibile con cautela"
+        summary = "Alcuni controlli non sono completi al 100%, ma la pratica puo procedere con attenzione."
+
+    return {
+        "active": True,
+        "compatibility_check": compat,
+        "requirements_check": req_check,
+        "document_received_check": doc_check,
+        "entity_validation_check": entity_check,
+        "estimated_opening_time": "Elaborazione prevista entro 1 giorno lavorativo",
+        "estimated_closing_time": "Chiusura prevista entro 5-10 giorni lavorativi" if channel else "Tempistiche dipendono dall'ente destinatario",
+        "approval_recommendation": recommendation,
+        "summary_for_user": summary,
+        "path_summary": f"Hai completato: raccolta documenti, analisi di {len(orchestration.get('steps', []))} agenti specializzati" + (", verifica conformita" if all_completed else ""),
+        "goal_summary": "L'obiettivo ora e autorizzare l'avanzamento verso l'invio ufficiale" if channel and not channel.get("auto_submission") else "L'obiettivo ora e completare la pratica",
+        "timing_summary": "Dopo l'approvazione, la pratica entrera nella fase finale" + (" di invio all'ente" if channel else " di completamento"),
+    }
+
+
+def determine_current_activity(status: str, missing_docs: list, channel: dict, has_proof: bool) -> dict:
+    """Determine the main user-facing activity based on practice state."""
+    is_external = channel and not channel.get("auto_submission", True)
+
+    if status == "draft":
+        return {"code": "start_practice", "label": "Inizia la pratica", "description": "Leggi le informazioni e avvia il percorso.", "why_it_matters": "Per procedere devi prima capire cosa serve.", "user_action_required": True, "required_action_label": "Inizia la pratica", "required_action_detail": "Clicca il pulsante per avviare."}
+    elif status == "waiting_user_documents":
+        if missing_docs:
+            return {"code": "upload_documents", "label": "Carica i documenti mancanti", "description": f"Mancano {len(missing_docs)} documenti: {', '.join(missing_docs[:3])}.", "why_it_matters": "Senza questi documenti Herion non puo completare l'analisi.", "user_action_required": True, "required_action_label": "Carica documenti", "required_action_detail": "Vai alla sezione documenti e carica i file richiesti."}
+        return {"code": "run_analysis", "label": "Avvia l'analisi", "description": "I documenti sono presenti. Puoi avviare l'analisi di Herion.", "why_it_matters": "L'analisi verifica completezza e conformita.", "user_action_required": True, "required_action_label": "Avvia analisi", "required_action_detail": "Clicca 'Avvia Analisi Herion'."}
+    elif status in ("internal_processing", "in_progress", "processing"):
+        return {"code": "herion_working", "label": "Herion sta lavorando", "description": "Gli agenti stanno verificando documenti e conformita.", "why_it_matters": "Al termine ti chiederemo di verificare il risultato.", "user_action_required": False, "required_action_label": "", "required_action_detail": ""}
+    elif status in ("waiting_user_review", "waiting_approval"):
+        return {"code": "approve_submission", **ACTIVITY_LABELS["approve_submission"], "why_it_matters": "La tua approvazione e necessaria per procedere.", "user_action_required": True, "required_action_label": "Approva", "required_action_detail": "Leggi il riepilogo e clicca Approva."}
+    elif status == "waiting_signature":
+        return {"code": "sign_document", **ACTIVITY_LABELS["sign_document"], "why_it_matters": "La firma digitale e obbligatoria per questo tipo di pratica.", "user_action_required": True, "required_action_label": "Firma", "required_action_detail": "Firma i documenti con la tua firma digitale."}
+    elif status == "ready_for_submission":
+        if is_external:
+            return {"code": "official_step", **ACTIVITY_LABELS["official_step"], "why_it_matters": "L'invio ufficiale deve essere fatto da te sul portale dell'ente.", "user_action_required": True, "required_action_label": "Accedi e invia", "required_action_detail": f"Vai su {channel.get('name', 'portale ente')} e completa l'invio."}
+        return {"code": "complete_practice", "label": "Conferma completamento", "description": "La pratica e pronta per essere chiusa.", "why_it_matters": "Conferma per registrare il completamento.", "user_action_required": True, "required_action_label": "Completa", "required_action_detail": "Clicca per confermare."}
+    elif status in ("submitted_manually", "submitted_via_channel"):
+        if not has_proof:
+            return {"code": "upload_proof", **ACTIVITY_LABELS["upload_proof"], "why_it_matters": "La ricevuta conferma l'avvenuto invio.", "user_action_required": True, "required_action_label": "Carica ricevuta", "required_action_detail": "Carica il numero di protocollo o la ricevuta."}
+        return {"code": "wait_response", **ACTIVITY_LABELS["wait_response"], "why_it_matters": "La risposta arrivera dall'ente tramite il canale ufficiale.", "user_action_required": False, "required_action_label": "", "required_action_detail": ""}
+    elif status == "waiting_external_response":
+        return {"code": "wait_response", **ACTIVITY_LABELS["wait_response"], "why_it_matters": "La risposta dell'ente arrivera tramite il canale ufficiale.", "user_action_required": False, "required_action_label": "", "required_action_detail": ""}
+    elif status in ("completed", "accepted_by_entity"):
+        return {"code": "done", "label": "Pratica completata", "description": "Tutto e stato completato con successo.", "why_it_matters": "", "user_action_required": False, "required_action_label": "", "required_action_detail": ""}
+    elif status in ("blocked", "escalated", "internal_validation_failed"):
+        return {"code": "resolve_blocker", "label": "Risolvi il problema", "description": "La pratica e bloccata e richiede un tuo intervento.", "why_it_matters": "Senza la tua azione la pratica non puo procedere.", "user_action_required": True, "required_action_label": "Intervieni", "required_action_detail": "Leggi i dettagli del blocco e segui le indicazioni."}
+    return {"code": "unknown", "label": "Stato non riconosciuto", "description": "", "why_it_matters": "", "user_action_required": False, "required_action_label": "", "required_action_detail": ""}
+
+
+def build_ui_guidance(status: str, missing_docs: list, channel: dict, is_approval: bool, father_review: dict) -> dict:
+    """Build concise UI guidance for the frontend."""
+    is_external = channel and not channel.get("auto_submission", True)
+    entity_name = channel.get("name", "ente competente") if channel else "ente competente"
+
+    if status == "draft":
+        return {"headline": "Pratica non ancora avviata", "subheadline": "Leggi le informazioni sulla pratica e avvia il percorso.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Inizia la pratica' per cominciare."}
+    elif status == "waiting_user_documents":
+        if missing_docs:
+            return {"headline": "In attesa dei tuoi documenti", "subheadline": f"Mancano ancora {len(missing_docs)} documenti per procedere.", "next_step_label": "Cosa fare", "next_step_detail": f"Carica: {', '.join(missing_docs[:3])}."}
+        return {"headline": "Documenti ricevuti", "subheadline": "Puoi avviare l'analisi di Herion.", "next_step_label": "Prossimo passo", "next_step_detail": "Clicca 'Avvia Analisi Herion'."}
+    elif status in ("internal_processing", "in_progress", "processing"):
+        return {"headline": "Herion sta analizzando la pratica", "subheadline": "Stiamo verificando documenti, conformita e requisiti.", "next_step_label": "Cosa succede dopo", "next_step_detail": "Ti chiederemo di verificare il risultato prima di procedere."}
+    elif status in ("waiting_user_review", "waiting_approval"):
+        if is_approval and father_review.get("active"):
+            return {"headline": "La pratica e pronta per la tua approvazione", "subheadline": father_review.get("summary_for_user", "Abbiamo verificato documenti e requisiti."), "next_step_label": "Cosa succede dopo", "next_step_detail": father_review.get("timing_summary", "Dopo l'approvazione la pratica proseguira.")}
+        return {"headline": "Serve la tua approvazione", "subheadline": "L'analisi e completa. Verifica il riepilogo e approva.", "next_step_label": "Prossimo passo", "next_step_detail": "Leggi il riepilogo e clicca Approva."}
+    elif status == "waiting_signature":
+        return {"headline": "In attesa della tua firma", "subheadline": "Alcuni documenti richiedono la tua firma digitale.", "next_step_label": "Cosa fare", "next_step_detail": "Firma i documenti richiesti per procedere."}
+    elif status == "ready_for_submission":
+        if is_external:
+            return {"headline": f"Pronta per l'invio a {entity_name}", "subheadline": "Herion ha preparato tutto. L'invio ufficiale va fatto da te.", "next_step_label": "Cosa fare", "next_step_detail": f"Accedi a {entity_name} con le tue credenziali e completa l'invio."}
+        return {"headline": "Pronta per il completamento", "subheadline": "La pratica e pronta per essere chiusa.", "next_step_label": "Prossimo passo", "next_step_detail": "Conferma il completamento."}
+    elif status in ("submitted_manually", "submitted_via_channel"):
+        return {"headline": "Pratica inviata", "subheadline": f"L'invio a {entity_name} e stato registrato.", "next_step_label": "Cosa succede ora", "next_step_detail": "La risposta arrivera tramite il canale ufficiale dell'ente."}
+    elif status == "waiting_external_response":
+        return {"headline": f"In attesa di risposta da {entity_name}", "subheadline": "La pratica e stata inviata correttamente.", "next_step_label": "Cosa fare", "next_step_detail": "Quando ricevi la risposta, aggiorna lo stato della pratica."}
+    elif status in ("completed", "accepted_by_entity"):
+        return {"headline": "Pratica completata", "subheadline": "Tutto e stato concluso con successo.", "next_step_label": "", "next_step_detail": ""}
+    elif status in ("blocked", "escalated", "internal_validation_failed"):
+        return {"headline": "Pratica bloccata", "subheadline": "Serve un tuo intervento per procedere.", "next_step_label": "Cosa fare", "next_step_detail": "Controlla i dettagli del blocco o chiedi a Herion."}
+    return {"headline": "Stato pratica", "subheadline": "", "next_step_label": "", "next_step_detail": ""}
+
+
+@api_router.get("/practices/{practice_id}/workspace")
+async def get_practice_workspace(practice_id: str, user: dict = Depends(get_current_user)):
+    """The real source of truth for what is happening in a practice."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    status = practice.get("status", "draft")
+    agent_logs = practice.get("agent_logs", [])
+    orchestration = practice.get("orchestration_result") or {}
+
+    # Catalog + Channel
+    practice_type = practice.get("practice_type", "")
+    catalog = await db.practice_catalog.find_one({"practice_id": practice_type}, {"_id": 0})
+    if not catalog:
+        LEGACY_MAP = {"vat_registration": "VAT_OPEN_PF", "vat_closure": "VAT_CLOSURE_PF", "tax_declaration": "VAT_DECLARATION", "f24_payment": "F24_PREPARATION", "inps_registration": "INPS_GESTIONE_SEP", "company_formation": "COMPANY_CLOSURE"}
+        mapped = LEGACY_MAP.get(practice_type)
+        if mapped:
+            catalog = await db.practice_catalog.find_one({"practice_id": mapped}, {"_id": 0})
+    channel = None
+    if catalog:
+        channel = await db.authority_registry.find_one({"related_practices": catalog.get("practice_id", "")}, {"_id": 0})
+
+    # Documents
+    docs = await db.documents.find({"practice_id": practice_id, "is_deleted": False}, {"_id": 0}).to_list(100)
+    required_doc_keys = catalog.get("required_documents", []) if catalog else []
+    uploaded_categories = list(set(d.get("category") for d in docs))
+    missing_docs_keys = [k for k in required_doc_keys if k not in uploaded_categories]
+    DOC_LABELS = {"identity": "Documento di identita", "tax_declarations": "Dichiarazioni fiscali", "vat_documents": "Documenti IVA", "invoices": "Fatture", "company_documents": "Documenti societari", "accounting": "Documenti contabili", "compliance": "Conformita", "payroll": "Buste paga", "tax": "Documenti fiscali", "practice_documents": "Documenti pratica"}
+    missing_docs_labels = [DOC_LABELS.get(k, k) for k in missing_docs_keys]
+
+    generated_docs = [d for d in docs if d.get("source") in ("system", "agent")]
+    signed_docs = [d for d in docs if d.get("original_filename", "").endswith(".p7m") or d.get("signed")]
+    needs_signature = [d for d in docs if d.get("needs_signature") and not d.get("signed") and not d.get("original_filename", "").endswith(".p7m")]
+
+    # Proof
+    proof = practice.get("proof_layer") or {}
+    has_proof = proof.get("status") in ("received", "verified")
+
+    # Delegation
+    delegation = practice.get("delegation") or {}
+
+    # Current agent
+    is_approval = status in ("waiting_user_review", "waiting_approval")
+    current_agent = None
+    if is_approval:
+        current_agent = {"name": "Herion Supervisore", "status": "in_progress", "title": "Verifica finale prima dell'approvazione", "message": "Sto verificando documenti, requisiti e compatibilita prima di consigliare l'approvazione.", "started_at": practice.get("updated_at"), "updated_at": practice.get("updated_at")}
+    elif status in ("internal_processing", "in_progress", "processing"):
+        running = [l for l in agent_logs if l.get("status") == "running"]
+        if running:
+            last = running[-1]
+            a_info = AGENT_LABELS.get(last.get("agent_type"), {})
+            current_agent = {"name": a_info.get("name", last.get("branded_name", "")), "status": "in_progress", "title": a_info.get("role", ""), "message": last.get("explanation", "Analisi in corso"), "started_at": last.get("started_at"), "updated_at": last.get("completed_at") or last.get("started_at")}
+        else:
+            current_agent = {"name": "Herion", "status": "in_progress", "title": "Elaborazione", "message": "Analisi in corso", "started_at": practice.get("updated_at"), "updated_at": practice.get("updated_at")}
+    elif agent_logs:
+        last_log = agent_logs[-1]
+        a_info = AGENT_LABELS.get(last_log.get("agent_type"), {})
+        current_agent = {"name": a_info.get("name", last_log.get("branded_name", "")), "status": last_log.get("status", "completed"), "title": a_info.get("role", ""), "message": last_log.get("explanation", ""), "started_at": last_log.get("started_at"), "updated_at": last_log.get("completed_at") or last_log.get("started_at")}
+
+    # Completed activities
+    completed_activities = []
+    for log in agent_logs:
+        if log.get("status") == "completed":
+            a_info = AGENT_LABELS.get(log.get("agent_type"), {})
+            completed_activities.append({"code": log.get("agent_type"), "label": a_info.get("name", log.get("branded_name", "")), "completed_at": log.get("completed_at")})
+
+    # Current activity
+    current_activity = determine_current_activity(status, missing_docs_labels, channel, has_proof)
+
+    # Next activity
+    next_activity = None
+    step_idx = PRACTICE_STEP_MAP.get(status, 0)
+    if step_idx >= 0 and step_idx < 5:
+        NEXT_MAP = {0: {"code": "upload", "label": "Caricamento documenti", "description": "Il prossimo passo e caricare i documenti richiesti."}, 1: {"code": "process", "label": "Analisi Herion", "description": "Herion analizzera documenti e conformita."}, 2: {"code": "review", "label": "Verifica e approvazione", "description": "Verificherai il risultato e approverai per procedere."}, 3: {"code": "sign_or_submit", "label": "Firma o invio", "description": "Firma e/o invio ufficiale."}, 4: {"code": "complete", "label": "Completamento", "description": "Chiusura della pratica."}}
+        next_activity = NEXT_MAP.get(step_idx)
+
+    # Blockers
+    blockers = []
+    if status in ("blocked", "escalated", "internal_validation_failed", "rejected_by_entity"):
+        if status == "blocked":
+            blockers.append({"code": "practice_blocked", "label": "Pratica bloccata", "detail": "La pratica richiede un intervento per procedere. Controlla i dettagli o chiedi a Herion.", "severity": "high"})
+        elif status == "escalated":
+            blockers.append({"code": "escalation_active", "label": "Escalation attiva", "detail": "Il livello di rischio e alto. E necessaria una revisione approfondita.", "severity": "high"})
+        elif status == "internal_validation_failed":
+            blockers.append({"code": "validation_failed", "label": "Problemi nella verifica", "detail": "Herion ha trovato problemi durante l'analisi. Controlla il riepilogo.", "severity": "medium"})
+        elif status == "rejected_by_entity":
+            blockers.append({"code": "entity_rejected", "label": "Rifiutata dall'ente", "detail": "L'ente ha rifiutato la pratica. Verifica il motivo e correggi.", "severity": "high"})
+    if missing_docs_labels and status not in ("draft", "completed"):
+        blockers.append({"code": "missing_documents", "label": "Documenti mancanti", "detail": f"Mancano: {', '.join(missing_docs_labels[:5])}", "severity": "medium"})
+
+    # Father review
+    father_review = build_father_review(practice, catalog, channel, len(docs), missing_docs_labels)
+
+    # Approval
+    approval = {
+        "needed": is_approval,
+        "status": "waiting" if is_approval else ("approved" if status in ("ready_for_submission", "submitted_manually", "submitted_via_channel", "completed", "accepted_by_entity") else "none"),
+        "reason": orchestration.get("admin_summary", "")[:200] if is_approval else "",
+        "father_review": father_review,
+    }
+
+    # Timeline summary (last 10 events)
+    events = await db.practice_timeline.find({"practice_id": practice_id}, {"_id": 0}).sort("timestamp", -1).limit(10).to_list(10)
+    timeline_summary = []
+    for e in events:
+        evt_type = "info"
+        if "completed" in e.get("event_type", "") or e.get("event_type") == "approved":
+            evt_type = "success"
+        elif "blocked" in e.get("event_type", "") or "failed" in e.get("event_type", "") or "rejected" in e.get("event_type", ""):
+            evt_type = "error"
+        elif "waiting" in e.get("event_type", ""):
+            evt_type = "warning"
+        timeline_summary.append({"time": e.get("timestamp"), "event": e.get("event_label", e.get("event_type", "")), "type": evt_type})
+
+    # UI guidance
+    ui_guidance = build_ui_guidance(status, missing_docs_labels, channel, is_approval, father_review)
+
+    # Official action
+    official_action = None
+    if catalog and channel:
+        is_external = not channel.get("auto_submission", True)
+        official_action = {
+            "entity_name": channel.get("name", ""),
+            "entity_type": channel.get("destination_type", ""),
+            "action_code": catalog.get("practice_id", ""),
+            "action_label": catalog.get("name", ""),
+            "action_description": catalog.get("user_explanation", catalog.get("description", "")),
+            "submission_channel": channel.get("required_channel", "unknown"),
+            "official_response_type": "ricevuta" if channel.get("required_channel") == "official_portal" else "pec" if channel.get("required_channel") == "PEC" else "nessuna_ricevuta_immediata",
+            "credentials_required": is_external,
+            "credentials_owner": "user" if is_external else "none",
+            "can_herion_prepare": True,
+            "can_herion_submit": channel.get("auto_submission", False),
+            "requires_user_direct_step": is_external,
+            "requires_delegation": catalog.get("delegation_required", False),
+            "portal_url": channel.get("portal_url"),
+        }
+
+    return {
+        "practice_id": practice_id,
+        "practice_name": practice.get("practice_type_label", ""),
+        "client_name": practice.get("client_name", ""),
+        "user_status": USER_STATUS_DISPLAY.get(status, USER_STATUS_DISPLAY.get("draft")),
+        "current_step": PRACTICE_STEP_MAP.get(status, 0),
+        "current_agent": current_agent,
+        "current_activity": current_activity,
+        "completed_activities": completed_activities,
+        "next_activity": next_activity,
+        "blockers": blockers,
+        "documents_summary": {
+            "total_count": len(docs),
+            "missing_count": len(missing_docs_labels),
+            "missing_labels": missing_docs_labels,
+            "received_count": len(docs) - len(generated_docs),
+            "generated_count": len(generated_docs),
+            "signed_count": len(signed_docs),
+            "requires_signature_count": len(needs_signature),
+        },
+        "delegation": {
+            "enabled": delegation.get("enabled", False),
+            "level": delegation.get("level", "assist"),
+            "scope": delegation.get("scope", []),
+            "scope_labels": {s: DELEGATION_SCOPES.get(s, s) for s in delegation.get("scope", [])},
+            "entity_scope": delegation.get("entity_scope"),
+            "granted_at": delegation.get("granted_at"),
+            "expires_at": delegation.get("expires_at"),
+            "revocable": delegation.get("revocable", True),
+        },
+        "official_action": official_action,
+        "proof_layer": {
+            "expected": bool(official_action and official_action.get("requires_user_direct_step")),
+            "proof_type": proof.get("proof_type"),
+            "proof_type_label": PROOF_TYPES.get(proof.get("proof_type", ""), ""),
+            "status": proof.get("status", "missing"),
+            "reference_code": proof.get("reference_code"),
+            "received_at": proof.get("received_at"),
+            "verified_by_herion": proof.get("verified_by_herion", False),
+        },
+        "approval": approval,
+        "timeline_summary": timeline_summary,
+        "ui_guidance": ui_guidance,
+    }
+
 
 # ========================
 # PRACTICE TIMELINE

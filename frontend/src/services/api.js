@@ -47,6 +47,16 @@ export const markPracticeSubmitted = (practiceId, submissionType = 'manual', not
   api.post(`/practices/${practiceId}/mark-submitted`, { submission_type: submissionType, notes });
 export const markPracticeCompleted = (practiceId) =>
   api.post(`/practices/${practiceId}/mark-completed`);
+export const getPracticeWorkspace = (practiceId) =>
+  api.get(`/practices/${practiceId}/workspace`);
+export const delegatePractice = (practiceId, data) =>
+  api.post(`/practices/${practiceId}/delegate`, data);
+export const revokeDelegation = (practiceId, data = {}) =>
+  api.post(`/practices/${practiceId}/revoke-delegation`, data);
+export const uploadProof = (practiceId, data) =>
+  api.post(`/practices/${practiceId}/proof`, data);
+export const completeOfficialStep = (practiceId, data) =>
+  api.post(`/practices/${practiceId}/complete-official-step`, data);
 export const runPracticeWorkflow = (practiceId) =>
   api.post(`/practices/${practiceId}/run`);
 export const getPracticeTimeline = (practiceId) =>

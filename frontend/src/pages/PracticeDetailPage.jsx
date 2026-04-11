@@ -331,36 +331,64 @@ export default function PracticeDetailPage() {
             approving={approving}
           />
 
-          {/* Documents */}
+          {/* Documents — Clarity System */}
           <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-1">
               <p className="text-[12px] font-bold text-[var(--text-primary)]">Documenti</p>
               <label className="cursor-pointer">
-                <input type="file" onChange={handleFileSelect} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" data-testid="file-input" />
-                <Button variant="outline" className="rounded-lg text-[10px] h-7 px-3" style={{ borderColor: 'var(--border-soft)' }} disabled={uploading} asChild>
+                <input type="file" onChange={handleFileSelect} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.p7m" data-testid="file-input" />
+                <Button variant="outline" className="rounded-xl text-[10px] h-7 px-3" style={{ borderColor: 'var(--border-soft)' }} disabled={uploading} asChild>
                   <span>{uploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}Carica</span>
                 </Button>
               </label>
             </div>
+            <p className="text-[10px] text-[var(--text-muted)] mb-3">Carica i documenti richiesti per procedere con la pratica</p>
+
             {documents.length > 0 ? (
               <div className="space-y-1">
-                {documents.map(doc => (
-                  <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid={`document-${doc.id}`}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <File className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{doc.original_filename}</p>
-                        <p className="text-[9px] text-[var(--text-muted)]">{DOC_CATEGORIES.find(c => c.key === doc.category)?.label || ''} &middot; {format(new Date(doc.created_at), 'dd MMM yyyy', { locale: it })}</p>
+                {documents.map(doc => {
+                  const isP7m = doc.original_filename?.endsWith('.p7m');
+                  const isGenerated = doc.source === 'system' || doc.source === 'agent';
+                  const isSigned = isP7m || doc.signed;
+                  const catLabel = DOC_CATEGORIES.find(c => c.key === doc.category)?.label || '';
+                  return (
+                    <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid={`document-${doc.id}`}>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <File className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{doc.original_filename}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[9px] text-[var(--text-muted)]">{catLabel}</span>
+                            {isGenerated && <span className="text-[8px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">Generato da Herion</span>}
+                            {isSigned && (
+                              <span className="text-[8px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5" title="Documento firmato digitalmente (formato p7m)">
+                                Firmato {isP7m ? '(p7m)' : ''}
+                              </span>
+                            )}
+                            {!isGenerated && !isSigned && <span className="text-[8px] font-bold bg-[var(--bg-soft)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Caricato</span>}
+                          </div>
+                        </div>
                       </div>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded"><Download className="w-3 h-3" /></Button>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded"><Download className="w-3 h-3" /></Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="border border-dashed rounded-lg p-5 text-center" style={{ borderColor: 'var(--border-soft)' }}>
-                <Upload className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-1.5 opacity-40" strokeWidth={1.5} />
-                <p className="text-[11px] text-[var(--text-muted)]">Nessun documento</p>
+              <div className="border border-dashed rounded-xl p-5 text-center" style={{ borderColor: 'var(--border-soft)' }}>
+                <Upload className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-2 opacity-40" strokeWidth={1.5} />
+                <p className="text-[12px] text-[var(--text-secondary)] font-medium">Nessun documento ancora</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Carica i documenti necessari per avviare la pratica</p>
+              </div>
+            )}
+
+            {/* p7m explanation */}
+            {documents.some(d => d.original_filename?.endsWith('.p7m')) && (
+              <div className="mt-3 p-3 bg-[var(--bg-soft)] rounded-lg flex items-start gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0ABFCF] flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-[var(--text-secondary)]">
+                  I file <strong>.p7m</strong> sono documenti firmati digitalmente. Questa firma garantisce l'autenticita e l'integrita del documento.
+                </p>
               </div>
             )}
           </div>

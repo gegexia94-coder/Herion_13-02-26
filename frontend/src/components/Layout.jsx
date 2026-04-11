@@ -4,12 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X } from 'lucide-react';
+import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen } from 'lucide-react';
 import { HerionBrand } from '@/components/HerionLogo';
 
 const sideNav = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hint: 'Panoramica e azioni rapide' },
-  { path: '/practices', label: 'Pratiche', icon: FileText, hint: 'Tutte le tue pratiche' },
+  { path: '/practices', label: 'Pratiche', icon: FileText, hint: 'Gestisci le tue pratiche' },
+  { path: '/vault', label: 'Documenti', icon: FolderOpen, hint: 'Tutti i tuoi documenti' },
+  { path: '/agents', label: 'Agenti', icon: Bot, hint: 'Attivita degli agenti' },
   { path: '/email-center', label: 'Comunicazione', icon: Mail, hint: 'Email e messaggi' },
   { path: '/search', label: 'Ricerca', icon: Search, hint: 'Cerca pratiche e documenti' },
   { path: '/support', label: 'Supporto', icon: HelpCircle, hint: 'Aiuto e contatti' },

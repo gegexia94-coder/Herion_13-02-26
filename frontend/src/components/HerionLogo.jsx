@@ -1,103 +1,72 @@
-// Herion Logo Component - Premium, Minimal, Geometric
-export function HerionLogo({ size = 'md', variant = 'full', className = '' }) {
-  const sizes = {
-    sm: { icon: 28, text: 'text-lg' },
-    md: { icon: 36, text: 'text-xl' },
-    lg: { icon: 48, text: 'text-2xl' },
-    xl: { icon: 64, text: 'text-3xl' }
-  };
-
-  const { icon, text } = sizes[size] || sizes.md;
-
-  // Abstract "H" Logo Mark - Geometric, Premium, Minimal
-  const LogoMark = () => (
-    <svg 
-      width={icon} 
-      height={icon} 
-      viewBox="0 0 48 48" 
-      fill="none" 
+export function HerionMark({ size = 32, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 40 40"
+      fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="flex-shrink-0"
+      className={className}
+      data-testid="herion-mark"
     >
-      {/* Background shape with subtle gradient effect */}
-      <rect x="2" y="2" width="44" height="44" rx="12" fill="#0A192F" />
-      
-      {/* Abstract "H" formed by geometric shapes */}
-      <path 
-        d="M14 12V36" 
-        stroke="#3B82F6" 
-        strokeWidth="4" 
+      <rect width="40" height="40" rx="10" fill="#1E2430" />
+      <path
+        d="M12 10L12 30"
+        stroke="url(#h-grad)"
+        strokeWidth="3.5"
         strokeLinecap="round"
       />
-      <path 
-        d="M34 12V36" 
-        stroke="#3B82F6" 
-        strokeWidth="4" 
+      <path
+        d="M28 10L28 30"
+        stroke="url(#h-grad)"
+        strokeWidth="3.5"
         strokeLinecap="round"
       />
-      <path 
-        d="M14 24H34" 
-        stroke="#3B82F6" 
-        strokeWidth="4" 
+      <path
+        d="M12 20L28 20"
+        stroke="url(#h-grad)"
+        strokeWidth="3.5"
         strokeLinecap="round"
       />
-      
-      {/* Accent element - small diamond for premium touch */}
-      <path 
-        d="M24 18L27 21L24 24L21 21L24 18Z" 
-        fill="#3B82F6"
-        opacity="0.6"
-      />
+      <circle cx="12" cy="10" r="2" fill="#C4D9FF" />
+      <circle cx="28" cy="10" r="2" fill="#C5BAFF" />
+      <circle cx="12" cy="30" r="2" fill="#C5BAFF" />
+      <circle cx="28" cy="30" r="2" fill="#C4D9FF" />
+      <defs>
+        <linearGradient id="h-grad" x1="12" y1="10" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#C4D9FF" />
+          <stop offset="1" stopColor="#C5BAFF" />
+        </linearGradient>
+      </defs>
     </svg>
   );
-
-  // Icon-only variant
-  if (variant === 'icon') {
-    return <LogoMark />;
-  }
-
-  // Full logo with text
-  return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <LogoMark />
-      {variant === 'full' && (
-        <div className="flex flex-col">
-          <span className={`font-semibold tracking-tight text-[#0A192F] ${text}`}>
-            Herion
-          </span>
-          {size === 'lg' || size === 'xl' ? (
-            <span className="text-[10px] tracking-[0.15em] uppercase text-[#5C5C59] font-medium">
-              Precision. Control. Confidence.
-            </span>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
 }
 
-// Compact logo for navbar
-export function HerionLogoCompact({ className = '' }) {
+export function HerionMarkLight({ size = 32, className = '' }) {
   return (
-    <div className={`flex items-center gap-2.5 ${className}`}>
-      <svg 
-        width="32" 
-        height="32" 
-        viewBox="0 0 48 48" 
-        fill="none" 
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <rect x="2" y="2" width="44" height="44" rx="12" fill="#0A192F" />
-        <path d="M14 12V36" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"/>
-        <path d="M34 12V36" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"/>
-        <path d="M14 24H34" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"/>
-        <path d="M24 18L27 21L24 24L21 21L24 18Z" fill="#3B82F6" opacity="0.6"/>
-      </svg>
-      <span className="text-xl font-semibold tracking-tight text-[#0A192F]">
-        Herion
-      </span>
-    </div>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      data-testid="herion-mark-light"
+    >
+      <rect width="40" height="40" rx="10" fill="white" fillOpacity="0.1" />
+      <path d="M12 10L12 30" stroke="url(#h-grad-l)" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M28 10L28 30" stroke="url(#h-grad-l)" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M12 20L28 20" stroke="url(#h-grad-l)" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx="12" cy="10" r="2" fill="#C4D9FF" />
+      <circle cx="28" cy="10" r="2" fill="#C5BAFF" />
+      <circle cx="12" cy="30" r="2" fill="#C5BAFF" />
+      <circle cx="28" cy="30" r="2" fill="#C4D9FF" />
+      <defs>
+        <linearGradient id="h-grad-l" x1="12" y1="10" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#C4D9FF" />
+          <stop offset="1" stopColor="#C5BAFF" />
+        </linearGradient>
+      </defs>
+    </svg>
   );
 }
-
-export default HerionLogo;

@@ -8,22 +8,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock, Circle, Shield, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Upload, Clock, CheckCircle, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock, Circle, Shield, RefreshCw } from 'lucide-react';
 import { AgentPipeline } from '@/components/AgentPipeline';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const BRANDED_AGENTS = [
-  { type: 'intake', branded: 'Herion Intake', name: 'Raccolta', icon: ClipboardList, step: 1, color: 'text-sky-600', bg: 'bg-sky-50' },
-  { type: 'ledger', branded: 'Herion Ledger', name: 'Contabilita', icon: Calculator, step: 2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { type: 'compliance', branded: 'Herion Compliance', name: 'Conformita', icon: ShieldCheck, step: 3, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { type: 'documents', branded: 'Herion Documents', name: 'Documenti', icon: FileText, step: 4, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { type: 'delegate', branded: 'Herion Delegate', name: 'Delega', icon: KeyRound, step: 5, color: 'text-violet-600', bg: 'bg-violet-50' },
-  { type: 'deadline', branded: 'Herion Deadline', name: 'Scadenze', icon: Timer, step: 6, color: 'text-rose-600', bg: 'bg-rose-50' },
-  { type: 'flow', branded: 'Herion Flow', name: 'Flusso', icon: GitBranch, step: 7, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  { type: 'monitor', branded: 'Herion Monitor', name: 'Monitoraggio', icon: Activity, step: 8, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { type: 'advisor', branded: 'Herion Advisor', name: 'Spiegazione', icon: MessageCircle, step: 9, color: 'text-purple-600', bg: 'bg-purple-50' },
+  { type: 'intake', branded: 'Herion Intake', name: 'Raccolta', icon: ClipboardList, step: 1 },
+  { type: 'ledger', branded: 'Herion Ledger', name: 'Contabilita', icon: Calculator, step: 2 },
+  { type: 'compliance', branded: 'Herion Compliance', name: 'Conformita', icon: ShieldCheck, step: 3 },
+  { type: 'documents', branded: 'Herion Documents', name: 'Documenti', icon: FileText, step: 4 },
+  { type: 'delegate', branded: 'Herion Delegate', name: 'Delega', icon: KeyRound, step: 5 },
+  { type: 'deadline', branded: 'Herion Deadline', name: 'Scadenze', icon: Timer, step: 6 },
+  { type: 'flow', branded: 'Herion Flow', name: 'Flusso', icon: GitBranch, step: 7 },
+  { type: 'monitor', branded: 'Herion Monitor', name: 'Monitoraggio', icon: Activity, step: 8 },
+  { type: 'advisor', branded: 'Herion Advisor', name: 'Spiegazione', icon: MessageCircle, step: 9 },
 ];
 
 const DOC_CATEGORIES = [
@@ -34,186 +34,42 @@ const DOC_CATEGORIES = [
   { key: 'activity', label: 'Attivita' }, { key: 'other', label: 'Altro' },
 ];
 
-const STATUS_CONFIG = {
-  draft: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', label: 'Bozza' },
-  pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'In Attesa' },
-  in_progress: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'In Elaborazione' },
-  processing: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'In Elaborazione' },
-  waiting_approval: { bg: 'bg-[#0A192F]/5', text: 'text-[#0A192F]', border: 'border-[#0A192F]/20', label: 'In Attesa di Approvazione' },
-  approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Approvata' },
-  submitted: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Inviata' },
-  completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Completata' },
-  blocked: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Bloccata' },
-  escalated: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Escalation' },
-  rejected: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Rifiutata' },
+const STATUS_MAP = {
+  draft: { label: 'Bozza', color: '#5B6475' },
+  pending: { label: 'In Attesa', color: '#F59E0B' },
+  in_progress: { label: 'In Elaborazione', color: '#3B82F6' },
+  processing: { label: 'In Elaborazione', color: '#3B82F6' },
+  waiting_approval: { label: 'Approvazione', color: '#F59E0B' },
+  approved: { label: 'Approvata', color: '#10B981' },
+  submitted: { label: 'Inviata', color: '#06B6D4' },
+  completed: { label: 'Completata', color: '#10B981' },
+  blocked: { label: 'Bloccata', color: '#EF4444' },
+  escalated: { label: 'Escalation', color: '#EF4444' },
+  rejected: { label: 'Rifiutata', color: '#EF4444' },
 };
 
-const TIMELINE_ICONS = {
-  practice_created: CircleDot,
-  orchestration_started: Play,
-  intake_completed: ClipboardList,
-  ledger_completed: Calculator,
-  compliance_completed: ShieldCheck,
-  documents_completed: FileText,
-  delegate_completed: KeyRound,
-  deadline_completed: Timer,
-  flow_completed: GitBranch,
-  monitor_completed: Activity,
-  advisor_completed: MessageCircle,
-  risk_evaluated: ShieldAlert,
-  waiting_approval: Lock,
-  approved: CheckCircle2,
-  submitted: ArrowRight,
-  completed: CheckCircle,
-  blocked: XCircle,
-  escalated: AlertTriangle,
-  status_changed: CircleDot,
-  guard_evaluated: Shield,
-  guard_cleared: CheckCircle,
-  guard_guarded: AlertTriangle,
-  guard_blocked: XCircle,
-  follow_up_created: Clock,
-  follow_up_resolved: CheckCircle,
-};
-
-// Workflow lifecycle steps
 const WORKFLOW_STEPS = [
-  { key: 'draft', label: 'Dati Ricevuti', icon: ClipboardList, description: 'Pratica creata e dati iniziali inseriti' },
-  { key: 'in_progress', label: 'In Elaborazione', icon: GitBranch, description: 'Agenti in esecuzione sulla pratica' },
-  { key: 'waiting_approval', label: 'Approvazione', icon: Lock, description: 'In attesa della tua approvazione' },
-  { key: 'approved', label: 'Approvata', icon: CheckCircle2, description: 'Approvata e pronta per l\'invio' },
-  { key: 'submitted', label: 'Inviata', icon: ArrowRight, description: 'Pratica inviata al destinatario' },
-  { key: 'completed', label: 'Completata', icon: CheckCircle, description: 'Pratica conclusa con successo' },
+  { key: 'draft', label: 'Dati Ricevuti', icon: ClipboardList },
+  { key: 'in_progress', label: 'In Elaborazione', icon: GitBranch },
+  { key: 'waiting_approval', label: 'Approvazione', icon: Lock },
+  { key: 'approved', label: 'Approvata', icon: CheckCircle2 },
+  { key: 'submitted', label: 'Inviata', icon: ArrowRight },
+  { key: 'completed', label: 'Completata', icon: CheckCircle },
 ];
 
 const STATUS_ORDER = { draft: 0, pending: 0, data_collection: 0, in_progress: 1, processing: 1, waiting_approval: 2, approved: 3, submitted: 4, completed: 5, blocked: -1, escalated: -1, rejected: -1 };
 
-function WorkflowStepper({ practice, timeline }) {
-  const currentIdx = STATUS_ORDER[practice.status] ?? 0;
-  const isBlocked = practice.status === 'blocked';
-  const isEscalated = practice.status === 'escalated';
-  const isRejected = practice.status === 'rejected';
-  const isAbnormal = isBlocked || isEscalated || isRejected;
+const TIMELINE_ICONS = {
+  practice_created: CircleDot, orchestration_started: Play, intake_completed: ClipboardList,
+  ledger_completed: Calculator, compliance_completed: ShieldCheck, documents_completed: FileText,
+  delegate_completed: KeyRound, deadline_completed: Timer, flow_completed: GitBranch,
+  monitor_completed: Activity, advisor_completed: MessageCircle, risk_evaluated: ShieldAlert,
+  waiting_approval: Lock, approved: CheckCircle2, submitted: ArrowRight, completed: CheckCircle,
+  blocked: XCircle, escalated: AlertTriangle, status_changed: CircleDot,
+  guard_evaluated: Shield, guard_cleared: CheckCircle, guard_guarded: AlertTriangle, guard_blocked: XCircle,
+  follow_up_created: Clock, follow_up_resolved: CheckCircle,
+};
 
-  // Find timeline events that correspond to each step
-  const getStepTimestamp = (stepKey) => {
-    const mapping = {
-      draft: ['practice_created'],
-      in_progress: ['orchestration_started', 'intake_completed'],
-      waiting_approval: ['waiting_approval'],
-      approved: ['approved'],
-      submitted: ['submitted'],
-      completed: ['completed'],
-    };
-    const eventTypes = mapping[stepKey] || [];
-    for (const et of eventTypes) {
-      const ev = timeline.find(t => t.event_type === et);
-      if (ev) return ev.timestamp;
-    }
-    return null;
-  };
-
-  const getStepAgents = (stepKey) => {
-    if (stepKey === 'in_progress' && practice.agent_logs?.length > 0) {
-      return practice.agent_logs
-        .filter(l => l.status === 'completed')
-        .map(l => l.branded_name || BRANDED_AGENTS.find(a => a.type === l.agent_type)?.branded || l.agent_type)
-        .slice(0, 3);
-    }
-    return [];
-  };
-
-  return (
-    <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="workflow-stepper">
-      <div className="flex items-center gap-2 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center">
-          <GitBranch className="w-4 h-4 text-[#3B82F6]" strokeWidth={1.5} />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-[#0F172A]">Stato della Pratica</h3>
-          <p className="text-[10px] text-[#475569]">Percorso dalla creazione al completamento</p>
-        </div>
-      </div>
-
-      {/* Abnormal status banner */}
-      {isAbnormal && (
-        <div className={`flex items-center gap-2.5 p-3 rounded-xl mb-4 ${
-          isBlocked ? 'bg-red-50 border border-red-200' :
-          isEscalated ? 'bg-amber-50 border border-amber-200' :
-          'bg-red-50 border border-red-200'
-        }`} data-testid="abnormal-status-banner">
-          {isBlocked && <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
-          {isEscalated && <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />}
-          {isRejected && <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
-          <div>
-            <p className={`text-xs font-semibold ${isEscalated ? 'text-amber-800' : 'text-red-800'}`}>
-              {isBlocked ? 'Pratica Bloccata' : isEscalated ? 'Escalation in Corso' : 'Pratica Rifiutata'}
-            </p>
-            <p className={`text-[10px] ${isEscalated ? 'text-amber-700' : 'text-red-700'}`}>
-              {isBlocked ? 'La pratica richiede intervento per procedere' : isEscalated ? 'La pratica e stata escalata per revisione professionale' : 'La pratica e stata rifiutata'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Stepper */}
-      <div className="relative">
-        {WORKFLOW_STEPS.map((step, idx) => {
-          const isDone = currentIdx > idx;
-          const isCurrent = currentIdx === idx && !isAbnormal;
-          const isPending = currentIdx < idx || isAbnormal;
-          const ts = getStepTimestamp(step.key);
-          const agents = getStepAgents(step.key);
-          const StepIcon = step.icon;
-
-          return (
-            <div key={step.key} className="flex gap-3 relative" data-testid={`step-${step.key}`}>
-              {/* Connector Line */}
-              <div className="flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                  isDone ? 'bg-[#3B82F6] text-white' :
-                  isCurrent ? 'bg-[#0A192F] text-white ring-4 ring-[#0A192F]/10' :
-                  'bg-[#F1F5F9] text-[#94A3B8] border border-[#E2E8F0]'
-                }`}>
-                  {isDone ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-3.5 h-3.5" strokeWidth={1.5} />}
-                </div>
-                {idx < WORKFLOW_STEPS.length - 1 && (
-                  <div className={`w-0.5 flex-1 min-h-[24px] transition-colors duration-300 ${
-                    isDone ? 'bg-[#3B82F6]' : 'bg-[#E2E8F0]'
-                  }`} />
-                )}
-              </div>
-
-              {/* Step Content */}
-              <div className={`pb-5 flex-1 min-w-0 ${idx === WORKFLOW_STEPS.length - 1 ? 'pb-0' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <p className={`text-xs font-semibold ${
-                    isDone ? 'text-[#0F172A]' : isCurrent ? 'text-[#0A192F]' : 'text-[#94A3B8]'
-                  }`}>{step.label}</p>
-                  {isCurrent && <span className="text-[8px] px-1.5 py-0.5 bg-[#0A192F] text-white rounded-full font-bold uppercase tracking-wider">Attuale</span>}
-                  {isDone && <span className="text-[8px] px-1.5 py-0.5 bg-[#3B82F6]/20 text-[#0A192F] rounded-full font-bold">Fatto</span>}
-                </div>
-                <p className={`text-[10px] mt-0.5 ${isDone || isCurrent ? 'text-[#475569]' : 'text-[#CBD5E1]'}`}>{step.description}</p>
-                {ts && (
-                  <p className="text-[9px] text-[#94A3B8] mt-1">
-                    {format(new Date(ts), 'dd MMM yyyy, HH:mm', { locale: it })}
-                  </p>
-                )}
-                {agents.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {agents.map((a, i) => (
-                      <span key={i} className="text-[8px] px-1.5 py-0.5 bg-[#F1F5F9] text-[#475569] rounded-md">{a}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export default function PracticeDetailPage() {
   const { id } = useParams();
@@ -242,10 +98,10 @@ export default function PracticeDetailPage() {
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState({});
-  const [delegationLoading, setDelegationLoading] = useState(false);
   const [readiness, setReadiness] = useState(null);
   const [guardResult, setGuardResult] = useState(null);
   const [docMatrix, setDocMatrix] = useState(null);
+  const [showActivity, setShowActivity] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -253,16 +109,10 @@ export default function PracticeDetailPage() {
         getPractice(id), getPracticeDocuments(id), getPracticeActivityLogs(id),
         getPracticeChatHistory(id), getPracticeTimeline(id)
       ]);
-      setPractice(p.data);
-      setDocuments(d.data);
-      setActivityLogs(l.data);
-      setChatHistory(c.data.reverse());
-      setTimeline(t.data);
-      // Load readiness
+      setPractice(p.data); setDocuments(d.data); setActivityLogs(l.data);
+      setChatHistory(c.data.reverse()); setTimeline(t.data);
       try { const r = await getPracticeReadiness(id); setReadiness(r.data); } catch {}
-      // Load Herion Guard evaluation
       try { const g = await getGuardEvaluation(id); setGuardResult(g.data); } catch {}
-      // Load Document Matrix
       try { const dm = await getDocumentMatrix(id); setDocMatrix(dm.data); } catch {}
     } catch (e) { console.warn('Practice detail fetch failed:', e?.message); }
     finally { setLoading(false); }
@@ -277,37 +127,29 @@ export default function PracticeDetailPage() {
     catch { toast.error('Errore nel caricamento'); }
     finally { setUploading(false); setPendingFile(null); setUploadCategory('other'); }
   };
-
   const handleStatusChange = async () => {
     const s = showStatusDialog.status; setShowStatusDialog({ open: false, status: '' });
     try { await updatePractice(id, { status: s }); toast.success('Stato aggiornato'); loadData(); }
     catch { toast.error("Errore nell'aggiornamento"); }
   };
-
   const handleAgentExecute = async () => {
     setShowAgentDialog(false); setAgentLoading(true);
     try { await executeAgent(selectedAgent, id, { query: agentQuery }); toast.success('Analisi completata'); loadData(); }
     catch (e) { toast.error("Errore nell'elaborazione", { description: e.response?.data?.detail }); }
     finally { setAgentLoading(false); }
   };
-
   const handleOrchestrate = async () => {
     setOrchestrating(true);
     try { await orchestrateAgents(id, agentQuery || 'Analisi completa della pratica'); toast.success('Analisi completa terminata'); loadData(); }
     catch (e) { toast.error("Errore nell'orchestrazione", { description: e.response?.data?.detail }); }
     finally { setOrchestrating(false); }
   };
-
   const handleApprove = async () => {
     setShowApprovalDialog(false); setApproving(true);
-    try {
-      await approvePractice(id);
-      toast.success('Pratica approvata e completata con successo');
-      loadData();
-    } catch (e) { toast.error("Errore nell'approvazione", { description: e.response?.data?.detail }); }
+    try { await approvePractice(id); toast.success('Pratica approvata'); loadData(); }
+    catch (e) { toast.error("Errore nell'approvazione", { description: e.response?.data?.detail }); }
     finally { setApproving(false); }
   };
-
   const handlePdfDownload = async () => {
     setPdfLoading(true);
     try {
@@ -319,17 +161,10 @@ export default function PracticeDetailPage() {
     } catch (e) { toast.error(e.response?.data?.detail || 'Errore nel download PDF'); }
     finally { setPdfLoading(false); }
   };
-
   const handleDelegation = async (action, notes) => {
-    setDelegationLoading(true);
-    try {
-      await updateDelegation(id, { action, notes });
-      toast.success('Delega aggiornata');
-      loadData();
-    } catch (e) { toast.error(e.response?.data?.detail || 'Errore nella gestione delega'); }
-    finally { setDelegationLoading(false); }
+    try { await updateDelegation(id, { action, notes }); toast.success('Delega aggiornata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
   };
-
   const handleChat = async (e) => {
     e.preventDefault();
     if (!chatQuestion.trim() || chatLoading) return;
@@ -343,52 +178,49 @@ export default function PracticeDetailPage() {
   };
 
   const toggleLog = (logId) => setExpandedLogs(prev => ({ ...prev, [logId]: !prev[logId] }));
-
   const getAgentConfig = (type) => BRANDED_AGENTS.find(a => a.type === type) || BRANDED_AGENTS[0];
-
-  const statusBadge = (status, label) => {
-    const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
-    return <span data-testid="practice-status-badge" className={`text-xs px-2.5 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.text} ${cfg.border}`}>{label || cfg.label}</span>;
-  };
-
-  const riskBadge = (level) => {
-    const cfg = { low: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Basso' }, medium: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Medio' }, high: { bg: 'bg-red-50', text: 'text-red-700', label: 'Alto' } };
-    const c = cfg[level] || cfg.medium;
-    return <span data-testid="risk-badge" className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
-  };
 
   const isAdmin = user?.role === 'admin';
   const canOrchestrate = practice && !['approved', 'submitted', 'completed'].includes(practice.status);
   const isWaitingApproval = practice?.status === 'waiting_approval';
   const orchestration = practice?.orchestration_result;
+  const currentIdx = STATUS_ORDER[practice?.status] ?? 0;
+  const isAbnormal = ['blocked', 'escalated', 'rejected'].includes(practice?.status);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;
-  if (!practice) return <div className="text-center py-16"><p className="text-[#475569]">Pratica non trovata</p><Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-xl">Torna alle pratiche</Button></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--text-primary)]" /></div>;
+  if (!practice) return <div className="text-center py-16"><p className="text-[var(--text-secondary)]">Pratica non trovata</p><Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-lg">Torna alle pratiche</Button></div>;
+
+  const statusCfg = STATUS_MAP[practice.status] || STATUS_MAP.draft;
 
   return (
     <div className="space-y-5" data-testid="practice-detail-page">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+
+      {/* ── HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <button onClick={() => navigate('/practices')} className="flex items-center gap-1.5 text-xs text-[#475569] hover:text-[#0F172A] mb-3 transition-colors" data-testid="back-btn"><ArrowLeft className="w-3.5 h-3.5" />Torna alle pratiche</button>
-          <h1 className="text-xl font-bold text-[#0F172A] tracking-tight mb-0.5">{practice.practice_type_label}</h1>
-          <p className="text-sm text-[#475569]">{practice.client_name} &middot; {practice.country}</p>
+          <button onClick={() => navigate('/practices')} className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-2 transition-colors" data-testid="back-btn">
+            <ArrowLeft className="w-3.5 h-3.5" />Torna alle pratiche
+          </button>
+          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">{practice.practice_type_label}</h1>
+          <p className="text-[12px] text-[var(--text-secondary)]">{practice.client_name} &middot; {practice.country}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {statusBadge(practice.status, practice.status_label)}
-          {practice.risk_level && riskBadge(practice.risk_level)}
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: statusCfg.color }} data-testid="practice-status-badge">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusCfg.color }} />
+            {statusCfg.label}
+          </span>
           {practice.status === 'completed' && (
-            <Button onClick={handlePdfDownload} disabled={pdfLoading} variant="outline" className="rounded-full border-[#E2E8F0] text-sm h-9 px-4" data-testid="download-pdf-btn">
-              {pdfLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1.5" />}Scarica PDF
+            <Button onClick={handlePdfDownload} disabled={pdfLoading} variant="outline" className="rounded-lg text-[11px] h-8 px-3" style={{ borderColor: 'var(--border-soft)' }} data-testid="download-pdf-btn">
+              {pdfLoading ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <FileDown className="w-3 h-3 mr-1.5" />}PDF
             </Button>
           )}
           {isAdmin && (
             <Select value={practice.status} onValueChange={(v) => setShowStatusDialog({ open: true, status: v })}>
-              <SelectTrigger className="w-44 rounded-full border-[#E2E8F0] h-9 text-xs" data-testid="status-select"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-xl">
+              <SelectTrigger className="w-36 rounded-lg h-8 text-[11px]" style={{ borderColor: 'var(--border-soft)' }} data-testid="status-select"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-lg">
                 <SelectItem value="draft">Bozza</SelectItem>
                 <SelectItem value="in_progress">In Elaborazione</SelectItem>
-                <SelectItem value="waiting_approval">In Attesa Approvazione</SelectItem>
+                <SelectItem value="waiting_approval">Approvazione</SelectItem>
                 <SelectItem value="completed">Completata</SelectItem>
                 <SelectItem value="blocked">Bloccata</SelectItem>
                 <SelectItem value="rejected">Rifiutata</SelectItem>
@@ -398,607 +230,248 @@ export default function PracticeDetailPage() {
         </div>
       </div>
 
-      {/* Approval Gate */}
+      {/* ── MAIN ACTION (dynamic based on state) ── */}
       {isWaitingApproval && orchestration && (
-        <div className="bg-white rounded-2xl border-2 border-[#0A192F]/20 p-6 shadow-[0_4px_24px_rgba(15,76,92,0.08)]" data-testid="approval-gate">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-11 h-11 rounded-xl bg-[#0A192F] flex items-center justify-center"><Lock className="w-5 h-5 text-[#3B82F6]" /></div>
+        <div className="bg-white rounded-xl border-2 border-amber-200 p-5" data-testid="approval-gate">
+          <div className="flex items-center gap-3 mb-4">
+            <Lock className="w-5 h-5 text-amber-500" />
             <div>
-              <h3 className="text-base font-bold text-[#0F172A]">Approvazione Richiesta</h3>
-              <p className="text-xs text-[#475569]">Verifica il riepilogo e approva per procedere con l'invio</p>
+              <p className="text-[13px] font-bold text-[var(--text-primary)]">Approvazione Richiesta</p>
+              <p className="text-[10px] text-[var(--text-secondary)]">Verifica il riepilogo e approva per procedere</p>
             </div>
           </div>
-
-          {/* Risk + Delegation Status */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
-            <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0]">
-              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Rischio</p>
-              {riskBadge(orchestration.risk_level)}
-            </div>
-            <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0]">
-              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Delega</p>
-              <p className="text-xs font-medium text-[#0F172A]">{orchestration.delegation_label || orchestration.delegation_status}</p>
-            </div>
-            <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0]">
-              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Agenti</p>
-              <p className="text-xs font-medium text-[#0F172A]">{orchestration.agents_used?.length || 0} completati</p>
-            </div>
-          </div>
-
-          {/* Data being used */}
-          <div className="mb-4">
-            <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Dati della pratica</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-[#475569]">Tipo: </span><span className="text-[#0F172A] font-medium">{practice.practice_type_label}</span></div>
-              <div><span className="text-[#475569]">Cliente: </span><span className="text-[#0F172A] font-medium">{practice.client_name}</span></div>
-              {practice.fiscal_code && <div><span className="text-[#475569]">C.F.: </span><span className="text-[#0F172A] font-mono font-medium">{practice.fiscal_code}</span></div>}
-              {practice.vat_number && <div><span className="text-[#475569]">P.IVA: </span><span className="text-[#0F172A] font-mono font-medium">{practice.vat_number}</span></div>}
-            </div>
-          </div>
-
-          {/* Documents included */}
-          {practice.documents?.length > 0 && (
-            <div className="mb-4">
-              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Documenti inclusi ({practice.documents.length})</p>
-              <div className="flex flex-wrap gap-1.5">
-                {practice.documents.map((doc, i) => (
-                  <span key={i} className="text-[10px] px-2 py-0.5 bg-[#F1F5F9] rounded-md text-[#475569]">{doc.filename}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Admin Summary */}
           {orchestration.admin_summary && (
-            <div className="mb-5">
-              <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Riepilogo Herion Admin</p>
-              <div className="p-4 bg-[#F8F9FA] rounded-xl border border-[#E2E8F0] text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto" data-testid="admin-summary">
-                {orchestration.admin_summary}
-              </div>
+            <div className="p-3 bg-[var(--bg-app)] rounded-lg border text-[12px] text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto mb-4" style={{ borderColor: 'var(--border-soft)' }} data-testid="admin-summary">
+              {orchestration.admin_summary}
             </div>
           )}
-
-          {/* Approval Actions */}
-          <div className="flex gap-3 pt-2 border-t border-[#E2E8F0]">
-            <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 h-11 text-sm font-semibold" data-testid="approve-practice-btn">
-              {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approvazione in corso...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Approva e Procedi</>}
-            </Button>
-          </div>
-          <p className="text-[10px] text-[#94A3B8] mt-2 text-center">Approvando, confermi di aver verificato i dati e autorizzi l'invio della pratica</p>
+          <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-10 w-full text-[12px] font-semibold" data-testid="approve-practice-btn">
+            {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approvazione...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Approva e Procedi</>}
+          </Button>
         </div>
       )}
 
-      {/* Agent Pipeline — Visual execution pipeline */}
-      <AgentPipeline
-        practice={practice}
-        onRunWorkflow={handleOrchestrate}
-        onApprove={() => setShowApprovalDialog(true)}
-        orchestrating={orchestrating}
-        approving={approving}
-      />
-
-      {/* Workflow Stepper - Step by step state visualization */}
-      <WorkflowStepper practice={practice} timeline={timeline} />
-
-      {/* User/Client Identity Card */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="user-practice-identity">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0A192F] to-[#112240] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {practice.client_name?.charAt(0)?.toUpperCase() || 'U'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#0F172A]">{practice.client_name}</p>
-            <p className="text-[10px] text-[#475569]">
-              {practice.client_type_label || practice.client_type} &middot; {practice.country || 'IT'}
-              {practice.fiscal_code && <> &middot; C.F. <span className="font-mono">{practice.fiscal_code}</span></>}
-              {practice.vat_number && <> &middot; P.IVA <span className="font-mono">{practice.vat_number}</span></>}
+      {isAbnormal && (
+        <div className={`flex items-center gap-3 p-4 rounded-xl border ${practice.status === 'escalated' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`} data-testid="abnormal-status-banner">
+          {practice.status === 'escalated' ? <AlertTriangle className="w-4 h-4 text-amber-600" /> : <XCircle className="w-4 h-4 text-red-500" />}
+          <div>
+            <p className={`text-[12px] font-semibold ${practice.status === 'escalated' ? 'text-amber-800' : 'text-red-800'}`}>
+              {practice.status === 'blocked' ? 'Pratica Bloccata' : practice.status === 'escalated' ? 'Escalation in Corso' : 'Pratica Rifiutata'}
+            </p>
+            <p className={`text-[10px] ${practice.status === 'escalated' ? 'text-amber-600' : 'text-red-600'}`}>
+              {practice.status === 'blocked' ? 'Intervento richiesto per procedere' : practice.status === 'escalated' ? 'Revisione professionale in corso' : 'Rifiutata, azione richiesta'}
             </p>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-[9px] font-semibold text-[#94A3B8] uppercase tracking-wider">Creata il</p>
-            <p className="text-xs text-[#0F172A] font-medium">{format(new Date(practice.created_at), 'dd MMM yyyy', { locale: it })}</p>
-          </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
-          {/* Practice Info */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-            <h3 className="text-sm font-bold text-[#0F172A] mb-3">Dettagli Pratica</h3>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              {practice.client_type && <div><p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-0.5">Tipo Cliente</p><p className="text-sm text-[#0F172A]">{practice.client_type_label}</p></div>}
-              {practice.fiscal_code && <div><p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-0.5">Codice Fiscale</p><p className="text-sm font-mono text-[#0F172A]">{practice.fiscal_code}</p></div>}
-              {practice.vat_number && <div><p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-0.5">Partita IVA</p><p className="text-sm font-mono text-[#0F172A]">{practice.vat_number}</p></div>}
-              <div><p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-0.5">Data Creazione</p><p className="text-sm text-[#0F172A]">{format(new Date(practice.created_at), 'dd MMM yyyy, HH:mm', { locale: it })}</p></div>
+      {/* ── 2 COLUMN LAYOUT ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+
+        {/* ════ LEFT COLUMN (70%) ════ */}
+        <div className="space-y-4">
+
+          {/* Status Timeline */}
+          <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="workflow-stepper">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-4">Stato della Pratica</p>
+            <div className="flex items-center justify-between gap-1">
+              {WORKFLOW_STEPS.map((step, idx) => {
+                const isDone = currentIdx > idx;
+                const isCurrent = currentIdx === idx && !isAbnormal;
+                const StepIcon = step.icon;
+                return (
+                  <div key={step.key} className="flex items-center flex-1" data-testid={`step-${step.key}`}>
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                        isDone ? 'bg-emerald-50 text-emerald-600' :
+                        isCurrent ? 'bg-[var(--surface-accent-1)]/30 text-[var(--text-primary)] ring-2 ring-[var(--surface-accent-1)]' :
+                        'bg-[var(--bg-app)] text-[var(--text-muted)]'
+                      }`}>
+                        {isDone ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-3.5 h-3.5" strokeWidth={1.5} />}
+                      </div>
+                      <p className={`text-[8px] font-semibold mt-1 text-center max-w-[60px] ${isDone || isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>{step.label}</p>
+                    </div>
+                    {idx < WORKFLOW_STEPS.length - 1 && (
+                      <div className={`h-px flex-1 mx-1.5 ${isDone ? 'bg-emerald-300' : 'bg-[var(--border-soft)]'}`} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div><p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-0.5">Descrizione</p><p className="text-sm text-[#0F172A]">{practice.description}</p></div>
           </div>
 
-          {/* Agent Activity Panel */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="agent-activity-panel">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#3B82F6]" /></div>
-              <div><h3 className="text-sm font-bold text-[#0F172A]">Attivita degli Agenti</h3><p className="text-[10px] text-[#475569]">Cronologia trasparente di ogni azione sulla pratica</p></div>
-            </div>
+          {/* Agent Pipeline (collapsible) */}
+          <AgentPipeline
+            practice={practice}
+            onRunWorkflow={handleOrchestrate}
+            onApprove={() => setShowApprovalDialog(true)}
+            orchestrating={orchestrating}
+            approving={approving}
+          />
 
-            {practice.agent_logs?.length > 0 ? (
-              <div className="space-y-2">
+          {/* Documents */}
+          <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-bold text-[var(--text-primary)]">Documenti</p>
+              <label className="cursor-pointer">
+                <input type="file" onChange={handleFileSelect} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" data-testid="file-input" />
+                <Button variant="outline" className="rounded-lg text-[10px] h-7 px-3" style={{ borderColor: 'var(--border-soft)' }} disabled={uploading} asChild>
+                  <span>{uploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}Carica</span>
+                </Button>
+              </label>
+            </div>
+            {documents.length > 0 ? (
+              <div className="space-y-1">
+                {documents.map(doc => (
+                  <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid={`document-${doc.id}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <File className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{doc.original_filename}</p>
+                        <p className="text-[9px] text-[var(--text-muted)]">{DOC_CATEGORIES.find(c => c.key === doc.category)?.label || ''} &middot; {format(new Date(doc.created_at), 'dd MMM yyyy', { locale: it })}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded"><Download className="w-3 h-3" /></Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="border border-dashed rounded-lg p-5 text-center" style={{ borderColor: 'var(--border-soft)' }}>
+                <Upload className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-1.5 opacity-40" strokeWidth={1.5} />
+                <p className="text-[11px] text-[var(--text-muted)]">Nessun documento</p>
+              </div>
+            )}
+          </div>
+
+          {/* Agent Logs (expandable) */}
+          {practice.agent_logs?.length > 0 && (
+            <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="agent-activity-panel">
+              <p className="text-[12px] font-bold text-[var(--text-primary)] mb-3">Attivita degli Agenti</p>
+              <div className="space-y-1.5">
                 {practice.agent_logs.map((log) => {
                   const ac = getAgentConfig(log.agent_type);
                   const Icon = ac.icon;
                   const isExpanded = expandedLogs[log.id];
                   return (
-                    <div key={log.id} className="border border-[#E2E8F0] rounded-xl overflow-hidden transition-all" data-testid={`agent-log-${log.id}`}>
-                      <button onClick={() => toggleLog(log.id)} className="w-full flex items-center gap-3 p-3 hover:bg-[#F8F9FA] transition-colors text-left">
-                        <div className={`w-8 h-8 rounded-lg ${ac.bg} flex items-center justify-center flex-shrink-0`}><Icon className={`w-4 h-4 ${ac.color}`} strokeWidth={1.5} /></div>
+                    <div key={log.id} className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-soft)' }} data-testid={`agent-log-${log.id}`}>
+                      <button onClick={() => toggleLog(log.id)} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-[var(--hover-soft)] transition-colors text-left">
+                        <Icon className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" strokeWidth={1.5} />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-[#0F172A]">{log.branded_name || ac.branded}</span>
-                            <span className="text-[9px] text-[#475569]">Step {log.step}</span>
-                          </div>
-                          <p className="text-[10px] text-[#475569] truncate">{log.explanation}</p>
+                          <span className="text-[11px] font-semibold text-[var(--text-primary)]">{log.branded_name || ac.branded}</span>
+                          <p className="text-[9px] text-[var(--text-muted)] truncate">{log.explanation}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {log.status === 'completed' ? <span className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-medium">Completato</span>
-                            : log.status === 'failed' || log.status === 'error' ? <span className="text-[9px] px-1.5 py-0.5 bg-red-50 text-red-700 rounded-full font-medium">Errore</span>
-                            : <span className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded-full font-medium">In corso</span>}
-                          <span className="text-[9px] text-[#94A3B8]">{log.started_at ? format(new Date(log.started_at), 'dd/MM HH:mm') : ''}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-[#94A3B8]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#94A3B8]" />}
-                        </div>
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${log.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : log.status === 'failed' || log.status === 'error' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                          {log.status === 'completed' ? 'OK' : log.status === 'failed' || log.status === 'error' ? 'Err' : '...'}
+                        </span>
+                        {isExpanded ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
                       </button>
                       {isExpanded && log.output_data && (
-                        <div className="px-3 pb-3 border-t border-[#E2E8F0]">
-                          <div className="mt-2 p-3 bg-[#F8F9FA] rounded-lg text-sm text-[#0F172A] whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">{typeof log.output_data === 'string' ? log.output_data : JSON.stringify(log.output_data, null, 2)}</div>
+                        <div className="px-3 pb-3 border-t" style={{ borderColor: 'var(--border-soft)' }}>
+                          <div className="mt-2 p-2.5 bg-[var(--bg-app)] rounded-lg text-[11px] text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                            {typeof log.output_data === 'string' ? log.output_data : JSON.stringify(log.output_data, null, 2)}
+                          </div>
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-            ) : (
-              <div className="border-2 border-dashed border-[#E2E8F0] rounded-xl p-6 text-center">
-                <Sparkles className="w-8 h-8 text-[#CBD5E1] mx-auto mb-2" strokeWidth={1.5} />
-                <p className="text-xs text-[#475569]">Nessun agente ha ancora lavorato su questa pratica</p>
-                {canOrchestrate && <p className="text-[10px] text-[#94A3B8] mt-1">Avvia l'esecuzione controllata per analizzare la pratica</p>}
-              </div>
-            )}
-          </div>
-
-          {/* Herion AI - Execute Section */}
-          {canOrchestrate && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" /></div>
-                <div><h3 className="text-sm font-bold text-[#0F172A]">Esecuzione Controllata</h3><p className="text-[10px] text-[#475569]">9 agenti specializzati coordinati da Herion Admin</p></div>
-              </div>
-              {isAdmin && (
-                <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 mb-3">
-                  {BRANDED_AGENTS.map(a => (
-                    <button key={a.type} onClick={() => setSelectedAgent(a.type)}
-                      className={`p-2 border rounded-xl text-center transition-all ${selectedAgent === a.type ? 'border-[#0A192F] bg-[#0A192F]/[0.03] ring-1 ring-[#0A192F]' : 'border-[#E2E8F0] hover:border-[#0A192F]/30'}`}
-                      data-testid={`agent-select-${a.type}`}>
-                      <a.icon className={`w-3.5 h-3.5 mx-auto mb-0.5 ${selectedAgent === a.type ? 'text-[#0A192F]' : 'text-[#94A3B8]'}`} strokeWidth={1.5} />
-                      <p className="text-[8px] font-semibold text-[#0F172A] leading-tight">{a.name}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <Textarea placeholder="Descrivi cosa vuoi analizzare..." value={agentQuery} onChange={e => setAgentQuery(e.target.value)} className="rounded-xl border-[#E2E8F0] min-h-[60px] resize-none text-sm mb-3" data-testid="agent-query-input" />
-              <div className="flex gap-2">
-                {isAdmin && (
-                  <Button onClick={() => agentQuery.trim() && setShowAgentDialog(true)} disabled={agentLoading || !agentQuery.trim()} variant="outline" className="rounded-xl border-[#E2E8F0] text-xs" data-testid="execute-agent-btn">
-                    {agentLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Elaborazione...</> : <><Play className="w-3.5 h-3.5 mr-1.5" />Singolo Agente</>}
-                  </Button>
-                )}
-                <Button onClick={handleOrchestrate} disabled={orchestrating} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-xs" data-testid="orchestrate-btn">
-                  {orchestrating ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Esecuzione in corso...</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Avvia Esecuzione Controllata</>}
-                </Button>
-              </div>
             </div>
           )}
-
-          {/* Documents */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-[#0F172A]">Documenti</h3>
-              <label className="cursor-pointer"><input type="file" onChange={handleFileSelect} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" data-testid="file-input" />
-                <Button variant="outline" className="rounded-full border-[#E2E8F0] text-xs h-8" disabled={uploading} asChild><span>{uploading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}Carica</span></Button>
-              </label>
-            </div>
-            {documents.length > 0 ? (
-              <div className="space-y-1.5">{documents.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between p-2.5 border border-[#E2E8F0] rounded-xl hover:bg-[#F8F9FA] transition-colors" data-testid={`document-${doc.id}`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#F1F5F9] flex items-center justify-center"><File className="w-3 h-3 text-[#475569]" /></div>
-                    <div><p className="text-xs font-medium text-[#0F172A]">{doc.original_filename}</p><p className="text-[9px] text-[#475569]">{DOC_CATEGORIES.find(c => c.key === doc.category)?.label || ''} &middot; {format(new Date(doc.created_at), 'dd MMM yyyy', { locale: it })}</p></div>
-                  </div>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-lg"><Download className="w-3 h-3" /></Button>
-                </div>
-              ))}</div>
-            ) : (
-              <div className="border-2 border-dashed border-[#E2E8F0] rounded-xl p-5 text-center">
-                <Upload className="w-7 h-7 text-[#CBD5E1] mx-auto mb-1.5" strokeWidth={1.5} /><p className="text-xs text-[#475569]">Nessun documento</p>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-5">
-          {/* Delegation & Readiness Panel */}
-          {readiness && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="readiness-panel">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-[#3B82F6]" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#0F172A]">Stato di Prontezza</h3>
-                  <p className="text-[10px] text-[#475569]">Delega, approvazione e invio</p>
-                </div>
-              </div>
+        {/* ════ RIGHT COLUMN (30%) ════ */}
+        <div className="space-y-4">
 
-              {/* Readiness state badge */}
-              <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-3 ${
-                readiness.is_ready ? 'bg-emerald-50 border border-emerald-200' :
-                readiness.readiness_state === 'waiting_approval' ? 'bg-amber-50 border border-amber-200' :
-                readiness.readiness_state === 'completed' || readiness.readiness_state === 'submitted' ? 'bg-[#F0FAF8] border border-[#3B82F6]/30' :
-                'bg-[#F8F9FA] border border-[#E2E8F0]'
-              }`}>
-                {readiness.is_ready ? <CheckCircle className="w-4 h-4 text-emerald-600" /> :
-                 readiness.readiness_state === 'completed' ? <CheckCircle className="w-4 h-4 text-[#3B82F6]" /> :
-                 readiness.readiness_state === 'waiting_approval' ? <Lock className="w-4 h-4 text-amber-600" /> :
-                 <Clock className="w-4 h-4 text-[#94A3B8]" />}
-                <div>
-                  <p className={`text-xs font-bold ${
-                    readiness.is_ready ? 'text-emerald-700' :
-                    readiness.readiness_state === 'completed' ? 'text-[#0A192F]' :
-                    readiness.readiness_state === 'waiting_approval' ? 'text-amber-700' :
-                    'text-[#475569]'
-                  }`}>{
-                    readiness.is_ready ? 'Pronta per l\'invio' :
-                    readiness.readiness_state === 'completed' ? 'Completata' :
-                    readiness.readiness_state === 'submitted' ? 'Inviata' :
-                    readiness.readiness_state === 'waiting_approval' ? 'In attesa di approvazione' :
-                    readiness.readiness_state === 'in_preparation' ? 'In preparazione' :
-                    'Non pronta'
-                  }</p>
+          {/* Blockers (only real blockers) */}
+          {readiness && readiness.blockers?.length > 0 && (
+            <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="readiness-panel">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-600 mb-2">Elementi Bloccanti</p>
+              {readiness.blockers.map((b, i) => (
+                <div key={i} className="flex items-start gap-2 text-[10px] text-red-700 mb-1.5">
+                  <XCircle className="w-3 h-3 flex-shrink-0 mt-0.5" /><span>{b}</span>
                 </div>
-              </div>
-
-              {/* Status rows */}
-              <div className="space-y-2 mb-3">
-                {/* Delegation */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
-                  <div className="flex items-center gap-2">
-                    <KeyRound className="w-3.5 h-3.5 text-violet-500" />
-                    <span className="text-[10px] font-medium text-[#475569]">Delega</span>
-                  </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                    readiness.delegation_status === 'valid' ? 'bg-emerald-50 text-emerald-700' :
-                    readiness.delegation_status === 'not_required' ? 'bg-[#F1F5F9] text-[#94A3B8]' :
-                    readiness.delegation_status === 'rejected' ? 'bg-red-50 text-red-700' :
-                    'bg-violet-50 text-violet-700'
-                  }`}>{
-                    readiness.delegation_status === 'valid' ? 'Valida' :
-                    readiness.delegation_status === 'not_required' ? 'Non richiesta' :
-                    readiness.delegation_status === 'requested' ? 'Richiesta' :
-                    readiness.delegation_status === 'under_review' ? 'In revisione' :
-                    readiness.delegation_status === 'rejected' ? 'Rifiutata' :
-                    readiness.delegation_status === 'incomplete' ? 'Incompleta' :
-                    readiness.delegation_status
-                  }</span>
-                </div>
-
-                {/* Approval */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
-                  <div className="flex items-center gap-2">
-                    <Lock className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="text-[10px] font-medium text-[#475569]">Approvazione</span>
-                  </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                    readiness.approval_status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                    readiness.approval_status === 'not_required' ? 'bg-[#F1F5F9] text-[#94A3B8]' :
-                    readiness.approval_status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                    'bg-[#F1F5F9] text-[#475569]'
-                  }`}>{
-                    readiness.approval_status === 'approved' ? 'Approvata' :
-                    readiness.approval_status === 'not_required' ? 'Non richiesta' :
-                    readiness.approval_status === 'pending' ? 'In attesa' :
-                    readiness.approval_status === 'ready_to_request' ? 'Pronta' :
-                    'Non avviata'
-                  }</span>
-                </div>
-
-                {/* Documents */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-[10px] font-medium text-[#475569]">Documenti</span>
-                  </div>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569]">{readiness.document_count} caricati</span>
-                </div>
-
-                {/* Routing */}
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
-                  <div className="flex items-center gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 text-[#0A192F]" />
-                    <span className="text-[10px] font-medium text-[#475569]">Canale</span>
-                  </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${readiness.routing_clear ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                    {readiness.channel === 'email' ? 'Email' : readiness.channel === 'official_portal' ? 'Portale' : readiness.channel === 'preparation_only' ? 'Preparazione' : readiness.channel || 'N/D'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Blockers */}
-              {readiness.blockers?.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[9px] font-semibold text-red-600 uppercase tracking-wider mb-1.5">Elementi Bloccanti</p>
-                  {readiness.blockers.map((b, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-[10px] text-red-700 mb-1">
-                      <XCircle className="w-2.5 h-2.5 flex-shrink-0" />{b}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Delegation Actions */}
-              {readiness.delegation_required && readiness.delegation_status !== 'valid' && (
-                <div className="border-t border-[#E2E8F0] pt-3">
-                  <p className="text-[9px] font-semibold text-[#475569] uppercase tracking-wider mb-2">Azioni Delega</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {readiness.delegation_status === 'not_required' || readiness.delegation_status === 'required' ? (
-                      <button onClick={() => handleDelegation('request')} disabled={delegationLoading}
-                        className="text-[10px] px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg font-medium hover:bg-violet-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-request-btn">
-                        {delegationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}Richiedi Delega
-                      </button>
-                    ) : readiness.delegation_status === 'requested' ? (
-                      <button onClick={() => handleDelegation('upload_confirm')} disabled={delegationLoading}
-                        className="text-[10px] px-3 py-1.5 bg-sky-50 text-sky-700 rounded-lg font-medium hover:bg-sky-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-upload-btn">
-                        {delegationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}Conferma Caricamento
-                      </button>
-                    ) : readiness.delegation_status === 'under_review' ? (
-                      <div className="flex gap-1.5">
-                        <button onClick={() => handleDelegation('verify')} disabled={delegationLoading}
-                          className="text-[10px] px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg font-medium hover:bg-emerald-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-verify-btn">
-                          <CheckCircle className="w-3 h-3" />Verifica
-                        </button>
-                        <button onClick={() => handleDelegation('reject', 'Documentazione insufficiente')} disabled={delegationLoading}
-                          className="text-[10px] px-3 py-1.5 bg-red-50 text-red-700 rounded-lg font-medium hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-reject-btn">
-                          <XCircle className="w-3 h-3" />Rifiuta
-                        </button>
-                      </div>
-                    ) : readiness.delegation_status === 'rejected' ? (
-                      <button onClick={() => handleDelegation('reset')} disabled={delegationLoading}
-                        className="text-[10px] px-3 py-1.5 bg-[#F1F5F9] text-[#475569] rounded-lg font-medium hover:bg-[#E2E8F0] transition-colors disabled:opacity-50 flex items-center gap-1" data-testid="delegation-reset-btn">
-                        <RefreshCw className="w-3 h-3" />Richiedi Nuovamente
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
           )}
 
-          {/* Herion Guard Panel */}
-          {guardResult && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="guard-panel">
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  guardResult.verdict === 'cleared' ? 'bg-emerald-600' :
-                  guardResult.verdict === 'guarded' ? 'bg-amber-500' : 'bg-red-600'
-                }`}>
-                  <ShieldAlert className="w-4 h-4 text-white" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#0F172A]">Herion Guard</h3>
-                  <p className="text-[10px] text-[#475569]">Confini operativi e alternative sicure</p>
-                </div>
-                <div className="ml-auto">
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                    guardResult.verdict === 'cleared' ? 'bg-emerald-50 text-emerald-700' :
-                    guardResult.verdict === 'guarded' ? 'bg-amber-50 text-amber-700' :
-                    'bg-red-50 text-red-700'
-                  }`} data-testid="guard-verdict">{guardResult.verdict_label}</span>
-                </div>
+          {/* AI Suggestions (Guard — max 3) */}
+          {guardResult && guardResult.safe_alternatives?.length > 0 && (
+            <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="guard-panel">
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldAlert className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Suggerimenti AI</p>
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto ${
+                  guardResult.verdict === 'cleared' ? 'bg-emerald-50 text-emerald-600' :
+                  guardResult.verdict === 'guarded' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
+                }`} data-testid="guard-verdict">{guardResult.verdict_label}</span>
               </div>
-
-              {/* Guard Score */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-medium text-[#475569]">Punteggio Guard</span>
-                  <span className={`text-xs font-bold ${
-                    guardResult.guard_score >= 80 ? 'text-emerald-600' :
-                    guardResult.guard_score >= 50 ? 'text-amber-600' : 'text-red-600'
-                  }`} data-testid="guard-score">{guardResult.guard_score}%</span>
-                </div>
-                <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-700 ${
-                    guardResult.guard_score >= 80 ? 'bg-emerald-500' :
-                    guardResult.guard_score >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                  }`} style={{ width: `${guardResult.guard_score}%` }} />
-                </div>
-              </div>
-
-              {/* Dimensions */}
-              <div className="space-y-1.5 mb-3">
-                {guardResult.dimensions?.map((dim, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]">
-                    <span className="text-[10px] font-medium text-[#475569]">{dim.label}</span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                      dim.status === 'passed' ? 'bg-emerald-50 text-emerald-700' :
-                      dim.status === 'warning' ? 'bg-amber-50 text-amber-700' :
-                      'bg-red-50 text-red-700'
-                    }`} data-testid={`guard-dim-${dim.key}`}>{dim.detail}</span>
+              <div className="space-y-2">
+                {guardResult.safe_alternatives.slice(0, 3).map((alt, i) => (
+                  <div key={i} className="p-2.5 rounded-lg bg-[var(--bg-app)] border" style={{ borderColor: 'var(--border-soft)' }} data-testid={`guard-alt-${i}`}>
+                    <p className="text-[10px] font-semibold text-[var(--text-primary)]">{alt.label}</p>
+                    <p className="text-[9px] text-[var(--text-secondary)] mt-0.5">{alt.detail}</p>
                   </div>
                 ))}
               </div>
-
-              {/* Safe Alternatives */}
-              {guardResult.safe_alternatives?.length > 0 && (
-                <div className="border-t border-[#E2E8F0] pt-3">
-                  <p className="text-[9px] font-semibold text-[#0A192F] uppercase tracking-wider mb-2">Alternative Sicure Suggerite</p>
-                  <div className="space-y-1.5">
-                    {guardResult.safe_alternatives.map((alt, i) => (
-                      <div key={i} className={`flex items-start gap-2 p-2 rounded-lg ${
-                        alt.priority === 'critical' ? 'bg-red-50/60' :
-                        alt.priority === 'high' ? 'bg-amber-50/60' : 'bg-[#F8F9FA]'
-                      }`} data-testid={`guard-alt-${i}`}>
-                        <ArrowRight className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
-                          alt.priority === 'critical' ? 'text-red-500' :
-                          alt.priority === 'high' ? 'text-amber-500' : 'text-[#94A3B8]'
-                        }`} />
-                        <div>
-                          <p className="text-[10px] font-semibold text-[#0F172A]">{alt.label}</p>
-                          <p className="text-[9px] text-[#64748B]">{alt.detail}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Document Matrix Panel */}
-          {docMatrix && docMatrix.has_matrix && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="document-matrix-panel">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-white" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#0F172A]">Matrice Documentale</h3>
-                  <p className="text-[10px] text-[#475569]">Requisiti, firme e completezza</p>
-                </div>
-                <div className="ml-auto">
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                    docMatrix.completeness?.can_proceed ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                  }`} data-testid="matrix-status">
-                    {docMatrix.completeness?.can_proceed ? 'Completa' : 'Incompleta'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-medium text-[#475569]">Documenti richiesti</span>
-                  <span className="text-[10px] font-bold text-[#0F172A]">{docMatrix.completeness?.uploaded_required || 0}/{docMatrix.completeness?.total_required || 0}</span>
-                </div>
-                <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-[#0A192F] transition-all duration-700" style={{
-                    width: `${docMatrix.completeness?.total_required ? (docMatrix.completeness.uploaded_required / docMatrix.completeness.total_required) * 100 : 0}%`
-                  }} />
-                </div>
-              </div>
-
-              {/* Required Documents */}
-              {docMatrix.required?.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[9px] font-semibold text-[#0A192F] uppercase tracking-wider mb-1.5">Documenti Richiesti</p>
-                  <div className="space-y-1">
-                    {docMatrix.required.map((doc, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[#F8F9FA]" data-testid={`matrix-req-${doc.doc_key}`}>
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {doc.complete ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" /> : <Circle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-medium text-[#0F172A] block truncate">{doc.label}</span>
-                            <span className="text-[9px] text-[#94A3B8]">{doc.sensitivity_label || doc.sensitivity}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {doc.signed_required && (
-                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium ${doc.signature_valid === false ? 'bg-red-50 text-red-600' : doc.signature_valid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                              {doc.signature_valid === false ? 'Firma mancante' : doc.signature_valid ? 'Firmato' : 'Firma richiesta'}
-                            </span>
-                          )}
-                          {doc.blocking && !doc.complete && (
-                            <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 font-medium">Bloccante</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Conditional Documents */}
-              {docMatrix.conditional?.filter(d => d.condition_met).length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider mb-1.5">Documenti Condizionali</p>
-                  <div className="space-y-1">
-                    {docMatrix.conditional.filter(d => d.condition_met).map((doc, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-amber-50/40" data-testid={`matrix-cond-${doc.doc_key}`}>
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {doc.complete ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-medium text-[#0F172A] block truncate">{doc.label}</span>
-                            <span className="text-[9px] text-[#94A3B8]">{doc.description?.substring(0, 60)}...</span>
-                          </div>
-                        </div>
-                        {doc.signed_required && (
-                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium ${doc.signature_valid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                            {doc.signature_valid ? 'Firmato' : 'Firma richiesta'}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Expected Outputs */}
-              {docMatrix.expected_outputs?.length > 0 && (
-                <div className="border-t border-[#E2E8F0] pt-3">
-                  <p className="text-[9px] font-semibold text-[#475569] uppercase tracking-wider mb-1.5">Output Attesi</p>
-                  <div className="space-y-1">
-                    {docMatrix.expected_outputs.map((out, i) => (
-                      <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg" data-testid={`matrix-out-${out.output_key}`}>
-                        {out.received ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <Clock className="w-3 h-3 text-[#94A3B8]" />}
-                        <span className={`text-[10px] ${out.received ? 'text-emerald-700 font-medium' : 'text-[#94A3B8]'}`}>{out.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Missing Signatures Alert */}
-              {docMatrix.completeness?.missing_signatures?.length > 0 && (
-                <div className="mt-3 p-2.5 rounded-lg bg-red-50 border border-red-100">
-                  <p className="text-[10px] font-semibold text-red-700 flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Firme digitali mancanti
-                  </p>
-                  <ul className="mt-1 space-y-0.5">
-                    {docMatrix.completeness.missing_signatures.map((s, i) => (
-                      <li key={i} className="text-[9px] text-red-600">- {s}: richiesta firma P7M o PAdES</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          {/* Q&A Chat */}
+          <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-chat">
+            <div className="flex items-center gap-2 mb-3">
+              <Bot className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Chiedi a Herion</p>
             </div>
-          )}
+            <ScrollArea className="h-[200px] mb-3">
+              <div className="space-y-2 pr-2">
+                {chatHistory.length === 0 && !chatLoading && (
+                  <div className="text-center py-4">
+                    <p className="text-[10px] text-[var(--text-muted)] mb-2">Fai una domanda sulla pratica</p>
+                    {['Stato attuale?', 'Documenti mancanti?', 'Prossimo passo?'].map((q, i) => (
+                      <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[10px] text-[var(--text-primary)] p-2 bg-[var(--hover-soft)] rounded-lg hover:bg-[var(--surface-accent-1)]/20 transition-colors mb-1" data-testid={`chat-suggestion-${i}`}>{q}</button>
+                    ))}
+                  </div>
+                )}
+                {chatHistory.map(msg => (
+                  <div key={msg.id}>
+                    <div className="flex justify-end mb-1"><div className="bg-[var(--text-primary)] text-white px-2.5 py-1.5 rounded-lg text-[10px] max-w-[85%]">{msg.question}</div></div>
+                    <div className="flex gap-1.5 mb-1">
+                      <div className="w-5 h-5 rounded bg-[var(--surface-accent-1)]/20 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[var(--text-secondary)]" /></div>
+                      <div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg text-[10px] text-[var(--text-primary)] max-w-[85%] whitespace-pre-wrap" style={{ borderColor: 'var(--border-soft)' }}>
+                        <p className="text-[8px] font-bold text-[var(--text-muted)] mb-0.5">{msg.answered_by}</p>
+                        {msg.answer}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex gap-1.5"><div className="w-5 h-5 rounded bg-[var(--surface-accent-1)]/20 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3" /></div>
+                    <div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg text-[10px]" style={{ borderColor: 'var(--border-soft)' }}><Loader2 className="w-3 h-3 animate-spin text-[var(--text-secondary)]" /></div></div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </ScrollArea>
+            <form onSubmit={handleChat} className="flex gap-1.5">
+              <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Domanda..." className="rounded-lg h-8 text-[10px] flex-1" style={{ borderColor: 'var(--border-soft)' }} disabled={chatLoading} data-testid="chat-input" />
+              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-8 w-8 p-0" data-testid="chat-send-btn"><Send className="w-3 h-3" /></Button>
+            </form>
+          </div>
 
           {/* Timeline */}
           {timeline.length > 0 && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-timeline">
-              <div className="flex items-center gap-2 mb-3"><History className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Cronologia</h3></div>
-              <ScrollArea className="h-[220px]">
-                <div className="relative pl-5">
-                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[#E2E8F0]" />
+            <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-timeline">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Cronologia</p>
+              <ScrollArea className="h-[180px]">
+                <div className="space-y-2">
                   {timeline.map((event, i) => {
                     const Icon = TIMELINE_ICONS[event.event_type] || CircleDot;
-                    const isLast = i === timeline.length - 1;
                     return (
-                      <div key={event.id} className={`relative flex gap-3 ${i < timeline.length - 1 ? 'pb-3' : ''}`}>
-                        <div className={`absolute left-[-13px] w-4 h-4 rounded-full flex items-center justify-center ${isLast ? 'bg-[#0A192F]' : 'bg-[#F1F5F9] border border-[#E2E8F0]'}`}>
-                          <Icon className={`w-2.5 h-2.5 ${isLast ? 'text-[#3B82F6]' : 'text-[#94A3B8]'}`} strokeWidth={2} />
-                        </div>
+                      <div key={event.id} className="flex items-start gap-2">
+                        <Icon className="w-3 h-3 text-[var(--text-muted)] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
                         <div className="min-w-0">
-                          <p className={`text-[10px] font-medium ${isLast ? 'text-[#0F172A]' : 'text-[#475569]'}`}>{event.event_label}</p>
-                          <p className="text-[9px] text-[#94A3B8]">{format(new Date(event.timestamp), 'dd MMM, HH:mm', { locale: it })}</p>
+                          <p className="text-[10px] font-medium text-[var(--text-primary)]">{event.event_label}</p>
+                          <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(event.timestamp), 'dd MMM, HH:mm', { locale: it })}</p>
                         </div>
                       </div>
                     );
@@ -1008,123 +481,78 @@ export default function PracticeDetailPage() {
             </div>
           )}
 
-          {/* Q&A Chat */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" data-testid="practice-chat">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-[#0A192F] flex items-center justify-center"><Bot className="w-4.5 h-4.5 text-[#3B82F6]" /></div>
-              <div><h3 className="text-sm font-bold text-[#0F172A]">Chiedi a Herion</h3><p className="text-[10px] text-[#475569]">Domande sulla pratica</p></div>
-            </div>
-            <ScrollArea className="h-[240px] mb-3">
-              <div className="space-y-2.5 pr-2">
-                {chatHistory.length === 0 && !chatLoading && (
-                  <div className="text-center py-6">
-                    <Bot className="w-7 h-7 text-[#CBD5E1] mx-auto mb-2" />
-                    <p className="text-xs text-[#475569] mb-2">Chiedi qualsiasi cosa su questa pratica</p>
-                    <div className="space-y-1">
-                      {['Qual e lo stato attuale?', 'Quali documenti mancano?', 'Qual e il prossimo passo?'].map((q, i) => (
-                        <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[10px] text-[#0A192F] p-2 bg-[#0A192F]/[0.03] rounded-lg hover:bg-[#0A192F]/[0.06] transition-colors" data-testid={`chat-suggestion-${i}`}>{q}</button>
-                      ))}
+          {/* Activity Log (collapsed by default) */}
+          <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
+            <button onClick={() => setShowActivity(!showActivity)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid="activity-toggle">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Registro Attivita</p>
+              {showActivity ? <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
+            </button>
+            {showActivity && (
+              <div className="border-t px-4 pb-3" style={{ borderColor: 'var(--border-soft)' }}>
+                <ScrollArea className="h-[160px] mt-2">
+                  {activityLogs.length > 0 ? activityLogs.map(log => (
+                    <div key={log.id} className="py-1.5">
+                      <p className="text-[10px] font-medium text-[var(--text-primary)] capitalize">{log.action.replace(/_/g, ' ')}</p>
+                      <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(log.timestamp), 'dd MMM, HH:mm', { locale: it })}</p>
                     </div>
-                  </div>
-                )}
-                {chatHistory.map(msg => (
-                  <div key={msg.id}>
-                    <div className="flex justify-end mb-1"><div className="bg-[#0A192F] text-white px-3 py-2 rounded-xl rounded-br-md text-xs max-w-[85%]">{msg.question}</div></div>
-                    <div className="flex gap-2 mb-1">
-                      <div className="w-6 h-6 rounded-md bg-[#3B82F6]/15 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[#0A192F]" /></div>
-                      <div className="bg-[#F8F9FA] border border-[#E2E8F0] px-3 py-2 rounded-xl rounded-bl-md text-xs text-[#0F172A] max-w-[85%] whitespace-pre-wrap">
-                        <p className="text-[9px] font-semibold text-[#0A192F] mb-1">{msg.answered_by}</p>
-                        {msg.answer}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {chatLoading && (
-                  <div className="flex gap-2"><div className="w-6 h-6 rounded-md bg-[#3B82F6]/15 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3 text-[#0A192F]" /></div>
-                    <div className="bg-[#F8F9FA] border border-[#E2E8F0] px-3 py-2 rounded-xl text-xs"><Loader2 className="w-3.5 h-3.5 animate-spin text-[#0A192F]" /></div></div>
-                )}
-                <div ref={chatEndRef} />
+                  )) : <p className="text-[10px] text-[var(--text-muted)] text-center py-4">Nessuna attivita</p>}
+                </ScrollArea>
               </div>
-            </ScrollArea>
-            <form onSubmit={handleChat} className="flex gap-2">
-              <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Fai una domanda..." className="rounded-xl border-[#E2E8F0] h-9 text-xs flex-1" disabled={chatLoading} data-testid="chat-input" />
-              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl h-9 w-9 p-0" data-testid="chat-send-btn"><Send className="w-3.5 h-3.5" /></Button>
-            </form>
-          </div>
-
-          {/* Activity Log */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center gap-2 mb-3"><AlertCircle className="w-4 h-4 text-[#0A192F]" /><h3 className="text-sm font-bold text-[#0F172A]">Registro Attivita</h3></div>
-            <ScrollArea className="h-[200px]">
-              <div className="space-y-1.5">
-                {activityLogs.length > 0 ? activityLogs.map(log => (
-                  <div key={log.id} className="p-2 border border-[#E2E8F0] rounded-lg">
-                    <p className="text-[10px] font-medium text-[#0F172A] capitalize">{log.action.replace(/_/g, ' ')}</p>
-                    <p className="text-[9px] text-[#94A3B8] mt-0.5">{format(new Date(log.timestamp), 'dd MMM, HH:mm', { locale: it })}</p>
-                  </div>
-                )) : <div className="text-center py-6"><Clock className="w-6 h-6 text-[#CBD5E1] mx-auto mb-1" /><p className="text-xs text-[#475569]">Nessuna attivita</p></div>}
-              </div>
-            </ScrollArea>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Dialogs */}
+      {/* ── DIALOGS ── */}
       <AlertDialog open={showStatusDialog.open} onOpenChange={o => setShowStatusDialog({ open: o, status: '' })}>
-        <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-sm">
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm" style={{ borderColor: 'var(--border-soft)' }}>
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center mx-auto mb-3"><AlertTriangle className="w-5 h-5 text-amber-600" /></div>
-            <AlertDialogTitle className="text-lg font-bold text-center">Cambia stato</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[#475569] text-sm">Questa azione verra registrata nel log.</AlertDialogDescription>
+            <AlertDialogTitle className="text-base font-bold text-center">Cambia stato</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[var(--text-secondary)] text-[12px]">Questa azione verra registrata.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleStatusChange} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm">Conferma</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleStatusChange} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Conferma</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showAgentDialog} onOpenChange={setShowAgentDialog}>
-        <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-sm">
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm" style={{ borderColor: 'var(--border-soft)' }}>
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-[#0A192F]/10 flex items-center justify-center mx-auto mb-3"><Sparkles className="w-5 h-5 text-[#0A192F]" /></div>
-            <AlertDialogTitle className="text-lg font-bold text-center">Esegui Agente</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[#475569] text-sm">Agente: <span className="font-medium text-[#0F172A]">{BRANDED_AGENTS.find(a => a.type === selectedAgent)?.branded}</span></AlertDialogDescription>
+            <AlertDialogTitle className="text-base font-bold text-center">Esegui Agente</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[var(--text-secondary)] text-[12px]">Agente: <span className="font-medium">{BRANDED_AGENTS.find(a => a.type === selectedAgent)?.branded}</span></AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleAgentExecute} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm">Esegui</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleAgentExecute} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Esegui</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-md">
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-md" style={{ borderColor: 'var(--border-soft)' }}>
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-[#0A192F] flex items-center justify-center mx-auto mb-3"><Lock className="w-5 h-5 text-[#3B82F6]" /></div>
-            <AlertDialogTitle className="text-lg font-bold text-center">Conferma Approvazione</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[#475569] text-sm">
-              Confermando, autorizzi l'invio della pratica <span className="font-semibold text-[#0F172A]">{practice.practice_type_label}</span> per <span className="font-semibold text-[#0F172A]">{practice.client_name}</span>.
-              <br /><br />
-              Questa azione verra registrata e non potra essere annullata.
+            <AlertDialogTitle className="text-base font-bold text-center">Conferma Approvazione</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[var(--text-secondary)] text-[12px]">
+              Confermando, autorizzi l'invio della pratica <span className="font-semibold text-[var(--text-primary)]">{practice.practice_type_label}</span> per <span className="font-semibold text-[var(--text-primary)]">{practice.client_name}</span>. Azione non reversibile.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprove} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm" data-testid="confirm-approve-btn">Approva e Invia</AlertDialogAction>
+            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApprove} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]" data-testid="confirm-approve-btn">Approva</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <AlertDialogContent className="rounded-2xl border-[#E2E8F0] shadow-2xl max-w-sm">
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm" style={{ borderColor: 'var(--border-soft)' }}>
           <AlertDialogHeader>
-            <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center mx-auto mb-3"><Upload className="w-5 h-5 text-sky-600" /></div>
-            <AlertDialogTitle className="text-lg font-bold text-center">Carica documento</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[#475569] text-sm">File: <span className="font-medium text-[#0F172A]">{pendingFile?.name}</span></AlertDialogDescription>
+            <AlertDialogTitle className="text-base font-bold text-center">Carica documento</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[var(--text-secondary)] text-[12px]">File: <span className="font-medium text-[var(--text-primary)]">{pendingFile?.name}</span></AlertDialogDescription>
           </AlertDialogHeader>
           <div className="px-6 pb-2">
-            <label className="text-xs font-semibold text-[#475569] uppercase tracking-wider">Categoria</label>
+            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Categoria</label>
             <Select value={uploadCategory} onValueChange={setUploadCategory}>
-              <SelectTrigger className="rounded-xl border-[#E2E8F0] h-10 text-sm mt-1.5"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-xl">{DOC_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="rounded-lg h-9 text-[12px] mt-1.5" style={{ borderColor: 'var(--border-soft)' }}><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-lg">{DOC_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-xl border-[#E2E8F0] flex-1 text-sm">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleFileUpload} className="bg-[#0A192F] hover:bg-[#0B243B] rounded-xl flex-1 text-sm">Carica</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleFileUpload} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Carica</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

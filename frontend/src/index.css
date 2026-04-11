@@ -7,30 +7,25 @@
 :root {
   --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Brand Palette — Deep Petrol / Navy Premium */
-  --herion-primary: #0A192F;
-  --herion-primary-hover: #112240;
-  --herion-deep-petrol: #0B243B;
-  --herion-accent-blue: #3B82F6;
-  --herion-accent-cyan: #06B6D4;
-  --herion-accent-lilla: #8B5CF6;
-  --herion-accent-coral: #FF6B6B;
-  --herion-accent-amber: #F59E0B;
+  --bg-app: #FBFBFB;
+  --bg-soft: #E8F9FF;
+  --bg-panel: #FFFFFF;
+  --surface-accent-1: #C4D9FF;
+  --surface-accent-2: #C5BAFF;
+  --text-primary: #1E2430;
+  --text-secondary: #5B6475;
+  --text-muted: #9CA3AF;
+  --border-soft: rgba(0, 0, 0, 0.08);
+  --brand-main: #C4D9FF;
+  --brand-support: #C5BAFF;
+  --hover-soft: rgba(196, 217, 255, 0.25);
+  --shadow-soft: 0 8px 30px rgba(80, 90, 120, 0.08);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
 
-  /* Surfaces */
-  --herion-bg: #F8F9FA;
-  --herion-surface: #FFFFFF;
-  --herion-surface-alt: #F1F3F5;
-  --herion-surface-hover: #E9ECEF;
-
-  /* Text */
-  --herion-text: #0A192F;
-  --herion-text-secondary: #475569;
-  --herion-text-muted: #94A3B8;
-
-  /* Border */
-  --herion-border: #E2E8F0;
-  --herion-border-focus: #3B82F6;
+  --status-error: #EF4444;
+  --status-warning: #F59E0B;
+  --status-success: #10B981;
+  --status-info: #3B82F6;
 }
 
 * {
@@ -41,32 +36,32 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--herion-bg);
-  color: var(--herion-text);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
 }
 
 @layer base {
   :root {
-    --background: 210 17% 98%;
-    --foreground: 213 72% 11%;
+    --background: 0 0% 98.4%;
+    --foreground: 220 18% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 213 72% 11%;
+    --card-foreground: 220 18% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 213 72% 11%;
-    --primary: 213 72% 11%;
+    --popover-foreground: 220 18% 15%;
+    --primary: 220 18% 15%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 17% 95%;
-    --secondary-foreground: 213 72% 11%;
-    --muted: 210 17% 95%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    --secondary: 200 60% 96%;
+    --secondary-foreground: 220 18% 15%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 80% 80%;
+    --accent-foreground: 220 18% 15%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
-    --radius: 0.75rem;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 80% 80%;
+    --radius: 0.625rem;
   }
 }
 
@@ -81,8 +76,8 @@ body {
 
 h1, h2, h3, h4 {
   font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--herion-text);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
 @keyframes fadeInUp {
@@ -108,6 +103,16 @@ h1, h2, h3, h4 {
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+@keyframes sidebar-expand {
+  from { width: 64px; }
+  to { width: 220px; }
+}
+
+@keyframes sidebar-collapse {
+  from { width: 220px; }
+  to { width: 64px; }
 }
 
 .animate-fade-in-up {
@@ -137,8 +142,8 @@ h1, h2, h3, h4 {
 .stagger-5 { animation-delay: 0.25s; opacity: 0; }
 
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -146,22 +151,22 @@ h1, h2, h3, h4 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
+  background: #D1D5DB;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #9CA3AF;
 }
 
 :focus-visible {
-  outline: 2px solid var(--herion-accent-blue);
+  outline: 2px solid var(--surface-accent-1);
   outline-offset: 2px;
 }
 
 ::selection {
-  background-color: var(--herion-primary);
-  color: white;
+  background-color: var(--surface-accent-1);
+  color: var(--text-primary);
 }
 
 [data-sonner-toast] {

@@ -1,202 +1,203 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ClipboardList, FileCheck, Clock, ShieldCheck, Users, Building2, Briefcase } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HerionMark, HerionMarkLight } from '@/components/HerionLogo';
+
+const HERO_SLIDES = [
+  { heading: 'Chiarezza in ogni operazione', body: 'Ogni pratica ha un percorso visibile, ogni passaggio ha una spiegazione. Niente piu confusione.' },
+  { heading: 'Autonomia con supporto continuo', body: 'Herion ti guida senza sostituirti. Decidi tu, ma con tutte le informazioni necessarie davanti.' },
+  { heading: 'Suggerimenti economici aggiornati', body: 'Scadenze, adempimenti e opportunita fiscali sempre sotto controllo, senza doverli cercare.' },
+  { heading: 'Comunicazione organizzata', body: 'Email, documenti e notifiche in un unico flusso. Meno caos, piu risposte puntuali.' },
+  { heading: 'Una direzione piu chiara', body: 'Ogni giorno sai dove sei, cosa manca e qual e il prossimo passo. Herion tiene tutto in ordine per te.' },
+];
+
+function HeroCarousel() {
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const next = useCallback(() => setCurrent(c => (c + 1) % HERO_SLIDES.length), []);
+  const prev = () => setCurrent(c => (c - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(next, 5000);
+    return () => clearInterval(t);
+  }, [paused, next]);
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      data-testid="hero-carousel"
+    >
+      <div className="overflow-hidden">
+        <div className="transition-transform duration-500 ease-out flex" style={{ transform: `translateX(-${current * 100}%)` }}>
+          {HERO_SLIDES.map((slide, i) => (
+            <div key={i} className="w-full flex-shrink-0 px-4">
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-2">{slide.heading}</h2>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-md">{slide.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 mt-5 px-4">
+        <button onClick={prev} className="w-7 h-7 rounded-full bg-white/80 border border-[var(--border-soft)] flex items-center justify-center hover:bg-white transition-colors" data-testid="carousel-prev">
+          <ChevronLeft className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+        </button>
+        <div className="flex gap-1.5">
+          {HERO_SLIDES.map((_, i) => (
+            <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? 'w-5 bg-[var(--surface-accent-1)]' : 'w-1.5 bg-[var(--text-muted)]/30'}`} />
+          ))}
+        </div>
+        <button onClick={next} className="w-7 h-7 rounded-full bg-white/80 border border-[var(--border-soft)] flex items-center justify-center hover:bg-white transition-colors" data-testid="carousel-next">
+          <ChevronRight className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function WelcomePage() {
   return (
-    <div className="min-h-screen bg-[#FAFCFD]" data-testid="welcome-page">
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#E2E8F0]/60">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#0A192F] flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M18 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M6 12H18" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/></svg>
-            </div>
-            <span className="text-lg font-bold text-[#0F172A] tracking-tight">Herion</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login"><Button variant="ghost" className="text-sm text-[#475569] hover:text-[#0F172A] rounded-xl h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
-            <Link to="/register"><Button className="bg-[#0A192F] hover:bg-[#0B243B] text-white rounded-xl h-9 px-5 text-sm font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
+    <div className="min-h-screen bg-[var(--bg-app)]" data-testid="welcome-page">
+
+      {/* ─── NAV ─── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b" style={{ borderColor: 'var(--border-soft)' }}>
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5">
+            <HerionMark size={30} />
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
+            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-6" data-testid="hero-section">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#0A192F]/[0.04] border border-[#0A192F]/10 rounded-full mb-8">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
-            <span className="text-[11px] font-medium text-[#0A192F] tracking-wide">Assistente operativo fiscale</span>
+      {/* ─── HERO ─── */}
+      <section className="pt-28 pb-16 px-6 relative overflow-hidden" data-testid="hero-section">
+        {/* Large background H watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden="true">
+          <span className="text-[min(40vw,320px)] font-black text-[var(--text-primary)] opacity-[0.025] leading-none tracking-tighter">
+            HERION
+          </span>
+        </div>
+
+        <div className="max-w-3xl mx-auto relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--bg-soft)] border border-[var(--surface-accent-1)]/30 rounded-full mb-6">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--surface-accent-1)]" />
+            <span className="text-[11px] font-medium text-[var(--text-secondary)]">Assistente operativo fiscale</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-[#0F172A] leading-[1.2] tracking-tight mb-6">
-            Herion ti aiuta a gestire pratiche fiscali, documenti e passaggi operativi in modo chiaro, ordinato e guidato.
+
+          <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-[var(--text-primary)] leading-[1.15] tracking-tight mb-5">
+            Meno confusione.<br />
+            Piu controllo sulle tue pratiche.
           </h1>
-          <p className="text-base sm:text-lg text-[#475569] leading-relaxed max-w-2xl mx-auto mb-4">
-            Dalla raccolta dei dati alla verifica dei documenti, fino ai passaggi che possono essere preparati o inviati, Herion ti accompagna passo dopo passo, riducendo confusione, errori e perdite di tempo.
+
+          <p className="text-base text-[var(--text-secondary)] leading-relaxed max-w-xl mb-10">
+            Herion e nato per rendere la vita piu semplice. Ti accompagna nella gestione fiscale e amministrativa con chiarezza, autonomia e supporto costante.
           </p>
-          <p className="text-sm text-[#64748B] max-w-xl mx-auto mb-4">
-            Pensato per privati, freelance e aziende in Italia. Herion unisce organizzazione, controllo e supporto operativo in un unico spazio.
-          </p>
-          <p className="text-[11px] text-[#94A3B8] max-w-md mx-auto mb-10">
-            Attualmente operativo per il contesto fiscale italiano. Architettura predisposta per l'espansione europea.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/register"><Button className="bg-[#0A192F] hover:bg-[#0B243B] text-white rounded-xl h-12 px-8 text-sm font-semibold shadow-lg shadow-[#0A192F]/10" data-testid="hero-cta-btn">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
-            <Link to="/login"><Button variant="outline" className="border-[#0A192F]/20 text-[#0A192F] hover:bg-[#0A192F]/[0.03] rounded-xl h-12 px-8 text-sm font-semibold" data-testid="hero-login-btn">Accedi</Button></Link>
-          </div>
+
+          <Link to="/register">
+            <Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg h-12 px-8 text-sm font-semibold shadow-lg shadow-black/5" data-testid="hero-cta-btn">
+              Inizia ora <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </div>
       </section>
 
-      {/* Cosa fa Herion */}
-      <section className="py-20 px-6 bg-white" data-testid="features-section">
-        <div className="max-w-5xl mx-auto">
-          <div className="max-w-2xl mx-auto text-center mb-14">
-            <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] mb-4">Cosa fa Herion</h2>
-            <p className="text-sm text-[#475569] leading-relaxed">
-              Herion nasce per rendere piu semplice tutto cio che di solito richiede attenzione, documenti, controlli e tempo.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              { icon: ClipboardList, title: 'Raccolta e organizzazione', desc: 'Raccogliere e organizzare dati e documenti in modo strutturato, senza perdere nulla.' },
-              { icon: FileCheck, title: 'Pratiche guidate', desc: 'Seguire pratiche fiscali e amministrative con passaggi chiari e controllati.' },
-              { icon: ShieldCheck, title: 'Verifiche e controlli', desc: 'Controllare cosa manca prima del passaggio successivo, evitando sorprese.' },
-              { icon: ArrowRight, title: 'Prossimi passi chiari', desc: 'Spiegare in modo semplice cosa fare, senza linguaggio difficile o confuso.' },
-              { icon: Clock, title: 'Scadenze e promemoria', desc: 'Ricordarti scadenze, approvazioni e azioni importanti al momento giusto.' },
-              { icon: Building2, title: 'Casi semplici e complessi', desc: 'Distinguere i casi semplici da quelli che richiedono una verifica professionale.' },
-            ].map((item, i) => (
-              <div key={i} className="p-5 bg-[#FAFCFD] rounded-2xl border border-[#E2E8F0]/80 hover:border-[#0A192F]/15 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-[#0A192F]/[0.06] flex items-center justify-center mb-4">
-                  <item.icon className="w-5 h-5 text-[#0A192F]" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-sm font-semibold text-[#0F172A] mb-1.5">{item.title}</h3>
-                <p className="text-xs text-[#475569] leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Perche e utile */}
-      <section className="py-20 px-6" data-testid="benefits-section">
-        <div className="max-w-4xl mx-auto">
-          <div className="max-w-2xl mx-auto text-center mb-12">
-            <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] mb-4">Perche e utile</h2>
-            <p className="text-sm text-[#475569] leading-relaxed">
-              Meno burocrazia da inseguire, piu chiarezza nelle cose da fare.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {[
-              'Evitare passaggi saltati o documenti mancanti',
-              'Ridurre errori che possono rallentare una pratica',
-              'Seguire lo stato di ogni richiesta in modo visibile',
-              'Avere un riepilogo chiaro prima di ogni passaggio importante',
-              'Sapere quando una pratica puo andare avanti e quando invece va fermata e verificata meglio',
-            ].map((text, i) => (
-              <div key={i} className="flex items-start gap-3.5 p-4 bg-white rounded-xl border border-[#E2E8F0]/80">
-                <div className="w-6 h-6 rounded-full bg-[#3B82F6]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 rounded-full bg-[#0A192F]" />
-                </div>
-                <p className="text-sm text-[#0F172A] leading-relaxed">{text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Come funziona */}
-      <section className="py-20 px-6 bg-white" data-testid="how-it-works-section">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] text-center mb-14">Come funziona</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { step: '1', title: 'Inserisci i dati e i documenti', desc: 'Herion raccoglie solo cio che serve davvero per capire la pratica.' },
-              { step: '2', title: 'Controlla e organizza il flusso', desc: 'Gli agenti verificano documenti, passaggi, canali e scadenze, cosi ogni pratica segue un percorso ordinato.' },
-              { step: '3', title: 'Ti guida fino al prossimo passo', desc: 'Prima di ogni azione importante, Herion ti mostra cosa sta succedendo, cosa manca e cosa puoi fare dopo.' },
-            ].map((item, i) => (
-              <div key={i} className="text-center">
-                <div className="w-12 h-12 rounded-2xl bg-[#0A192F] text-white flex items-center justify-center mx-auto mb-5 text-lg font-bold">{item.step}</div>
-                <h3 className="text-sm font-semibold text-[#0F172A] mb-2">{item.title}</h3>
-                <p className="text-xs text-[#475569] leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Per chi e */}
-      <section className="py-20 px-6" data-testid="audience-section">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] text-center mb-12">Per chi e Herion</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { icon: Users, title: 'Privati', desc: 'Che hanno bisogno di ordine, spiegazioni chiare e supporto pratico per le proprie pratiche.' },
-              { icon: Briefcase, title: 'Freelance e professionisti', desc: 'Che vogliono gestire meglio documenti, scadenze e passaggi fiscali senza perdersi tra le procedure.' },
-              { icon: Building2, title: 'Aziende', desc: 'Che hanno bisogno di controllo, visibilita e flussi piu ordinati nella gestione amministrativa.' },
-            ].map((item, i) => (
-              <div key={i} className="p-6 bg-white rounded-2xl border border-[#E2E8F0]/80 text-center hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-[#0A192F]/[0.06] flex items-center justify-center mx-auto mb-4">
-                  <item.icon className="w-5 h-5 text-[#0A192F]" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-sm font-semibold text-[#0F172A] mb-2">{item.title}</h3>
-                <p className="text-xs text-[#475569] leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Valore */}
-      <section className="py-20 px-6 bg-white" data-testid="value-section">
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-sm text-[#0F172A] leading-relaxed mb-4">
-            Herion non sostituisce in modo cieco il lavoro professionale.
-            Ti aiuta a gestire meglio tutto cio che puo essere organizzato, controllato e preparato con regole chiare.
-          </p>
-          <p className="text-sm text-[#475569] leading-relaxed">
-            Quando un caso e semplice o medio, Herion puo accompagnarti passo dopo passo.
-            Quando il caso diventa delicato, ambiguo o rischioso, il sistema lo segnala chiaramente e prepara tutto in modo ordinato per una verifica piu attenta.
-          </p>
-        </div>
-      </section>
-
-      {/* Chi Siamo */}
-      <section className="py-20 px-6" data-testid="about-section">
+      {/* ─── CAROUSEL SECTION ─── */}
+      <section className="pb-16 px-6">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] text-center mb-8">Chi siamo</h2>
-          <div className="space-y-4 text-sm text-[#475569] leading-relaxed">
-            <p>Herion nasce dall'idea di rendere piu accessibili, ordinati e comprensibili i passaggi fiscali e amministrativi che spesso fanno perdere tempo, energie e serenita.</p>
-            <p>Molte pratiche non sono difficili solo perche complesse: spesso diventano pesanti perche sono frammentate, poco chiare e piene di piccoli passaggi che si accumulano.</p>
-            <p>Per questo Herion e stato pensato come uno spazio operativo dove dati, documenti, verifiche, approvazioni e scadenze possono convivere in modo piu leggibile e guidato.</p>
-            <p>Il nostro obiettivo e aiutare privati, freelance e aziende a muoversi con piu ordine, piu controllo e meno fatica, senza lasciare tutto nel caos o nell'incertezza.</p>
+          <div className="bg-white rounded-2xl border p-6 sm:p-8" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-soft)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-4">Cosa cambia con Herion</p>
+            <HeroCarousel />
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 px-6 bg-[#0A192F]" data-testid="cta-section">
+      {/* ─── CHI SIAMO ─── */}
+      <section className="py-16 px-6 bg-[var(--bg-soft)]" data-testid="about-section">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Chi siamo</h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
+            Herion nasce dall'idea che gestire pratiche fiscali e amministrative non debba essere un'esperienza frustrante. Troppo spesso i passaggi si accumulano, i documenti si perdono e la chiarezza viene meno.
+          </p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            Per questo abbiamo creato uno spazio operativo dove ogni fase e visibile, ogni azione e guidata e il supporto non si ferma mai. Non un servizio che ti sostituisce, ma un compagno che ti aiuta a muoverti con piu ordine e meno fatica, giorno dopo giorno.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── VALUE PROPOSITION ─── */}
+      <section className="py-16 px-6" data-testid="value-section">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { title: 'Organizzazione', body: 'Dati, documenti e scadenze in un unico flusso. Niente piu fogli sparsi o email dimenticate.' },
+              { title: 'Controllo', body: 'Sai sempre dove sei, cosa manca e cosa serve. Ogni pratica ha un percorso chiaro e trasparente.' },
+              { title: 'Supporto', body: 'Herion ti accompagna nel tempo. Non e una consulenza isolata, ma un alleato continuo.' },
+            ].map((card, i) => (
+              <div key={i} className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
+                <div className={`w-8 h-8 rounded-lg mb-3 flex items-center justify-center ${i === 0 ? 'bg-[var(--surface-accent-1)]/30' : i === 1 ? 'bg-[var(--surface-accent-2)]/30' : 'bg-[var(--bg-soft)]'}`}>
+                  <span className="text-[13px] font-bold text-[var(--text-primary)]">{i + 1}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1.5">{card.title}</h3>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{card.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── PRODUCT PREVIEW ─── */}
+      <section className="py-16 px-6 bg-white" data-testid="preview-section">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">Costruito per la chiarezza</h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-lg mx-auto mb-8">
+            Una piattaforma dove pratiche, agenti intelligenti, documenti e comunicazioni si integrano in un unico flusso operativo. Tutto visibile, tutto sotto controllo.
+          </p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {[
+              { num: '12', label: 'Agenti specializzati' },
+              { num: '34', label: 'Template email' },
+              { num: '100%', label: 'Controllo operativo' },
+            ].map((stat, i) => (
+              <div key={i} className="py-4 px-3 rounded-xl bg-[var(--bg-app)] border" style={{ borderColor: 'var(--border-soft)' }}>
+                <p className="text-2xl font-black text-[var(--text-primary)]">{stat.num}</p>
+                <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── CTA ─── */}
+      <section className="py-16 px-6 bg-[var(--text-primary)]" data-testid="cta-section">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Pronto a iniziare?</h2>
-          <p className="text-sm text-white/60 mb-8">Siamo nati per trasformare burocrazia, pratiche e passaggi fiscali in percorsi piu semplici da capire e piu facili da seguire.</p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/register"><Button className="bg-[#3B82F6] hover:bg-[#4BC7AF] text-[#0A192F] rounded-xl h-12 px-8 text-sm font-bold">Inizia ora <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
-            <Link to="/login"><Button variant="outline" className="border-white/20 text-white hover:bg-white/5 rounded-xl h-12 px-8 text-sm font-semibold">Accedi</Button></Link>
-          </div>
+          <HerionMarkLight size={40} className="mx-auto mb-5" />
+          <h2 className="text-xl font-bold text-white mb-3">Pronto a semplificare?</h2>
+          <p className="text-sm text-white/50 mb-8 max-w-md mx-auto">
+            Inizia a gestire le tue pratiche con piu ordine, piu chiarezza e meno stress. Herion e qui per accompagnarti.
+          </p>
+          <Link to="/register">
+            <Button className="bg-[var(--surface-accent-1)] hover:bg-[#b3ccf7] text-[var(--text-primary)] rounded-lg h-12 px-8 text-sm font-bold" data-testid="cta-register-btn">
+              Inizia ora <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-10 px-6 bg-[#0A3440] text-white/40" data-testid="footer">
+      {/* ─── FOOTER ─── */}
+      <footer className="py-8 px-6 bg-[#161b26] text-white/40" data-testid="footer">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#3B82F6]/15 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M18 4V20" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/><path d="M6 12H18" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"/></svg>
-            </div>
-            <span className="text-sm font-semibold text-white/60">Herion</span>
+            <HerionMarkLight size={24} />
           </div>
-          <p className="text-xs text-white/30 text-center">Assistente operativo fiscale. Piu chiarezza nei passaggi. Piu ordine nelle pratiche. Piu controllo su cio che conta.</p>
-          <div className="flex items-center gap-4 text-xs">
+          <p className="text-[11px] text-white/30 text-center">Assistente operativo fiscale. Chiarezza, ordine e controllo.</p>
+          <div className="flex items-center gap-4 text-[11px]">
             <Link to="/login" className="text-white/40 hover:text-white/60 transition-colors">Accedi</Link>
             <Link to="/register" className="text-white/40 hover:text-white/60 transition-colors">Registrati</Link>
           </div>

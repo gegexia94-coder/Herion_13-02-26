@@ -9,63 +9,46 @@ Build "Herion AI" — a controlled execution platform with orchestration of mult
 - **Auth**: Cookie-based JWT
 - **AI**: OpenAI GPT-5.2 via Emergent LLM Key
 - **Email**: Resend integration
-- **Design System**: CSS custom properties (#FBFBFB, #E8F9FF, #C4D9FF, #C5BAFF)
-- **Navigation**: Left collapsible sidebar (Dashboard, Pratiche, Comunicazione)
+- **Design**: Light, guided, human-first. CSS tokens (#FBFBFB, #E8F9FF, #C4D9FF, #C5BAFF), Brand teal #0ABFCF
+- **Navigation**: 5-item left sidebar (Dashboard, Pratiche, Comunicazione, Ricerca, Supporto)
 
 ## What's Been Implemented
 
-### Automatic Intelligent Priority System (Batch 12 — 2026-04-11)
-- **Backend `evaluate_practice_priority()`**: Computes priority from deadline proximity, status, risk level, stall time
-  - Deadline passed → urgent
-  - waiting_approval + high risk → urgent
-  - waiting_approval + medium risk → high
-  - failed/blocked/escalated → high or urgent
-  - Stale (>5 days no update, active) → high
-  - completed/submitted → low
-  - Default → normal
-- **`refresh_practice_priority()`**: Persists computed priority per practice
-- **`refresh_all_priorities()`**: Bulk refresh on startup for all active practices
-- Priority recalculated on: create, status change, approval, orchestration
-- Priority sorted in all API responses (urgent first, then high, normal, low)
-- **Frontend Dashboard Smart Sections**:
-  - "Urgente Ora" — red alert section for urgent practices
-  - "In Attesa di Approvazione" — amber section for approval-needed practices
-  - "Tutte le Pratiche" — table with PRIORITA column, colored badges
-- **Priority badges** on Dashboard, Practices List, Practice Detail header
-- **Colors**: urgent=red, high=amber, normal=blue, low=gray
+### Human-First UX Refactor (Batch 13 — 2026-04-11)
+- **5-item navigation**: Dashboard, Pratiche, Comunicazione, Ricerca, Supporto — always-visible labels + hint text, teal accent active state
+- **Brand logo**: Uploaded circuit-board H image applied to navbar, login, welcome, register
+- **Compact Agent Pipeline**: Replaced 12-block list with status message + active agent indicator + progress bar + "Attivita Agenti" button opening modal with 4 phases (Analisi, Conformita, Documenti, Esecuzione)
+- **Human-friendly chat**: Backend prompt rewritten — no markdown noise, simple Italian, always ends with "Prossimo passo:" action
+- **Micro-guidance**: Every page shows "what to do next" — draft ("Avvia il workflow"), waiting_approval ("Verifica e approva"), blocked ("Risolvi il problema")
+- **Search page**: Full-text search across practices (client name, type, fiscal code, VAT)
+- **Support page**: 5 FAQ accordions + contact email + chat guidance
+- **Lighter visual style**: Reduced dark backgrounds, white surfaces, softer shadows, teal brand color
+- **Dashboard greeting**: "Ciao, {name}" with contextual guidance text
 
-### UI System Refactor (Batch 11 — 2026-04-11)
-- Global Design System with CSS tokens, Manrope font
-- Geometric H Logo (SVG), Left Collapsible Sidebar
-- Welcome Page (hero carousel, chi siamo, CTA)
-- Dashboard as operational control panel
-- Practice Detail 2-column layout
-- Login/Register simplified forms
+### Automatic Priority System (Batch 12 — 2026-04-11)
+- Backend `evaluate_practice_priority()` — deadline, status, risk, stall rules
+- `refresh_all_priorities()` on startup, auto-recalc on state changes
+- Smart dashboard sections: "Urgente Ora", "In Attesa di Approvazione"
+- Priority badges (urgent=red, high=amber, normal=blue, low=gray) everywhere
 
-### Visual Agent Pipeline System (Batch 10 — 2026-04-11)
-- 12-agent collapsible pipeline with visual states
-- Interactive node popovers
+### UI System (Batch 11 — 2026-04-11)
+- Global design system, geometric logo → brand image, left sidebar, 2-column practice detail
 
-### Previous Batches (1-9)
-- Dashboard KPIs, quick actions, priority sorting
-- Navigation reduced to 3 sections
-- Toast/Alert spam fixed
-- Backend Priority Engine
-- Convenience wrapper endpoints
+### Agent Pipeline (Batch 10), Dashboard/Priority/Email (Batches 1-9)
 
 ## Testing Status
-- Iteration 19: 100% pass — Priority system verified (backend 9/9 + frontend all)
-- Iteration 18: 100% pass — Full UI refactor
-- Iteration 17: 100% pass — Agent Pipeline
-- Iteration 16: 100% pass — Operational control center
+- Iteration 20: 100% — Human-first UX refactor (all 11 feature groups verified)
+- Iteration 19: 100% — Priority system
+- Iteration 18: 100% — UI refactor
+- Iterations 16-17: 100%
 
 ## 3rd Party Integrations
-- OpenAI GPT-5.2 — Agent orchestration (Emergent LLM Key)
-- Resend — Email sending (API key in backend/.env)
+- OpenAI GPT-5.2 via Emergent LLM Key
+- Resend email integration
 
 ## Remaining Backlog
-- P1: Resend domain verification for production sending
-- P2: Country-specific tax rules implementation
-- P2: Advanced analytics / Creator profit dashboard
+- P1: Resend domain verification for production
+- P2: Country-specific tax rules
+- P2: Advanced analytics dashboard
 - P2: Multi-language support
 - P2: Catalog expansion to 120+ procedures

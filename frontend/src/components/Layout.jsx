@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { HerionMark } from '@/components/HerionLogo';
+import { LOCAL_DEV_MODE } from '@/config/devMode';
 
 const sideNav = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -51,9 +52,16 @@ export default function Layout() {
             <HerionMark size={collapsed ? 28 : 32} />
           </NavLink>
           {!collapsed && (
-            <span className="text-[15px] font-extrabold tracking-tight text-[var(--text-primary)] truncate">
-              Herion
-            </span>
+            <div className="min-w-0">
+              <span className="text-[15px] font-extrabold tracking-tight text-[var(--text-primary)] truncate block">
+                Herion
+              </span>
+              {LOCAL_DEV_MODE && (
+                <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  Local UX Mode
+                </span>
+              )}
+            </div>
           )}
         </div>
 

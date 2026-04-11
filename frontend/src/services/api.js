@@ -1,10 +1,10 @@
 import axios from 'axios';
-
-const API = process.env.REACT_APP_BACKEND_URL;
+import { BACKEND_URL } from '@/config/devMode';
 
 const api = axios.create({
-  baseURL: `${API}/api`,
+  baseURL: `${BACKEND_URL}/api`,
   withCredentials: true,
+  timeout: 15000,
 });
 
 // Auth

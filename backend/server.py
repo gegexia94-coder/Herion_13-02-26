@@ -20,28 +20,69 @@ import requests
 import resend
 from bson import ObjectId
 
+from backend.local_dev import FakeDatabase, FakeMongoClient
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+LOCAL_RUNTIME_DIR = PROJECT_ROOT / ".local"
+LOCAL_STORAGE_DIR = LOCAL_RUNTIME_DIR / "storage"
+LOCAL_MEMORY_DIR = PROJECT_ROOT / "memory"
+
+_missing_core_env = not all(os.environ.get(name) for name in ["MONGO_URL", "DB_NAME", "JWT_SECRET"])
+LOCAL_DEV_MODE = _env_flag("LOCAL_DEV_MODE") or _env_flag("USE_FAKE_DATA") or _missing_core_env
+USE_FAKE_DATA = _env_flag("USE_FAKE_DATA", default=LOCAL_DEV_MODE)
+DISABLE_EXTERNAL_SERVICES = _env_flag("DISABLE_EXTERNAL_SERVICES", default=LOCAL_DEV_MODE)
+
+if LOCAL_DEV_MODE:
+    logger.warning("Herion local UX mode enabled")
+    LOCAL_RUNTIME_DIR.mkdir(exist_ok=True)
+    LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    LOCAL_MEMORY_DIR.mkdir(parents=True, exist_ok=True)
+
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+mongo_url = os.environ.get("MONGO_URL")
+db_name = os.environ.get("DB_NAME", "herion_local")
+if LOCAL_DEV_MODE:
+    client = FakeMongoClient()
+    db = FakeDatabase()
+else:
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[db_name]
 
 # JWT Config
 JWT_ALGORITHM = "HS256"
+LOCAL_JWT_SECRET = os.environ.get("JWT_SECRET", "herion-local-dev-secret-2026-secure-key")
 
 # Resend Config
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
-if RESEND_API_KEY:
+EMAIL_SIMULATION_MODE = DISABLE_EXTERNAL_SERVICES or not RESEND_API_KEY
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@aic.it")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Admin123!")
+LOCAL_DEMO_USER_EMAIL = os.environ.get("LOCAL_DEMO_USER_EMAIL", "designer@example.com")
+LOCAL_DEMO_USER_PASSWORD = os.environ.get("LOCAL_DEMO_USER_PASSWORD", "Designer123!")
+LOCAL_CREATOR_PASSWORD = os.environ.get("CREATOR_PASSWORD") or ("Creator123!" if LOCAL_DEV_MODE else None)
+if RESEND_API_KEY and not DISABLE_EXTERNAL_SERVICES:
     resend.api_key = RESEND_API_KEY
     logger.info("Resend email service configured")
 else:
-    logger.warning("RESEND_API_KEY not set — email sending will be disabled")
+    logger.warning("Email delivery is running in simulated mode")
 
 def get_jwt_secret() -> str:
+    if LOCAL_DEV_MODE:
+        return LOCAL_JWT_SECRET
     return os.environ["JWT_SECRET"]
 
 # Password hashing
@@ -68,8 +109,17 @@ EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 APP_NAME = "aic-commercialista"
 storage_key = None
 
+
+def _local_storage_path(path: str) -> Path:
+    sanitized = [part for part in path.split("/") if part and part not in {".", ".."}]
+    return LOCAL_STORAGE_DIR.joinpath(*sanitized)
+
 def init_storage():
     global storage_key
+    if LOCAL_DEV_MODE or DISABLE_EXTERNAL_SERVICES or not EMERGENT_KEY:
+        storage_key = "local-storage"
+        LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+        return storage_key
     if storage_key:
         return storage_key
     resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
@@ -78,6 +128,17 @@ def init_storage():
     return storage_key
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
+    if LOCAL_DEV_MODE or DISABLE_EXTERNAL_SERVICES or not EMERGENT_KEY:
+        local_path = _local_storage_path(path)
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        local_path.write_bytes(data)
+        return {
+            "path": path,
+            "size": len(data),
+            "content_type": content_type,
+            "storage_mode": "local",
+            "filesystem_path": str(local_path),
+        }
     key = init_storage()
     resp = requests.put(
         f"{STORAGE_URL}/objects/{path}",
@@ -88,6 +149,13 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
     return resp.json()
 
 def get_object(path: str) -> tuple:
+    if LOCAL_DEV_MODE or DISABLE_EXTERNAL_SERVICES or not EMERGENT_KEY:
+        local_path = _local_storage_path(path)
+        if not local_path.exists():
+            raise HTTPException(status_code=404, detail="File non trovato nello storage locale")
+        data = local_path.read_bytes()
+        content_type = MIME_TYPES.get(local_path.suffix.lstrip("."), "application/octet-stream") if local_path.suffix else "application/octet-stream"
+        return data, content_type
     key = init_storage()
     resp = requests.get(
         f"{STORAGE_URL}/objects/{path}",
@@ -869,7 +937,14 @@ async def get_practice_documents(practice_id: str, user: dict = Depends(get_curr
 # AI AGENTS ENDPOINTS
 # ========================
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    AI_IMPORT_ERROR = None
+except Exception as exc:
+    LlmChat = None
+    UserMessage = None
+    AI_IMPORT_ERROR = exc
+    logger.warning(f"Emergent AI integration unavailable: {exc}")
 
 AGENT_DESCRIPTIONS = {
     "intake": {
@@ -1275,9 +1350,9 @@ IMPORTANTE: Includi OBBLIGATORIAMENTE questi tag nel testo:
 Rispondi SEMPRE in italiano con tono professionale e rassicurante."""
 
 # Creator bootstrap configuration - protected, non-public
-CREATOR_EMAIL = "gegexia94@gmail.com"
-CREATOR_NAME = "Gege-Xia"
-CREATOR_UUID = "HERION-CREATOR-001"
+CREATOR_EMAIL = os.environ.get("CREATOR_EMAIL", "creator@example.com" if LOCAL_DEV_MODE else "gegexia94@gmail.com")
+CREATOR_NAME = os.environ.get("CREATOR_NAME", "Herion Creator" if LOCAL_DEV_MODE else "Gege-Xia")
+CREATOR_UUID = os.environ.get("CREATOR_UUID", "HERION-CREATOR-001")
 STATUS_LABELS = {
     "draft": "Bozza",
     "pending": "In Attesa",
@@ -1355,6 +1430,110 @@ TIMELINE_EVENTS = {
     "submission_retried": "Invio ritentato",
 }
 
+
+def ai_execution_enabled() -> bool:
+    return (
+        not LOCAL_DEV_MODE
+        and not DISABLE_EXTERNAL_SERVICES
+        and bool(EMERGENT_KEY)
+        and LlmChat is not None
+        and UserMessage is not None
+    )
+
+
+def _fake_risk_level(practice: dict) -> str:
+    existing = practice.get("risk_level")
+    if existing in {"low", "medium", "high"}:
+        return existing
+    if practice.get("status") in {"blocked", "escalated", "failed"}:
+        return "high"
+    if practice.get("client_type") == "company" or "closure" in (practice.get("practice_type", "") or "").lower():
+        return "medium"
+    return "low"
+
+
+def _fake_delegation_status(practice: dict) -> str:
+    delegation_info = practice.get("delegation_info") or {}
+    status = delegation_info.get("status", "not_required")
+    if status in {"valid", "authorized"}:
+        return "authorized"
+    if status in {"under_review", "requested", "required", "incomplete"}:
+        return "missing_delegation"
+    if status in {"rejected", "expired"}:
+        return "partially_authorized"
+    return "not_required"
+
+
+def _fake_agent_output(agent_type: str, practice: dict, query: str = "") -> str:
+    practice_label = practice.get("practice_type_label", "Pratica")
+    client_name = practice.get("client_name", "Cliente")
+    doc_count = len(practice.get("documents", []))
+    risk_level = _fake_risk_level(practice)
+    delegation_status = _fake_delegation_status(practice)
+    deadline = practice.get("deadline") or "Nessuna scadenza rigida registrata"
+
+    outputs = {
+        "intake": f"- Procedura identificata: {practice_label}\n- Cliente: {client_name}\n- Classificazione: {practice.get('client_type_label', 'Cliente')} / contesto Italia\n- Documenti richiesti: identita, fiscale, supporto pratica\n- Livello di rischio iniziale: {risk_level}",
+        "ledger": f"- Dati finanziari strutturati per {client_name}\n- Stato attuale: {practice.get('status_label', 'Bozza')}\n- Elementi economici rilevati: priorita {practice.get('priority', 'normal')}\n- Anomalie: nessuna anomalia bloccante in local mode\n- Note contabili: validare importi definitivi prima dell'invio reale",
+        "compliance": f"- Normative applicabili: processo fiscale/amministrativo italiano\n- Stato conformita: verifiche preliminari completate\n- Rischi identificati: livello {risk_level}\n- Adempimenti necessari: verifica documentale e approvazione se richiesta\n- Raccomandazioni: mantenere tracciabilita completa",
+        "documents": f"- Documenti presenti: {doc_count}\n- Stato completezza: {'parziale' if doc_count < 2 else 'adeguato per revisione UX'}\n- Mancanze principali: eventuale delega firmata e ricevute finali\n- Azioni necessarie: caricare documenti definitivi prima dell'uso reale",
+        "delegate": f"- Stato delega: {delegation_status}\n- Dettagli: la pratica usa fallback locale e conserva il modello di delega reale\n- Canali disponibili: email, preparazione interna, portale ufficiale dove previsto\n- Azione richiesta: confermare o caricare delega se il caso la richiede",
+        "deadline": f"- Scadenze identificate: {deadline}\n- Urgenza: {'urgente' if practice.get('priority') == 'urgent' else 'monitorata'}\n- Rischi in caso di ritardo: aumento priorita e blocco operativo\n- Promemoria raccomandati: verifica approvazione, verifica documenti, controllo stato invio",
+        "flow": f"- Step corrente: {practice.get('status_label', 'Bozza')}\n- Blocchi: {'nessuno strutturale' if practice.get('status') not in {'blocked', 'escalated'} else 'presente un blocco da risolvere'}\n- Prossima azione: {'richiedere approvazione' if practice.get('status') == 'waiting_approval' else 'proseguire nel workflow simulato'}\n- Stato prontezza: coerente con il flusso locale",
+        "routing": f"- Canale selezionato: {'official_portal' if practice.get('client_type') == 'company' else 'email'}\n- Destinatario selezionato: ente o cliente associato alla pratica\n- Motivazione: mantenere un contratto backend realistico in modalita locale\n- Elementi mancanti: conferma finale e credenziali di produzione",
+        "research": f"- Supporto: supportato in local UX mode\n- Fonti ufficiali identificate: catalogo interno + registro autorita\n- Canale suggerito: preparazione controllata con invio simulato\n- Note su incertezze: validare fonte ufficiale prima di esecuzione reale",
+        "monitor": f"- Stato attuale: {practice.get('status_label', 'Bozza')}\n- Promemoria: controllare approvazione, documenti, follow-up\n- Prossime azioni: aprire pratica, leggere log, completare transizione simulata\n- Avvertimenti: i dati in local mode sono realistici ma non vincolanti",
+        "advisor": f"- Problema compreso: {practice_label} per {client_name}\n- Stato: {practice.get('status_label', 'Bozza')}\n- Prossimo passo: {'approvare la pratica' if practice.get('status') == 'waiting_approval' else 'avviare il workflow'}\n- Riepilogo rischio: {risk_level}\n- Nota: risposta simulata per revisione UX locale",
+        "guard": f"- Verdetto: {'BLOCCATO' if practice.get('status') in {'blocked', 'escalated'} else 'SORVEGLIATO'}\n- Dimensioni valutate: documenti, delega, approvazione, routing\n- Problemi identificati: validazioni reali sospese in local mode\n- Alternative sicure suggerite: completare documenti, verificare delega, confermare stato prima dell'uso reale",
+    }
+
+    base_output = outputs.get(agent_type, f"- Analisi locale completata per {practice_label}\n- Query: {query or 'Analisi completa'}")
+    if query:
+        return f"{base_output}\n- Focus richiesto: {query}"
+    return base_output
+
+
+def _fake_admin_summary(practice: dict, results: list[dict]) -> str:
+    risk_level = _fake_risk_level(practice)
+    risk_tag = {"low": "[RISCHIO_BASSO]", "medium": "[RISCHIO_MEDIO]", "high": "[RISCHIO_ALTO]"}[risk_level]
+    delegation_status = _fake_delegation_status(practice)
+    delegation_tag = {
+        "authorized": "[DELEGA_AUTORIZZATA]",
+        "partially_authorized": "[DELEGA_PARZIALE]",
+        "missing_delegation": "[DELEGA_MANCANTE]",
+        "not_required": "[DELEGA_NON_NECESSARIA]",
+    }[delegation_status]
+    completed_agents = ", ".join(result["branded_name"] for result in results if result.get("status") == "completed")
+
+    return f"""## RIEPILOGO PRATICA
+{practice.get("practice_type_label", "Pratica")} per {practice.get("client_name", "Cliente")} con stato operativo {practice.get("status_label", "Bozza")}. Local UX mode mantiene le stesse strutture di pratica, timeline e approvazione.
+
+## LIVELLO DI RISCHIO
+{risk_level} - valutazione simulata coerente con priorita, stato e tipologia del caso. {risk_tag}
+
+## STATO DELEGA
+{delegation_status} - stato derivato dai dati della pratica e dai requisiti catalogo. {delegation_tag}
+
+## DATI E DOCUMENTI
+Presenti {len(practice.get("documents", []))} documenti e {len(results)} passaggi agente registrati. Mancanze residue ammesse in local mode ma da completare prima dell'uso reale.
+
+## CANALE E DESTINATARIO
+Canale suggerito: {'official_portal' if practice.get('client_type') == 'company' else 'email'} verso il destinatario previsto dal catalogo/registro.
+
+## AZIONE RACCOMANDATA
+Procedere con approvazione o invio simulato per testare UX, pipeline, log, follow-up e viste operative.
+
+## AVVERTENZE
+Risultati agente disponibili: {completed_agents or 'nessuno'}. Le integrazioni esterne sono simulate; backend e UI restano allineati ai contratti reali."""
+
+
+def _fake_practice_chat_answer(practice: dict, question: str) -> str:
+    return (
+        f"La pratica '{practice.get('practice_type_label', 'Pratica')}' per {practice.get('client_name', 'Cliente')} "
+        f"e attualmente in stato '{practice.get('status_label', 'Bozza')}'. In local UX mode puoi usare workflow, approvazione, "
+        f"log agente, timeline e follow-up come se il backend fosse reale. Domanda ricevuta: {question}"
+    )
+
 async def add_timeline_event(practice_id: str, user_id: str, event_type: str, details: dict = None):
     event = {
         "id": str(uuid.uuid4()),
@@ -1399,28 +1578,30 @@ async def execute_agent(action: AgentAction, user: dict = Depends(get_current_us
     })
 
     try:
-        chat = LlmChat(
-            api_key=EMERGENT_KEY,
-            session_id=f"agent-{action.agent_type}-{action.practice_id}-{agent_log_id}",
-            system_message=agent_config["system_message"]
-        ).with_model("openai", "gpt-5.2")
-
-        practice_context = {
-            "tipo_pratica": practice.get("practice_type_label"),
-            "cliente": practice.get("client_name"),
-            "descrizione": practice.get("description"),
-            "codice_fiscale": practice.get("fiscal_code"),
-            "partita_iva": practice.get("vat_number"),
-            "paese": practice.get("country", "IT"),
-            "stato": practice.get("status_label"),
-            "dati_aggiuntivi": practice.get("additional_data", {})
-        }
-
         user_input = action.input_data.get("query", "Analizza questa pratica")
-        full_message = f"""Contesto della pratica:\n{practice_context}\n\nRichiesta utente:\n{user_input}\n\nDati aggiuntivi forniti:\n{action.input_data}"""
+        if ai_execution_enabled():
+            chat = LlmChat(
+                api_key=EMERGENT_KEY,
+                session_id=f"agent-{action.agent_type}-{action.practice_id}-{agent_log_id}",
+                system_message=agent_config["system_message"]
+            ).with_model("openai", "gpt-5.2")
 
-        user_message = UserMessage(text=full_message)
-        response = await chat.send_message(user_message)
+            practice_context = {
+                "tipo_pratica": practice.get("practice_type_label"),
+                "cliente": practice.get("client_name"),
+                "descrizione": practice.get("description"),
+                "codice_fiscale": practice.get("fiscal_code"),
+                "partita_iva": practice.get("vat_number"),
+                "paese": practice.get("country", "IT"),
+                "stato": practice.get("status_label"),
+                "dati_aggiuntivi": practice.get("additional_data", {})
+            }
+
+            full_message = f"""Contesto della pratica:\n{practice_context}\n\nRichiesta utente:\n{user_input}\n\nDati aggiuntivi forniti:\n{action.input_data}"""
+            user_message = UserMessage(text=full_message)
+            response = await chat.send_message(user_message)
+        else:
+            response = _fake_agent_output(action.agent_type, practice, user_input)
 
         agent_log["output_data"] = response
         agent_log["status"] = "completed"
@@ -1534,12 +1715,6 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
         }
 
         try:
-            chat = LlmChat(
-                api_key=EMERGENT_KEY,
-                session_id=f"orch-{orchestration_id}-{agent_type}-{agent_log_id}",
-                system_message=agent_config["system_message"]
-            ).with_model("openai", "gpt-5.2")
-
             practice_context = {
                 "tipo_pratica": practice.get("practice_type_label"),
                 "cliente": practice.get("client_name"),
@@ -1559,9 +1734,16 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
                 context_msg += f"\n\nOutput agenti precedenti:\n{prev_summary}"
 
             step_result["input_summary"] = context_msg[:300]
-
-            user_message = UserMessage(text=context_msg)
-            response = await chat.send_message(user_message)
+            if ai_execution_enabled():
+                chat = LlmChat(
+                    api_key=EMERGENT_KEY,
+                    session_id=f"orch-{orchestration_id}-{agent_type}-{agent_log_id}",
+                    system_message=agent_config["system_message"]
+                ).with_model("openai", "gpt-5.2")
+                user_message = UserMessage(text=context_msg)
+                response = await chat.send_message(user_message)
+            else:
+                response = _fake_agent_output(agent_type, practice, req.query)
 
             step_result["output_data"] = response
             step_result["status"] = "completed"
@@ -1590,18 +1772,20 @@ async def orchestrate_agents(req: OrchestrationRequest, user: dict = Depends(get
     expected_outcome = ""
 
     try:
-        admin_chat = LlmChat(
-            api_key=EMERGENT_KEY,
-            session_id=f"orch-{orchestration_id}-admin",
-            system_message=FATHER_AGENT_PROMPT
-        ).with_model("openai", "gpt-5.2")
+        admin_response = ""
+        if ai_execution_enabled():
+            admin_chat = LlmChat(
+                api_key=EMERGENT_KEY,
+                session_id=f"orch-{orchestration_id}-admin",
+                system_message=FATHER_AGENT_PROMPT
+            ).with_model("openai", "gpt-5.2")
 
-        all_outputs = "\n\n".join([
-            f"### {r['branded_name']} (Step {r['step']}):\n{r.get('output_data', 'Nessun output')}"
-            for r in results
-        ])
+            all_outputs = "\n\n".join([
+                f"### {r['branded_name']} (Step {r['step']}):\n{r.get('output_data', 'Nessun output')}"
+                for r in results
+            ])
 
-        admin_message = f"""Tutti i 9 agenti specializzati hanno completato la loro analisi.
+            admin_message = f"""Tutti i 9 agenti specializzati hanno completato la loro analisi.
 
 Contesto pratica:
 - Tipo: {practice.get('practice_type_label')}
@@ -1616,9 +1800,11 @@ Output di tutti gli agenti:
 {all_outputs}
 
 Prepara il tuo riepilogo coordinato completo per l'approvazione dell'utente."""
-
-        admin_response = await admin_chat.send_message(UserMessage(text=admin_message))
-        admin_summary = admin_response
+            admin_response = await admin_chat.send_message(UserMessage(text=admin_message))
+            admin_summary = admin_response
+        else:
+            admin_response = _fake_admin_summary(practice, results)
+            admin_summary = admin_response
 
         if "[RISCHIO_ALTO]" in admin_response:
             risk_level = "high"
@@ -2768,9 +2954,6 @@ async def send_email_draft(draft_id: str, user: dict = Depends(get_current_user)
     if role not in ["admin", "creator"]:
         raise HTTPException(status_code=403, detail="Solo admin e Creator possono inviare email")
 
-    if not RESEND_API_KEY:
-        raise HTTPException(status_code=503, detail="Servizio email non configurato")
-
     draft = await db.email_drafts.find_one({"id": draft_id}, {"_id": 0})
     if not draft:
         raise HTTPException(status_code=404, detail="Bozza non trovata")
@@ -2820,6 +3003,35 @@ async def send_email_draft(draft_id: str, user: dict = Depends(get_current_user)
             doc_labels.append(doc.get("original_name", dk) if doc else dk)
         attachment_note = "<p style='color: #64748B; font-size: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #E2E8F0;'><strong>Documenti allegati di riferimento:</strong> " + ", ".join(doc_labels) + "</p>"
         wrapped_html = wrapped_html.replace("</div>\n        <div style=\"margin-top: 20px;", attachment_note + "</div>\n        <div style=\"margin-top: 20px;")
+
+    if EMAIL_SIMULATION_MODE:
+        resend_id = f"local-email-{draft_id[:8]}"
+        sent_at = datetime.now(timezone.utc).isoformat()
+        await db.email_drafts.update_one({"id": draft_id}, {"$set": {
+            "status": "sent",
+            "status_label": EMAIL_STATUSES["sent"],
+            "sent_at": sent_at,
+            "resend_email_id": resend_id,
+            "send_error": None,
+            "updated_at": sent_at,
+        }})
+
+        await add_timeline_event(draft["practice_id"], user["id"], "email_sent", {
+            "draft_id": draft_id,
+            "recipient": draft["recipient_email"],
+            "subject": draft["subject"],
+            "resend_id": resend_id,
+            "attachment_count": len(draft.get("attachment_doc_keys", [])),
+            "delivery_mode": "simulated",
+        })
+
+        await log_audit_event(user["id"], role, "email_sent", "email", draft_id,
+            reason=f"Email simulata verso {draft['recipient_email']}",
+            severity="info", practice_id=draft["practice_id"],
+            details={"resend_id": resend_id, "mode": "local_simulation"})
+
+        logger.info(f"[EMAIL SIMULATION] draft={draft_id} to={draft['recipient_email']}")
+        return {"message": "Email simulata con successo", "resend_id": resend_id, "status": "sent", "simulated": True}
 
     try:
         email_result = await asyncio.to_thread(resend.Emails.send, {
@@ -5273,31 +5485,32 @@ async def practice_chat(practice_id: str, req: PracticeChatRequest, user: dict =
     chat_id = str(uuid.uuid4())
 
     try:
-        practice_context = {
-            "tipo_pratica": practice.get("practice_type_label"),
-            "cliente": practice.get("client_name"),
-            "tipo_cliente": practice.get("client_type_label"),
-            "descrizione": practice.get("description"),
-            "codice_fiscale": practice.get("fiscal_code"),
-            "partita_iva": practice.get("vat_number"),
-            "paese": practice.get("country", "IT"),
-            "stato": practice.get("status_label"),
-            "documenti": len(practice.get("documents", [])),
-            "agenti_eseguiti": [
-                {"agente": log.get("branded_name") or log.get("agent_name"), "stato": log.get("status"), "output": str(log.get("output_data", ""))[:300]}
-                for log in practice.get("agent_logs", [])[-5:]
-            ]
-        }
+        if ai_execution_enabled():
+            practice_context = {
+                "tipo_pratica": practice.get("practice_type_label"),
+                "cliente": practice.get("client_name"),
+                "tipo_cliente": practice.get("client_type_label"),
+                "descrizione": practice.get("description"),
+                "codice_fiscale": practice.get("fiscal_code"),
+                "partita_iva": practice.get("vat_number"),
+                "paese": practice.get("country", "IT"),
+                "stato": practice.get("status_label"),
+                "documenti": len(practice.get("documents", [])),
+                "agenti_eseguiti": [
+                    {"agente": log.get("branded_name") or log.get("agent_name"), "stato": log.get("status"), "output": str(log.get("output_data", ""))[:300]}
+                    for log in practice.get("agent_logs", [])[-5:]
+                ]
+            }
 
-        orchestration = practice.get("orchestration_result")
-        orch_summary = ""
-        if orchestration and orchestration.get("steps"):
-            orch_summary = "\n".join([
-                f"- {s.get('branded_name', s.get('agent_name'))}: {s.get('status')} - {str(s.get('output_data', ''))[:200]}"
-                for s in orchestration["steps"]
-            ])
+            orchestration = practice.get("orchestration_result")
+            orch_summary = ""
+            if orchestration and orchestration.get("steps"):
+                orch_summary = "\n".join([
+                    f"- {s.get('branded_name', s.get('agent_name'))}: {s.get('status')} - {str(s.get('output_data', ''))[:200]}"
+                    for s in orchestration["steps"]
+                ])
 
-        system_msg = f"""{FATHER_AGENT_PROMPT}
+            system_msg = f"""{FATHER_AGENT_PROMPT}
 
 Contesto della pratica corrente:
 {practice_context}
@@ -5305,14 +5518,16 @@ Contesto della pratica corrente:
 Risultati orchestrazione precedente:
 {orch_summary if orch_summary else 'Nessuna orchestrazione eseguita.'}"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_KEY,
-            session_id=f"chat-{practice_id}-{chat_id}",
-            system_message=system_msg
-        ).with_model("openai", "gpt-5.2")
+            chat = LlmChat(
+                api_key=EMERGENT_KEY,
+                session_id=f"chat-{practice_id}-{chat_id}",
+                system_message=system_msg
+            ).with_model("openai", "gpt-5.2")
 
-        user_message = UserMessage(text=req.question)
-        response = await chat.send_message(user_message)
+            user_message = UserMessage(text=req.question)
+            response = await chat.send_message(user_message)
+        else:
+            response = _fake_practice_chat_answer(practice, req.question)
 
         chat_entry = {
             "id": chat_id,
@@ -5426,20 +5641,696 @@ async def delete_reminder(reminder_id: str, user: dict = Depends(get_current_use
 
 @api_router.get("/")
 async def root():
-    return {"message": "Herion API - Precision. Control. Confidence.", "version": "2.0.0"}
+    return {
+        "message": "Herion API - Precision. Control. Confidence.",
+        "version": "2.0.0",
+        "local_dev_mode": LOCAL_DEV_MODE,
+        "fake_data": USE_FAKE_DATA,
+    }
 
 @api_router.get("/health")
 async def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "local_dev_mode": LOCAL_DEV_MODE,
+        "fake_data": USE_FAKE_DATA,
+        "external_services_disabled": DISABLE_EXTERNAL_SERVICES,
+    }
+
+
+async def _seed_local_document(
+    *,
+    practice: dict,
+    filename: str,
+    category: str,
+    content: str,
+    created_at: str,
+    vault_status: str = "stored",
+    verification_status: str = "pending",
+    sensitivity_level: str = "medium",
+):
+    doc_id = str(uuid.uuid4())
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt"
+    storage_path = f"{APP_NAME}/seed/{practice['user_id']}/{doc_id}.{ext}"
+    result = put_object(storage_path, content.encode("utf-8"), MIME_TYPES.get(ext, "text/plain"))
+    document = {
+        "id": doc_id,
+        "practice_id": practice["id"],
+        "user_id": practice["user_id"],
+        "storage_path": result["path"],
+        "original_filename": filename,
+        "content_type": MIME_TYPES.get(ext, "text/plain"),
+        "size": result.get("size", len(content)),
+        "category": category,
+        "is_deleted": False,
+        "vault_status": vault_status,
+        "verification_status": verification_status,
+        "sensitivity_level": sensitivity_level,
+        "version": 1,
+        "created_at": created_at,
+        "updated_at": created_at,
+    }
+    await db.documents.insert_one(document)
+    await db.practices.update_one(
+        {"id": practice["id"]},
+        {"$push": {"documents": {
+            "id": doc_id,
+            "filename": filename,
+            "category": category,
+            "uploaded_at": created_at,
+        }}},
+    )
+    return document
+
+
+async def seed_local_dev_dataset():
+    if not (LOCAL_DEV_MODE and USE_FAKE_DATA):
+        return
+
+    demo_user = await db.users.find_one({"email": LOCAL_DEMO_USER_EMAIL.lower()})
+    if demo_user is None:
+        await db.users.insert_one({
+            "email": LOCAL_DEMO_USER_EMAIL.lower(),
+            "password_hash": hash_password(LOCAL_DEMO_USER_PASSWORD),
+            "first_name": "Giulia",
+            "last_name": "Ferri",
+            "name": "Giulia Ferri",
+            "role": "user",
+            "client_type": "freelancer",
+            "country": "IT",
+            "city": "Milano",
+            "address": "Via Monte Rosa 18",
+            "phone": "+39 333 555 0101",
+            "fiscal_code": "FRRGLI90A41F205Z",
+            "vat_number": "IT11223344556",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "privacy_consent": True,
+            "privacy_consent_date": datetime.now(timezone.utc).isoformat(),
+            "terms_consent": True,
+            "terms_consent_date": datetime.now(timezone.utc).isoformat(),
+        })
+        demo_user = await db.users.find_one({"email": LOCAL_DEMO_USER_EMAIL.lower()})
+
+    demo_user_id = str(demo_user["_id"])
+    if await db.practices.count_documents({"user_id": demo_user_id}) > 0:
+        return
+
+    now = datetime.now(timezone.utc)
+
+    def iso(*, days: int = 0, hours: int = 0) -> str:
+        return (now + timedelta(days=days, hours=hours)).isoformat()
+
+    catalog_entries = await db.practice_catalog.find({}, {"_id": 0}).to_list(200)
+    catalog_by_id = {entry["practice_id"]: entry for entry in catalog_entries}
+
+    def practice_label(practice_type: str) -> str:
+        return catalog_by_id.get(practice_type, {}).get("name", practice_type)
+
+    def support_level(practice_type: str) -> str:
+        return catalog_by_id.get(practice_type, {}).get("support_level", "supported")
+
+    def delegation_required(practice_type: str) -> bool:
+        return catalog_by_id.get(practice_type, {}).get("delegation_required", False)
+
+    def approval_required(practice_type: str) -> bool:
+        return catalog_by_id.get(practice_type, {}).get("approval_required", False)
+
+    def base_practice(
+        *,
+        practice_id: str,
+        practice_type: str,
+        client_name: str,
+        client_type: str,
+        description: str,
+        status: str,
+        risk_level: str,
+        priority: str,
+        created_at: str,
+        updated_at: str,
+        fiscal_code: str | None = None,
+        vat_number: str | None = None,
+        company_name: str | None = None,
+        deadline: str | None = None,
+        delegation_info: dict | None = None,
+        orchestration_result: dict | None = None,
+        agent_logs: list | None = None,
+        approved_at: str | None = None,
+        submitted_at: str | None = None,
+        completed_at: str | None = None,
+    ) -> dict:
+        delegation = delegation_info or {"status": "not_required", "label": "Non richiesta"}
+        return {
+            "id": practice_id,
+            "user_id": demo_user_id,
+            "practice_type": practice_type,
+            "practice_type_label": practice_label(practice_type),
+            "client_name": client_name,
+            "client_type": client_type,
+            "client_type_label": CLIENT_TYPES.get(client_type, client_type),
+            "country": "IT",
+            "fiscal_code": fiscal_code,
+            "vat_number": vat_number,
+            "company_name": company_name,
+            "description": description,
+            "notes": "Dataset locale per revisione UX, navigazione e simulazione workflow.",
+            "status": status,
+            "status_label": STATUS_LABELS.get(status, status),
+            "risk_level": risk_level,
+            "priority": priority,
+            "support_level": support_level(practice_type),
+            "delegation_required": delegation_required(practice_type),
+            "approval_required": approval_required(practice_type),
+            "delegation_status": delegation.get("status", "not_required"),
+            "delegation_info": delegation,
+            "documents": [],
+            "agent_logs": agent_logs or [],
+            "orchestration_result": orchestration_result,
+            "current_step": status,
+            "deadline": deadline,
+            "approval_snapshot_id": None,
+            "approved_at": approved_at,
+            "submitted_at": submitted_at,
+            "completed_at": completed_at,
+            "created_at": created_at,
+            "updated_at": updated_at,
+            "additional_data": {
+                "account_manager": "Studio Ferri & Partners",
+                "priority_note": "Simulazione locale per revisione interfaccia e contenuti",
+            },
+        }
+
+    def build_agent_steps(practice: dict, query: str) -> list[dict]:
+        started_at = practice["updated_at"]
+        completed_at = practice["updated_at"]
+        steps = []
+        for agent_type in SPECIALIST_PIPELINE:
+            config = AGENT_DESCRIPTIONS[agent_type]
+            steps.append({
+                "id": str(uuid.uuid4()),
+                "agent_type": agent_type,
+                "agent_name": config["name"],
+                "branded_name": config["branded_name"],
+                "icon_key": config["icon_key"],
+                "step": config["step"],
+                "status": "completed",
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "input_data": {"query": query},
+                "input_summary": query[:120],
+                "output_data": _fake_agent_output(agent_type, practice, query),
+                "explanation": f"Simulazione locale - {config['branded_name']}",
+            })
+        return steps
+
+    waiting_practice = base_practice(
+        practice_id="local-vat-open-pf",
+        practice_type="VAT_OPEN_PF",
+        client_name="Giulia Ferri",
+        client_type="freelancer",
+        description="Apertura Partita IVA per consulenza marketing con regime forfettario e attivazione posizione INPS.",
+        status="waiting_approval",
+        risk_level="medium",
+        priority="urgent",
+        created_at=iso(days=-6),
+        updated_at=iso(hours=-4),
+        fiscal_code="FRRGLI90A41F205Z",
+        vat_number="IT11223344556",
+        deadline=iso(days=2),
+    )
+    waiting_steps = build_agent_steps(waiting_practice, "Analisi completa pratica apertura P.IVA")
+    waiting_practice["agent_logs"] = waiting_steps
+    waiting_practice["orchestration_result"] = {
+        "id": "orch-local-vat-open-pf",
+        "steps": waiting_steps,
+        "admin_summary": _fake_admin_summary(waiting_practice, waiting_steps),
+        "risk_level": "medium",
+        "risk_label": RISK_LEVELS["medium"]["label"],
+        "delegation_status": "not_required",
+        "delegation_label": DELEGATION_STATUS["not_required"],
+        "intended_recipient": "Agenzia delle Entrate - AA9/12",
+        "expected_outcome": "Pratica pronta per approvazione e invio simulato",
+        "completed_at": iso(hours=-4),
+        "agents_used": [step["branded_name"] for step in waiting_steps],
+        "final_status": "waiting_approval",
+    }
+
+    blocked_practice = base_practice(
+        practice_id="local-company-closure",
+        practice_type="COMPANY_CLOSURE",
+        client_name="Nexus S.r.l.",
+        client_type="company",
+        description="Chiusura societaria post-liquidazione con dossier incompleto e delega ancora da validare.",
+        status="blocked",
+        risk_level="high",
+        priority="high",
+        created_at=iso(days=-18),
+        updated_at=iso(days=-9),
+        fiscal_code="NXSABC80A01H501Z",
+        vat_number="IT09876543210",
+        company_name="Nexus S.r.l.",
+        deadline=iso(days=-1),
+        delegation_info={
+            "status": "requested",
+            "label": "In attesa di delega",
+            "requested_at": iso(days=-10),
+            "notes": "Manca delega firmata e ricevuta di deposito finale",
+        },
+    )
+
+    in_progress_practice = base_practice(
+        practice_id="local-f24-preparation",
+        practice_type="F24_PREPARATION",
+        client_name="Studio Colombo",
+        client_type="company",
+        description="Preparazione F24 per saldo IVA trimestrale e verifica coordinate conto dedicato.",
+        status="in_progress",
+        risk_level="medium",
+        priority="high",
+        created_at=iso(days=-4),
+        updated_at=iso(hours=-18),
+        vat_number="IT55667788990",
+        company_name="Studio Colombo",
+        deadline=iso(days=1),
+    )
+
+    ready_practice = base_practice(
+        practice_id="local-doc-preliminary",
+        practice_type="DOC_PRELIMINARY_SEND",
+        client_name="Marco Bellini",
+        client_type="private",
+        description="Invio documenti preliminari per pratica fiscale con checklist gia completata.",
+        status="approved",
+        risk_level="low",
+        priority="normal",
+        created_at=iso(days=-3),
+        updated_at=iso(hours=-6),
+        fiscal_code="BLLMRC88M15F205Z",
+        approved_at=iso(hours=-6),
+    )
+
+    completed_practice = base_practice(
+        practice_id="local-einvoicing-complete",
+        practice_type="EINVOICING",
+        client_name="Officina Lombarda",
+        client_type="company",
+        description="Configurazione fatturazione elettronica e consegna dossier operativo finale.",
+        status="completed",
+        risk_level="low",
+        priority="low",
+        created_at=iso(days=-11),
+        updated_at=iso(days=-1),
+        vat_number="IT44332211009",
+        company_name="Officina Lombarda",
+        approved_at=iso(days=-2),
+        submitted_at=iso(days=-2),
+        completed_at=iso(days=-1),
+    )
+
+    escalated_practice = base_practice(
+        practice_id="local-vat-declaration-escalated",
+        practice_type="VAT_DECLARATION",
+        client_name="Blue River S.r.l.",
+        client_type="company",
+        description="Dichiarazione IVA con operazioni intracomunitarie e anomalia su registri trimestrali.",
+        status="escalated",
+        risk_level="high",
+        priority="urgent",
+        created_at=iso(days=-9),
+        updated_at=iso(days=-2),
+        vat_number="IT66778899001",
+        company_name="Blue River S.r.l.",
+    )
+
+    practices = [
+        waiting_practice,
+        blocked_practice,
+        in_progress_practice,
+        ready_practice,
+        completed_practice,
+        escalated_practice,
+    ]
+
+    await db.practices.insert_many(practices)
+
+    for practice in practices:
+        await db.practice_timeline.insert_one({
+            "id": str(uuid.uuid4()),
+            "practice_id": practice["id"],
+            "user_id": demo_user_id,
+            "event_type": "practice_created",
+            "event_label": TIMELINE_EVENTS["practice_created"],
+            "details": {"client_name": practice["client_name"], "practice_type": practice["practice_type"]},
+            "timestamp": practice["created_at"],
+        })
+
+    await db.practice_timeline.insert_many([
+        {
+            "id": str(uuid.uuid4()),
+            "practice_id": waiting_practice["id"],
+            "user_id": demo_user_id,
+            "event_type": "waiting_approval",
+            "event_label": TIMELINE_EVENTS["waiting_approval"],
+            "details": {"risk_level": "medium", "delegation_status": "not_required"},
+            "timestamp": waiting_practice["updated_at"],
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "practice_id": blocked_practice["id"],
+            "user_id": demo_user_id,
+            "event_type": "blocked",
+            "event_label": TIMELINE_EVENTS["blocked"],
+            "details": {"reason": "Documenti societari incompleti"},
+            "timestamp": blocked_practice["updated_at"],
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "practice_id": completed_practice["id"],
+            "user_id": demo_user_id,
+            "event_type": "completed",
+            "event_label": TIMELINE_EVENTS["completed"],
+            "details": {"note": "Dossier finale generato"},
+            "timestamp": completed_practice["completed_at"],
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "practice_id": escalated_practice["id"],
+            "user_id": demo_user_id,
+            "event_type": "escalated",
+            "event_label": TIMELINE_EVENTS["escalated"],
+            "details": {"reason": "Operazioni intracomunitarie da validare"},
+            "timestamp": escalated_practice["updated_at"],
+        },
+    ])
+
+    waiting_identity_doc = await _seed_local_document(
+        practice=waiting_practice,
+        filename="documento-identita-giulia.pdf",
+        category="identity",
+        content="Documento di identita demo Giulia Ferri",
+        created_at=iso(days=-5),
+        vault_status="verified",
+        verification_status="verified",
+        sensitivity_level="high",
+    )
+    waiting_tax_doc = await _seed_local_document(
+        practice=waiting_practice,
+        filename="dichiarazione-fiscale-2025.pdf",
+        category="tax_declarations",
+        content="Dichiarazione fiscale demo per pratica VAT_OPEN_PF",
+        created_at=iso(days=-4),
+        vault_status="ready_for_send",
+        verification_status="verified",
+        sensitivity_level="high",
+    )
+    blocked_accounting_doc = await _seed_local_document(
+        practice=blocked_practice,
+        filename="bilancio-liquidazione.xlsx",
+        category="accounting",
+        content="Bilancio finale di liquidazione - demo locale",
+        created_at=iso(days=-17),
+        vault_status="under_review",
+        verification_status="pending",
+        sensitivity_level="medium",
+    )
+    blocked_delegation_doc = await _seed_local_document(
+        practice=blocked_practice,
+        filename="delega-firmata-mancante.txt",
+        category="delegation",
+        content="Documento placeholder per delega da sostituire con versione firmata.",
+        created_at=iso(days=-12),
+        vault_status="stored",
+        verification_status="pending",
+        sensitivity_level="high",
+    )
+    in_progress_accounting_doc = await _seed_local_document(
+        practice=in_progress_practice,
+        filename="prima-nota-q1.xlsx",
+        category="accounting",
+        content="Prima nota trimestrale per preparazione F24",
+        created_at=iso(days=-3),
+        vault_status="verified",
+        verification_status="verified",
+        sensitivity_level="medium",
+    )
+    ready_identity_doc = await _seed_local_document(
+        practice=ready_practice,
+        filename="carta-identita-marco.pdf",
+        category="identity",
+        content="Documento identita Marco Bellini",
+        created_at=iso(days=-2),
+        vault_status="ready_for_send",
+        verification_status="verified",
+        sensitivity_level="high",
+    )
+    completed_invoice_doc = await _seed_local_document(
+        practice=completed_practice,
+        filename="fatture-elettroniche.zip",
+        category="invoices",
+        content="Archivio fatture elettroniche demo",
+        created_at=iso(days=-10),
+        vault_status="verified",
+        verification_status="verified",
+        sensitivity_level="medium",
+    )
+    completed_dossier_doc = await _seed_local_document(
+        practice=completed_practice,
+        filename="dossier-finale.pdf",
+        category="final_dossier",
+        content="Dossier finale completato in modalita locale",
+        created_at=iso(days=-1),
+        vault_status="protected_output",
+        verification_status="verified",
+        sensitivity_level="medium",
+    )
+    escalated_vat_doc = await _seed_local_document(
+        practice=escalated_practice,
+        filename="registri-iva-q4.pdf",
+        category="vat_documents",
+        content="Registri IVA demo con discrepanze da verificare",
+        created_at=iso(days=-8),
+        vault_status="under_review",
+        verification_status="pending",
+        sensitivity_level="high",
+    )
+
+    await refresh_all_priorities(demo_user_id)
+
+    activity_logs = [
+        ("practice", "practice_created", waiting_practice["id"], iso(days=-6)),
+        ("orchestration", "orchestration_completed", waiting_practice["id"], iso(hours=-4)),
+        ("delegation", "delegation_requested", blocked_practice["id"], iso(days=-10)),
+        ("submission", "practice_submitted", completed_practice["id"], iso(days=-2)),
+        ("document", "document_uploaded", in_progress_practice["id"], iso(days=-3)),
+        ("practice", "practice_updated", ready_practice["id"], iso(hours=-6)),
+    ]
+    for category, action, practice_id, timestamp in activity_logs:
+        await db.activity_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": demo_user_id,
+            "category": category,
+            "action": action,
+            "details": {"practice_id": practice_id},
+            "timestamp": timestamp,
+            "explanation": f"Azione '{action}' nella categoria '{category}'",
+        })
+
+    notifications = [
+        ("Approvazione richiesta", "La pratica di apertura P.IVA e pronta per la tua approvazione.", "warning", False, iso(hours=-3)),
+        ("Documento da verificare", "La pratica Nexus S.r.l. richiede una delega firmata valida.", "info", False, iso(days=-1)),
+        ("Workflow completato", "Officina Lombarda ha completato la configurazione fatturazione elettronica.", "success", True, iso(days=-1)),
+    ]
+    for title, message, notification_type, read, created_at in notifications:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": demo_user_id,
+            "title": title,
+            "message": message,
+            "type": notification_type,
+            "read": read,
+            "created_at": created_at,
+        })
+
+    governance_events = [
+        ("governance_check_submit", "medium", waiting_practice["id"], {"final_decision": "allowed"}, iso(hours=-5)),
+        ("governance_denied_submit", "high", blocked_practice["id"], {"final_decision": "blocked"}, iso(days=-9)),
+        ("submission_escalated_by_governance", "high", escalated_practice["id"], {"final_decision": "escalation_required"}, iso(days=-2)),
+        ("delegation_verified", "info", ready_practice["id"], {"final_decision": "allowed"}, iso(hours=-6)),
+    ]
+    for action, severity, practice_id, details, timestamp in governance_events:
+        await db.governance_audit.insert_one({
+            "id": str(uuid.uuid4()),
+            "timestamp": timestamp,
+            "actor_id": demo_user_id,
+            "actor_role": "user",
+            "action": action,
+            "target_type": "practice",
+            "target_id": practice_id,
+            "previous_state": None,
+            "new_state": None,
+            "reason": "Evento seed locale",
+            "severity": severity,
+            "severity_level": AUDIT_SEVERITY.get(severity, 0),
+            "practice_id": practice_id,
+            "details": details,
+        })
+
+    alerts = [
+        ("missing_delegation", "warning", "Delega in attesa", "Nexus S.r.l. richiede una delega firmata prima di procedere.", blocked_practice["id"], "Caricare delega firmata", "open", iso(days=-1)),
+        ("governance_block", "high", "Blocco governance", "La dichiarazione IVA Blue River richiede revisione professionale.", escalated_practice["id"], "Aprire audit governance", "acknowledged", iso(days=-2)),
+        ("missing_output", "critical", "Follow-up critico", "Nessuna ricevuta acquisita dopo l'invio simulato di Officina Lombarda.", completed_practice["id"], "Verificare ricevuta", "open", iso(days=-1)),
+        ("document_custody_issue", "info", "Archivio aggiornato", "I documenti preliminari di Marco Bellini sono pronti per l'invio.", ready_practice["id"], "Aprire pratica", "resolved", iso(hours=-8)),
+    ]
+    for alert_type, severity, title, explanation, practice_id, next_action, status, timestamp in alerts:
+        await db.alerts.insert_one({
+            "id": str(uuid.uuid4()),
+            "alert_type": alert_type,
+            "severity": severity,
+            "title": title,
+            "explanation": explanation,
+            "practice_id": practice_id,
+            "user_id": demo_user_id,
+            "actor": demo_user["email"],
+            "module": ALERT_TYPES.get(alert_type, {}).get("module", "system"),
+            "timestamp": timestamp,
+            "status": status,
+            "next_action": next_action,
+            "visibility": "admin" if severity in {"high", "critical"} else "all",
+        })
+
+    email_drafts = [
+        ("draft", waiting_practice["id"], "cliente@demo.it", "Bozza approvazione pratica VAT", iso(hours=-5), []),
+        ("review", blocked_practice["id"], "amministrazione@nexus.it", "Richiesta documenti integrativi", iso(days=-2), [blocked_accounting_doc["id"]]),
+        ("approved", ready_practice["id"], "marco.bellini@example.com", "Invio documenti preliminari", iso(hours=-7), [ready_identity_doc["id"]]),
+        ("sent", completed_practice["id"], "finance@officinalombarda.it", "Dossier fatturazione elettronica", iso(days=-1), [completed_dossier_doc["id"]]),
+        ("failed", escalated_practice["id"], "tax@blueriver.it", "Chiarimenti su dichiarazione IVA", iso(days=-1), [escalated_vat_doc["id"]]),
+        ("blocked", blocked_practice["id"], "legal@nexus.it", "Documenti mancanti per chiusura societaria", iso(days=-3), [blocked_delegation_doc["id"]]),
+    ]
+    for status, practice_id, recipient_email, subject, created_at, attachment_keys in email_drafts:
+        practice = next(item for item in practices if item["id"] == practice_id)
+        issues = []
+        compliant = True
+        send_error = None
+        if status == "blocked":
+            compliant = False
+            issues = [{"label": "Delega non verificata"}]
+        if status == "failed":
+            send_error = "Invio simulato interrotto: revisione governance richiesta"
+        await db.email_drafts.insert_one({
+            "id": str(uuid.uuid4()),
+            "practice_id": practice_id,
+            "created_by": demo_user_id,
+            "created_by_name": demo_user["name"],
+            "recipient_email": recipient_email,
+            "recipient_name": practice["client_name"],
+            "subject": subject,
+            "body_html": f"<p>Messaggio demo relativo alla pratica {practice['practice_type_label']}.</p>",
+            "attachment_doc_keys": attachment_keys,
+            "email_type": "practice_update",
+            "status": status,
+            "status_label": EMAIL_STATUSES[status],
+            "compliance": {"compliant": compliant, "issues": issues},
+            "resend_email_id": f"local-seed-{status}",
+            "sent_at": created_at if status == "sent" else None,
+            "reviewed_by": ADMIN_EMAIL if status in {"approved", "sent"} else None,
+            "reviewed_at": created_at if status in {"approved", "sent"} else None,
+            "approved_by": ADMIN_EMAIL if status in {"approved", "sent"} else None,
+            "approved_at": created_at if status in {"approved", "sent"} else None,
+            "send_error": send_error,
+            "practice_label": practice["practice_type_label"],
+            "client_name": practice["client_name"],
+            "template_name": "Local UX Template",
+            "created_at": created_at,
+            "updated_at": created_at,
+        })
+
+    await db.follow_up_items.insert_one({
+        "id": str(uuid.uuid4()),
+        "practice_id": completed_practice["id"],
+        "rule_key": "submitted_no_receipt",
+        "label": "Ricevuta recuperata",
+        "description": "La ricevuta e stata acquisita e il follow-up e chiuso.",
+        "urgency": "resolved",
+        "status": "resolved",
+        "expected_event": "receipt_received",
+        "deadline_at": iso(days=-1),
+        "created_at": iso(days=-2),
+        "updated_at": iso(days=-1),
+        "practice_status": completed_practice["status"],
+        "practice_label": completed_practice["practice_type_label"],
+        "client_name": completed_practice["client_name"],
+        "resolved_at": iso(days=-1),
+        "resolved_by": ADMIN_EMAIL,
+        "resolution_note": "Follow-up risolto durante seed locale",
+    })
+
+    await db.security_events.insert_many([
+        {
+            "id": str(uuid.uuid4()),
+            "event_type": "failed_login",
+            "severity": "info",
+            "actor": "unknown@demo.it",
+            "target": None,
+            "timestamp": iso(hours=-12),
+            "reason": "Password errata",
+            "details": {},
+            "linked_alert_id": None,
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "event_type": "permission_denied",
+            "severity": "info",
+            "actor": demo_user["email"],
+            "target": blocked_practice["id"],
+            "timestamp": iso(days=-2),
+            "reason": "Tentativo di invio non autorizzato",
+            "details": {"practice_id": blocked_practice["id"]},
+            "linked_alert_id": None,
+        },
+    ])
+
+    await db.submission_records.insert_one({
+        "id": str(uuid.uuid4()),
+        "practice_id": completed_practice["id"],
+        "user_id": demo_user_id,
+        "channel": "email",
+        "destination_type": "user_delivery",
+        "status": "completed",
+        "submitted_at": completed_practice["submitted_at"],
+        "result": {"mode": "local_simulation"},
+        "receipt": {"protocol": "LOCAL-REC-001"},
+        "notes": "Invio simulato completato in local UX mode",
+    })
+
+    await db.practice_chats.insert_one({
+        "id": str(uuid.uuid4()),
+        "practice_id": waiting_practice["id"],
+        "user_id": demo_user_id,
+        "question": "Qual e il prossimo passo?",
+        "answer": _fake_practice_chat_answer(waiting_practice, "Qual e il prossimo passo?"),
+        "answered_by": "Herion Admin",
+        "timestamp": iso(hours=-2),
+    })
+
+    logger.info("Local UX dataset seeded successfully")
 
 # Include the router
 app.include_router(api_router)
 
 # CORS Middleware
+frontend_origins = []
+configured_frontend = os.environ.get("FRONTEND_URL")
+if configured_frontend:
+    frontend_origins.append(configured_frontend)
+if LOCAL_DEV_MODE:
+    frontend_origins.extend(["http://127.0.0.1:3000", "http://localhost:3000"])
+if not frontend_origins:
+    frontend_origins = ["*"]
+frontend_origins = list(dict.fromkeys(frontend_origins))
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[os.environ.get('FRONTEND_URL', '*')],
+    allow_origins=frontend_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -5466,8 +6357,8 @@ async def startup():
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
 
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@aic.it")
-    admin_password = os.environ.get("ADMIN_PASSWORD", "Admin123!")
+    admin_email = ADMIN_EMAIL
+    admin_password = ADMIN_PASSWORD
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         hashed = hash_password(admin_password)
@@ -5499,16 +6390,17 @@ async def startup():
     if updated_count > 0:
         logger.info(f"Startup: refreshed priority for {updated_count} practices")
 
-    Path("/app/memory").mkdir(exist_ok=True)
-    creator_pw = os.environ.get("CREATOR_PASSWORD")
+    LOCAL_MEMORY_DIR.mkdir(exist_ok=True)
+    creator_pw = LOCAL_CREATOR_PASSWORD
     if not creator_pw:
         logger.error("CREATOR_PASSWORD not set in environment. Creator bootstrap requires a secure password via env var.")
-    with open("/app/memory/test_credentials.md", "w") as f:
+    credentials_path = LOCAL_MEMORY_DIR / "test_credentials.md"
+    with credentials_path.open("w") as f:
         f.write(f"""# Test Credentials for Herion
 
 ## Creator Account (Protected Bootstrap)
 - Email: {CREATOR_EMAIL}
-- Password: (PROTECTED — stored exclusively in backend/.env as CREATOR_PASSWORD)
+- Password: {"(PROTECTED — stored exclusively in backend/.env as CREATOR_PASSWORD)" if not LOCAL_DEV_MODE else creator_pw}
 - Role: creator
 - Creator UUID: {CREATOR_UUID}
 - Login: Standard /login page. Password from env var only. Supports secure reset via /forgot-password.
@@ -5517,6 +6409,12 @@ async def startup():
 - Email: {admin_email}
 - Password: {admin_password}
 - Role: admin
+
+## Local UX Demo Account
+- Email: {LOCAL_DEMO_USER_EMAIL}
+- Password: {LOCAL_DEMO_USER_PASSWORD}
+- Role: user
+- Purpose: navigazione completa dashboard, pratiche, workflow, pipeline, email center e archivio
 
 ## Auth Endpoints
 - POST /api/auth/register - Register new user
@@ -5540,15 +6438,15 @@ async def startup():
     # Creator bootstrap - protected identity
     creator_exists = await db.users.find_one({"email": CREATOR_EMAIL.lower()})
     if creator_exists is None:
-        creator_password = os.environ.get("CREATOR_PASSWORD")
+        creator_password = LOCAL_CREATOR_PASSWORD
         if not creator_password:
             logger.error("CREATOR_PASSWORD env var not set. Cannot bootstrap Creator account. Set it in backend/.env")
         else:
             await db.users.insert_one({
                 "email": CREATOR_EMAIL.lower(),
                 "password_hash": hash_password(creator_password),
-                "first_name": "Gege",
-                "last_name": "Xia",
+                "first_name": CREATOR_NAME.split(" ")[0] if " " in CREATOR_NAME else CREATOR_NAME,
+                "last_name": CREATOR_NAME.split(" ", 1)[1] if " " in CREATOR_NAME else "Creator",
                 "name": CREATOR_NAME,
                 "role": "creator",
                 "is_creator": True,
@@ -5563,13 +6461,15 @@ async def startup():
             })
             logger.info(f"Creator account bootstrapped: {CREATOR_EMAIL}")
     elif not creator_exists.get("is_creator"):
-        creator_password = os.environ.get("CREATOR_PASSWORD")
+        creator_password = LOCAL_CREATOR_PASSWORD
         if not creator_password:
             logger.error("CREATOR_PASSWORD env var not set. Cannot restore Creator identity.")
         else:
             await db.users.update_one({"email": CREATOR_EMAIL.lower()}, {"$set": {
                 "role": "creator", "is_creator": True, "creator_uuid": CREATOR_UUID,
-                "name": CREATOR_NAME, "first_name": "Gege", "last_name": "Xia",
+                "name": CREATOR_NAME,
+                "first_name": CREATOR_NAME.split(" ")[0] if " " in CREATOR_NAME else CREATOR_NAME,
+                "last_name": CREATOR_NAME.split(" ", 1)[1] if " " in CREATOR_NAME else "Creator",
                 "password_hash": hash_password(creator_password)
             }})
             logger.info("Creator identity restored")
@@ -5666,6 +6566,8 @@ async def startup():
         ]
         await db.reminders.insert_many(default_reminders)
         logger.info("Default reminders seeded")
+
+    await seed_local_dev_dataset()
 
     # Seed Nexus S.r.l. practice from COMPANY_CLOSURE template (demo instance)
     nexus_exists = await db.practices.find_one({"template_source": "COMPANY_CLOSURE", "client_name": "Nexus S.r.l."})

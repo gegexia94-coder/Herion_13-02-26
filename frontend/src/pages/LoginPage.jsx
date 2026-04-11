@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { HerionMark } from '@/components/HerionLogo';
+import { DEMO_ACCOUNTS, LOCAL_DEV_MODE } from '@/config/devMode';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -41,6 +42,35 @@ export default function LoginPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-5 text-[12px]" data-testid="login-error">
             {error}
+          </div>
+        )}
+
+        {LOCAL_DEV_MODE && (
+          <div className="bg-white border rounded-xl p-3.5 mb-5" style={{ borderColor: 'var(--border-soft)' }} data-testid="local-dev-banner">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Local UX Mode</p>
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-[var(--surface-accent-1)]/25 text-[var(--text-primary)] font-semibold">
+                Demo Access
+              </span>
+            </div>
+            <div className="space-y-2">
+              {DEMO_ACCOUNTS.map((account) => (
+                <button
+                  key={account.email}
+                  type="button"
+                  onClick={() => { setEmail(account.email); setPassword(account.password); }}
+                  className="w-full text-left rounded-lg border px-3 py-2 hover:bg-[var(--hover-soft)] transition-colors"
+                  style={{ borderColor: 'var(--border-soft)' }}
+                  data-testid={`demo-account-${account.role}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[12px] font-semibold text-[var(--text-primary)]">{account.label}</p>
+                    <span className="text-[10px] text-[var(--text-muted)] uppercase">{account.role}</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{account.email}</p>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

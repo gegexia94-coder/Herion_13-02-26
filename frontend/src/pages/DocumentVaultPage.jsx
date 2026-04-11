@@ -13,6 +13,10 @@ import { toast } from 'sonner';
 
 const CATEGORY_CONFIG = {
   identity: { label: 'Identita', icon: Shield, color: 'text-blue-600', bg: 'bg-blue-50' },
+  tax_declarations: { label: 'Dichiarazioni', icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
+  vat_documents: { label: 'Documenti IVA', icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
+  invoices: { label: 'Fatture', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  company_documents: { label: 'Societari', icon: Archive, color: 'text-violet-600', bg: 'bg-violet-50' },
   tax: { label: 'Fiscale', icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
   company: { label: 'Aziendale', icon: Archive, color: 'text-violet-600', bg: 'bg-violet-50' },
   accounting: { label: 'Contabilita', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },

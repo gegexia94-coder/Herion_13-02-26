@@ -87,7 +87,12 @@ frontend/node_modules/.cache/default-development/6.pack
 .env
 .env.*
 *.env
+!.env.example
+!**/.env.example
 credentials.json
 *.pem
 *.key
 .credentials
+
+# Local UX/dev runtime data
+.local/

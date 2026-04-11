@@ -4,9 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   getPractice, updatePractice, uploadDocument, getPracticeDocuments,
   orchestrateAgents, sendPracticeChat, getPracticeChatHistory,
-  approvePractice, getPracticeTimeline, startPractice,
-  markPracticeSubmitted, markPracticeCompleted, downloadPracticePdf,
-  getPracticeActivityLogs
+  approvePractice, startPractice, markPracticeSubmitted, markPracticeCompleted,
+  downloadPracticePdf, getPracticeWorkspace, delegatePractice,
+  revokeDelegation, uploadProof, completeOfficialStep
 } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,26 +15,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import {
   ArrowLeft, Upload, CheckCircle, Play, Loader2, File, Download,
-  AlertTriangle, FileDown, Send, Bot, ChevronDown, ChevronUp,
-  Lock, Shield, RefreshCw, ExternalLink, Eye, FileText, Pen,
-  BookOpen, FolderUp, Cog, ClipboardCheck, PenTool, Flag,
-  Circle, XCircle, Info, ArrowRight
+  FileDown, Send, Bot, ChevronDown, ChevronUp, Shield, RefreshCw,
+  ExternalLink, FileText, BookOpen, FolderUp, Cog, ClipboardCheck,
+  PenTool, Flag, Circle, XCircle, Info, Lock, Eye, AlertTriangle,
+  UserCheck, Key, Receipt, ArrowRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-// ── 6-STEP FLOW DEFINITION ──
 const PRACTICE_STEPS = [
-  { key: 'understand', label: 'Comprendi', icon: BookOpen, description: 'Capire la pratica' },
-  { key: 'upload', label: 'Carica', icon: FolderUp, description: 'Caricare i documenti' },
-  { key: 'process', label: 'Elabora', icon: Cog, description: 'Herion analizza' },
-  { key: 'review', label: 'Verifica', icon: ClipboardCheck, description: 'Verificare i risultati' },
-  { key: 'sign', label: 'Firma', icon: PenTool, description: 'Firmare se necessario' },
-  { key: 'complete', label: 'Completa', icon: Flag, description: 'Invio e chiusura' },
+  { key: 'understand', label: 'Comprendi', icon: BookOpen },
+  { key: 'upload', label: 'Carica', icon: FolderUp },
+  { key: 'process', label: 'Elabora', icon: Cog },
+  { key: 'review', label: 'Verifica', icon: ClipboardCheck },
+  { key: 'sign', label: 'Firma', icon: PenTool },
+  { key: 'complete', label: 'Completa', icon: Flag },
 ];
 
-// ── DOCUMENT CATEGORIES FOR CLARITY ──
 const DOC_UPLOAD_CATEGORIES = [
   { key: 'identity', label: 'Identita' }, { key: 'tax_declarations', label: 'Dichiarazioni' },
   { key: 'vat_documents', label: 'IVA' }, { key: 'invoices', label: 'Fatture' },
@@ -43,35 +41,6 @@ const DOC_UPLOAD_CATEGORIES = [
   { key: 'activity', label: 'Attivita' }, { key: 'other', label: 'Altro' },
 ];
 
-// ── STATUS DISPLAY (user-facing, simple) ──
-const STATUS_DISPLAY = {
-  draft: { label: 'Non iniziata', color: '#5B6475' },
-  waiting_user_documents: { label: 'In attesa dei tuoi documenti', color: '#F59E0B' },
-  documents_received: { label: 'Documenti ricevuti', color: '#3B82F6' },
-  internal_processing: { label: 'In revisione da Herion', color: '#3B82F6' },
-  internal_validation_passed: { label: 'Revisione completata', color: '#10B981' },
-  internal_validation_failed: { label: 'Problemi trovati', color: '#EF4444' },
-  waiting_user_review: { label: 'In attesa della tua verifica', color: '#F59E0B' },
-  waiting_signature: { label: 'In attesa della tua firma', color: '#F59E0B' },
-  ready_for_submission: { label: "Pronta per l'invio", color: '#06B6D4' },
-  submitted_manually: { label: 'Inviata', color: '#06B6D4' },
-  submitted_via_channel: { label: 'Inviata', color: '#06B6D4' },
-  waiting_external_response: { label: 'In attesa risposta ente', color: '#8B5CF6' },
-  accepted_by_entity: { label: "Accettata dall'ente", color: '#10B981' },
-  rejected_by_entity: { label: "Rifiutata dall'ente", color: '#EF4444' },
-  completed: { label: 'Completata', color: '#10B981' },
-  blocked: { label: 'Bloccata', color: '#EF4444' },
-  // Legacy
-  pending: { label: 'In attesa', color: '#F59E0B' },
-  in_progress: { label: 'In elaborazione', color: '#3B82F6' },
-  processing: { label: 'In elaborazione', color: '#3B82F6' },
-  waiting_approval: { label: 'In attesa della tua verifica', color: '#F59E0B' },
-  approved: { label: 'Approvata', color: '#10B981' },
-  submitted: { label: 'Inviata', color: '#06B6D4' },
-  escalated: { label: 'Escalation', color: '#EF4444' },
-  rejected: { label: 'Rifiutata', color: '#EF4444' },
-};
-
 const PRIORITY_BADGE = {
   urgent: { label: 'Urgente', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
   high: { label: 'Alta', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
@@ -79,23 +48,11 @@ const PRIORITY_BADGE = {
   low: { label: 'Bassa', bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-300' },
 };
 
-// Maps status to step index (0-5)
-function getStepIndex(status) {
-  const map = {
-    draft: 0,
-    waiting_user_documents: 1, documents_received: 1,
-    internal_processing: 2, in_progress: 2, processing: 2,
-    internal_validation_passed: 3, internal_validation_failed: 3,
-    waiting_user_review: 3, waiting_approval: 3,
-    waiting_signature: 4,
-    ready_for_submission: 5, submitted_manually: 5, submitted_via_channel: 5,
-    waiting_external_response: 5, accepted_by_entity: 5, rejected_by_entity: 5,
-    completed: 5, approved: 5, submitted: 5,
-    blocked: -1, escalated: -1, rejected: -1, pending: 1,
-  };
-  return map[status] ?? 0;
-}
-
+const DELEGATION_LEVEL_LABELS = {
+  assist: { label: 'Assistenza', desc: 'Herion prepara, tu invii', color: 'text-sky-600', bg: 'bg-sky-50' },
+  partial: { label: 'Parziale', desc: 'Herion puo agire in parte per tuo conto', color: 'text-amber-600', bg: 'bg-amber-50' },
+  full: { label: 'Completa', desc: 'Herion puo agire per tuo conto dove consentito', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+};
 
 export default function PracticeDetailPage() {
   const { id } = useParams();
@@ -103,11 +60,14 @@ export default function PracticeDetailPage() {
   const { user } = useAuth();
   const chatEndRef = useRef(null);
 
+  // Core state: workspace is the source of truth
   const [practice, setPractice] = useState(null);
+  const [workspace, setWorkspace] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
-  const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // UI state
   const [uploading, setUploading] = useState(false);
   const [orchestrating, setOrchestrating] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -120,19 +80,24 @@ export default function PracticeDetailPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showDelegateDialog, setShowDelegateDialog] = useState(false);
+  const [showProofDialog, setShowProofDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState({ open: false, status: '' });
   const [showAgentLogs, setShowAgentLogs] = useState(false);
+  const [delegateLevel, setDelegateLevel] = useState('assist');
+  const [proofType, setProofType] = useState('protocol_number');
+  const [proofCode, setProofCode] = useState('');
 
   const loadData = useCallback(async () => {
     try {
-      const [p, d, c, t] = await Promise.all([
-        getPractice(id), getPracticeDocuments(id),
-        getPracticeChatHistory(id), getPracticeTimeline(id)
+      const [p, w, d, c] = await Promise.all([
+        getPractice(id), getPracticeWorkspace(id),
+        getPracticeDocuments(id), getPracticeChatHistory(id),
       ]);
       setPractice(p.data);
+      setWorkspace(w.data);
       setDocuments(d.data);
       setChatHistory(c.data.reverse());
-      setTimeline(t.data);
     } catch (e) { console.warn('Load failed:', e?.message); }
     finally { setLoading(false); }
   }, [id]);
@@ -141,105 +106,84 @@ export default function PracticeDetailPage() {
 
   // ── ACTIONS ──
   const handleStart = async () => {
-    try {
-      await startPractice(id);
-      toast.success('Pratica avviata');
-      loadData();
-    } catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
+    try { await startPractice(id); toast.success('Pratica avviata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
   };
-
-  const handleFileSelect = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setPendingFile(f);
-    setShowUploadDialog(true);
-  };
-
+  const handleFileSelect = (e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setShowUploadDialog(true); } };
   const handleFileUpload = async () => {
-    if (!pendingFile) return;
-    setShowUploadDialog(false);
-    setUploading(true);
-    try {
-      await uploadDocument(id, pendingFile, uploadCategory);
-      toast.success('Documento caricato');
-      loadData();
-    } catch { toast.error('Errore nel caricamento'); }
+    if (!pendingFile) return; setShowUploadDialog(false); setUploading(true);
+    try { await uploadDocument(id, pendingFile, uploadCategory); toast.success('Documento caricato'); loadData(); }
+    catch { toast.error('Errore nel caricamento'); }
     finally { setUploading(false); setPendingFile(null); setUploadCategory('other'); }
   };
-
   const handleOrchestrate = async () => {
     setOrchestrating(true);
-    try {
-      await orchestrateAgents(id, 'Analisi completa della pratica');
-      toast.success('Analisi completata');
-      loadData();
-    } catch (e) { toast.error(e.response?.data?.detail || "Errore nell'elaborazione"); }
+    try { await orchestrateAgents(id, 'Analisi completa della pratica'); toast.success('Analisi completata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Errore nell'elaborazione"); }
     finally { setOrchestrating(false); }
   };
-
   const handleApprove = async () => {
-    setShowApprovalDialog(false);
-    setApproving(true);
-    try {
-      await approvePractice(id);
-      toast.success('Pratica approvata');
-      loadData();
-    } catch (e) { toast.error(e.response?.data?.detail || "Errore nell'approvazione"); }
+    setShowApprovalDialog(false); setApproving(true);
+    try { await approvePractice(id); toast.success('Pratica approvata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
     finally { setApproving(false); }
   };
-
   const handleMarkSubmitted = async (type = 'manual') => {
-    setShowSubmitDialog(false);
-    setSubmitting(true);
-    try {
-      await markPracticeSubmitted(id, type);
-      toast.success('Invio confermato');
-      loadData();
-    } catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
+    setShowSubmitDialog(false); setSubmitting(true);
+    try { await markPracticeSubmitted(id, type); toast.success('Invio confermato'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
     finally { setSubmitting(false); }
   };
-
   const handleMarkCompleted = async () => {
+    try { await markPracticeCompleted(id); toast.success('Pratica completata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
+  };
+  const handleDelegate = async () => {
+    setShowDelegateDialog(false);
     try {
-      await markPracticeCompleted(id);
-      toast.success('Pratica completata');
-      loadData();
+      const scopes = delegateLevel === 'full'
+        ? ['prepare_documents', 'validate_completeness', 'upload_to_portal', 'send_official_submission', 'download_receipt', 'monitor_response']
+        : delegateLevel === 'partial'
+        ? ['prepare_documents', 'validate_completeness', 'upload_to_portal', 'monitor_response']
+        : ['prepare_documents', 'validate_completeness'];
+      await delegatePractice(id, { level: delegateLevel, scope: scopes });
+      toast.success('Delega concessa'); loadData();
     } catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
   };
-
+  const handleRevokeDelegation = async () => {
+    try { await revokeDelegation(id); toast.success('Delega revocata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
+  };
+  const handleUploadProof = async () => {
+    setShowProofDialog(false);
+    try { await uploadProof(id, { proof_type: proofType, reference_code: proofCode || null }); toast.success('Ricevuta registrata'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
+    finally { setProofCode(''); }
+  };
+  const handleOfficialStepComplete = async () => {
+    try { await completeOfficialStep(id, { step_outcome: 'success' }); toast.success('Passaggio completato'); loadData(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
+  };
   const handlePdfDownload = async () => {
     setPdfLoading(true);
     try {
       const response = await downloadPracticePdf(id);
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const a = document.createElement('a');
-      a.href = url;
+      const a = document.createElement('a'); a.href = url;
       a.download = `Herion_Pratica_${id.slice(0, 8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('PDF scaricato');
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url); toast.success('PDF scaricato');
     } catch { toast.error('Errore nel download'); }
     finally { setPdfLoading(false); }
   };
-
   const handleStatusChange = async () => {
-    const s = showStatusDialog.status;
-    setShowStatusDialog({ open: false, status: '' });
-    try {
-      await updatePractice(id, { status: s });
-      toast.success('Stato aggiornato');
-      loadData();
-    } catch { toast.error("Errore nell'aggiornamento"); }
+    const s = showStatusDialog.status; setShowStatusDialog({ open: false, status: '' });
+    try { await updatePractice(id, { status: s }); toast.success('Stato aggiornato'); loadData(); }
+    catch { toast.error("Errore nell'aggiornamento"); }
   };
-
   const handleChat = async (e) => {
-    e.preventDefault();
-    if (!chatQuestion.trim() || chatLoading) return;
-    const q = chatQuestion.trim();
-    setChatQuestion('');
-    setChatLoading(true);
+    e.preventDefault(); if (!chatQuestion.trim() || chatLoading) return;
+    const q = chatQuestion.trim(); setChatQuestion(''); setChatLoading(true);
     try {
       const res = await sendPracticeChat(id, q);
       setChatHistory(prev => [...prev, res.data]);
@@ -248,51 +192,38 @@ export default function PracticeDetailPage() {
     finally { setChatLoading(false); }
   };
 
-  // ── DERIVED STATE ──
+  // ── DERIVED STATE (from workspace) ──
   const isAdmin = user?.role === 'admin' || user?.role === 'creator';
   const status = practice?.status || 'draft';
-  const stepIdx = getStepIndex(status);
+  const ws = workspace || {};
+  const stepIdx = ws.current_step ?? 0;
   const isBlocked = stepIdx === -1;
-  const statusCfg = STATUS_DISPLAY[status] || STATUS_DISPLAY.draft;
+  const statusCfg = ws.user_status || { label: 'Non iniziata', color: '#5B6475' };
   const pCfg = PRIORITY_BADGE[practice?.priority] || PRIORITY_BADGE.normal;
-  const catalog = practice?.catalog_info;
-  const channel = practice?.channel_info;
-  const orchestration = practice?.orchestration_result;
+  const guidance = ws.ui_guidance || {};
+  const activity = ws.current_activity || {};
+  const approval = ws.approval || {};
+  const father = approval.father_review || {};
+  const delegation = ws.delegation || {};
+  const officialAction = ws.official_action;
+  const proofLayer = ws.proof_layer || {};
+  const docsSummary = ws.documents_summary || {};
+  const blockers = ws.blockers || [];
+  const completedActivities = ws.completed_activities || [];
 
-  // Determine what user needs to do now
   const canStart = status === 'draft';
   const canUpload = ['waiting_user_documents', 'documents_received', 'draft'].includes(status);
-  const canRunAgents = ['waiting_user_documents', 'documents_received'].includes(status) ||
-    (status === 'draft' && documents.length > 0);
-  const canApprove = ['waiting_user_review', 'waiting_approval'].includes(status);
+  const canRunAgents = ['waiting_user_documents', 'documents_received'].includes(status) && documents.length > 0 && !practice?.orchestration_result;
+  const canApprove = approval.needed;
   const canSubmit = status === 'ready_for_submission';
   const canComplete = ['submitted_manually', 'submitted_via_channel', 'waiting_external_response'].includes(status);
   const isDone = ['completed', 'accepted_by_entity'].includes(status);
 
-  // Required docs from catalog
-  const requiredDocKeys = catalog?.required_documents || [];
-  const uploadedCategories = [...new Set(documents.map(d => d.category))];
-  const missingDocs = requiredDocKeys.filter(k => !uploadedCategories.includes(k));
-  const DOC_KEY_LABELS = {
-    identity: 'Documento di identita', tax_declarations: 'Dichiarazioni fiscali',
-    vat_documents: 'Documenti IVA', invoices: 'Fatture',
-    company_documents: 'Documenti societari', accounting: 'Documenti contabili',
-    compliance: 'Conformita', payroll: 'Buste paga', activity: 'Attivita',
-    practice_documents: 'Documenti pratica', tax: 'Documenti fiscali',
-  };
-
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <RefreshCw className="w-5 h-5 animate-spin text-[var(--text-muted)]" />
-    </div>
-  );
-
+  if (loading) return <div className="flex items-center justify-center h-64"><RefreshCw className="w-5 h-5 animate-spin text-[var(--text-muted)]" /></div>;
   if (!practice) return (
     <div className="text-center py-16">
       <p className="text-[var(--text-secondary)]">Pratica non trovata</p>
-      <Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-lg">
-        Torna alle pratiche
-      </Button>
+      <Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-lg">Torna alle pratiche</Button>
     </div>
   );
 
@@ -302,27 +233,18 @@ export default function PracticeDetailPage() {
       {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <button
-            onClick={() => navigate('/practices')}
-            className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-2 transition-colors"
-            data-testid="back-btn"
-          >
+          <button onClick={() => navigate('/practices')} className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-2 transition-colors" data-testid="back-btn">
             <ArrowLeft className="w-3.5 h-3.5" />Torna alle pratiche
           </button>
-          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
-            {practice.practice_type_label}
-          </h1>
-          <p className="text-[12px] text-[var(--text-secondary)]">
-            {practice.client_name} &middot; {practice.country}
-          </p>
+          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">{practice.practice_type_label}</h1>
+          <p className="text-[12px] text-[var(--text-secondary)]">{practice.client_name} &middot; {practice.country}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${pCfg.bg} ${pCfg.text}`} data-testid="practice-priority-badge">
             <span className={`w-1.5 h-1.5 rounded-full ${pCfg.dot}`} />{pCfg.label}
           </span>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: statusCfg.color }} data-testid="practice-status-badge">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusCfg.color }} />
-            {statusCfg.label}
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusCfg.color }} />{statusCfg.label}
           </span>
           {isDone && (
             <Button onClick={handlePdfDownload} disabled={pdfLoading} variant="outline" className="rounded-lg text-[11px] h-8 px-3" data-testid="download-pdf-btn">
@@ -333,13 +255,9 @@ export default function PracticeDetailPage() {
             <Select value={status} onValueChange={(v) => setShowStatusDialog({ open: true, status: v })}>
               <SelectTrigger className="w-40 rounded-lg h-8 text-[11px]" style={{ borderColor: 'var(--border-soft)' }} data-testid="status-select"><SelectValue /></SelectTrigger>
               <SelectContent className="rounded-lg text-[11px]">
-                <SelectItem value="draft">Bozza</SelectItem>
-                <SelectItem value="waiting_user_documents">Attesa documenti</SelectItem>
-                <SelectItem value="internal_processing">Elaborazione</SelectItem>
-                <SelectItem value="waiting_user_review">Attesa verifica</SelectItem>
-                <SelectItem value="ready_for_submission">Pronta invio</SelectItem>
-                <SelectItem value="completed">Completata</SelectItem>
-                <SelectItem value="blocked">Bloccata</SelectItem>
+                {['draft','waiting_user_documents','internal_processing','waiting_user_review','ready_for_submission','completed','blocked'].map(s => (
+                  <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           )}
@@ -350,103 +268,131 @@ export default function PracticeDetailPage() {
       <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="step-progress">
         <div className="flex items-center justify-between gap-1">
           {PRACTICE_STEPS.map((step, idx) => {
-            const isDone = stepIdx > idx;
-            const isCurrent = stepIdx === idx && !isBlocked;
+            const done = stepIdx > idx;
+            const current = stepIdx === idx && !isBlocked;
             const StepIcon = step.icon;
             return (
               <div key={step.key} className="flex items-center flex-1" data-testid={`step-${step.key}`}>
                 <div className="flex flex-col items-center">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                    isDone ? 'bg-emerald-50 text-emerald-600' :
-                    isCurrent ? 'bg-[#0ABFCF]/10 text-[#0ABFCF] ring-2 ring-[#0ABFCF]/30' :
-                    'bg-[var(--bg-app)] text-[var(--text-muted)]'
-                  }`}>
-                    {isDone ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-4 h-4" strokeWidth={1.5} />}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${done ? 'bg-emerald-50 text-emerald-600' : current ? 'bg-[#0ABFCF]/10 text-[#0ABFCF] ring-2 ring-[#0ABFCF]/30' : 'bg-[var(--bg-app)] text-[var(--text-muted)]'}`}>
+                    {done ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-4 h-4" strokeWidth={1.5} />}
                   </div>
-                  <p className={`text-[9px] font-semibold mt-1.5 text-center max-w-[60px] leading-tight ${
-                    isDone ? 'text-emerald-600' : isCurrent ? 'text-[#0ABFCF]' : 'text-[var(--text-muted)]'
-                  }`}>{step.label}</p>
+                  <p className={`text-[9px] font-semibold mt-1.5 text-center max-w-[60px] leading-tight ${done ? 'text-emerald-600' : current ? 'text-[#0ABFCF]' : 'text-[var(--text-muted)]'}`}>{step.label}</p>
                 </div>
-                {idx < PRACTICE_STEPS.length - 1 && (
-                  <div className={`h-px flex-1 mx-1.5 ${isDone ? 'bg-emerald-300' : 'bg-[var(--border-soft)]'}`} />
-                )}
+                {idx < 5 && <div className={`h-px flex-1 mx-1.5 ${done ? 'bg-emerald-300' : 'bg-[var(--border-soft)]'}`} />}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* ── BLOCKED BANNER ── */}
-      {isBlocked && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200" data-testid="blocked-banner">
-          <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-[12px] font-semibold text-red-800">Pratica bloccata</p>
-            <p className="text-[11px] text-red-600 mt-0.5">Questa pratica richiede un intervento prima di procedere. Leggi il riepilogo qui sotto o chiedi a Herion per assistenza.</p>
-          </div>
+      {/* ── BLOCKERS ── */}
+      {blockers.length > 0 && (
+        <div className="space-y-2" data-testid="blockers-section">
+          {blockers.map((b, i) => (
+            <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${b.severity === 'high' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`} data-testid={`blocker-${i}`}>
+              <AlertTriangle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${b.severity === 'high' ? 'text-red-500' : 'text-amber-500'}`} />
+              <div>
+                <p className={`text-[12px] font-semibold ${b.severity === 'high' ? 'text-red-800' : 'text-amber-800'}`}>{b.label}</p>
+                <p className={`text-[11px] mt-0.5 ${b.severity === 'high' ? 'text-red-600' : 'text-amber-600'}`}>{b.detail}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* ── MAIN CONTENT ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-
-        {/* ════ LEFT COLUMN ════ */}
         <div className="space-y-4">
 
-          {/* ── STEP 0: UNDERSTANDING GATE (draft) ── */}
-          {canStart && (
-            <UnderstandingGate
-              practice={practice}
-              catalog={catalog}
-              channel={channel}
-              onStart={handleStart}
-            />
+          {/* ── UNDERSTANDING GATE (draft) ── */}
+          {canStart && <UnderstandingGate practice={practice} workspace={ws} onStart={handleStart} />}
+
+          {/* ── UI GUIDANCE from workspace ── */}
+          {!canStart && guidance.headline && (
+            <div className={`rounded-xl px-5 py-4 ${activity.user_action_required ? 'bg-amber-50/50' : isDone ? 'bg-emerald-50/50' : 'bg-[var(--bg-soft)]'}`} data-testid="guidance-card">
+              {activity.user_action_required && <span className="inline-flex text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 bg-amber-100 text-amber-700" data-testid="guidance-label">Richiede la tua azione</span>}
+              {!activity.user_action_required && activity.code !== 'done' && <span className="inline-flex text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 bg-blue-100 text-blue-600" data-testid="guidance-label">Herion sta lavorando</span>}
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">{guidance.headline}</p>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1">{guidance.subheadline}</p>
+              {guidance.next_step_label && (
+                <p className="text-[10px] text-[var(--text-muted)] mt-2 flex items-center gap-1.5">
+                  <ArrowRight className="w-3 h-3 flex-shrink-0" /><strong>{guidance.next_step_label}:</strong> {guidance.next_step_detail}
+                </p>
+              )}
+              {completedActivities.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {completedActivities.slice(-3).map((a, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+                      <CheckCircle className="w-2.5 h-2.5" />{a.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
-          {/* ── GUIDANCE: What Herion did / What user must do ── */}
-          {!canStart && (
-            <GuidanceCard status={status} practice={practice} channel={channel} catalog={catalog} missingDocs={missingDocs} docLabels={DOC_KEY_LABELS} />
+          {/* ── OFFICIAL STEP CARD ── */}
+          {officialAction && !canStart && <OfficialStepCard action={officialAction} proof={proofLayer} status={status} delegation={delegation} onOfficialStepComplete={handleOfficialStepComplete} onShowProofDialog={() => setShowProofDialog(true)} />}
+
+          {/* ── FATHER REVIEW / APPROVAL GATE ── */}
+          {canApprove && father.active && (
+            <div className="bg-white rounded-xl border-2 border-amber-200 p-5 space-y-3" data-testid="father-review-gate">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-amber-500" />
+                <div>
+                  <p className="text-[13px] font-bold text-[var(--text-primary)]">Verifica del Supervisore Herion</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">Herion ha effettuato una verifica completa prima della tua approvazione.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { label: 'Compatibilita', value: father.compatibility_check, icon: CheckCircle },
+                  { label: 'Requisiti', value: father.requirements_check, icon: ClipboardCheck },
+                  { label: 'Documenti', value: father.document_received_check, icon: FileText },
+                  { label: 'Ente', value: father.entity_validation_check, icon: ExternalLink },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 p-2.5 bg-[var(--bg-soft)] rounded-lg">
+                    <item.icon className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{item.label}</p>
+                      <p className="text-[10px] text-[var(--text-primary)] leading-relaxed">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-3 bg-[var(--bg-soft)] rounded-lg space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${father.approval_recommendation?.includes('consigliata') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`} data-testid="approval-recommendation">{father.approval_recommendation}</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-secondary)]">{father.summary_for_user}</p>
+                <div className="flex gap-4 text-[9px] text-[var(--text-muted)]">
+                  <span>{father.estimated_opening_time}</span>
+                  <span>{father.estimated_closing_time}</span>
+                </div>
+                <p className="text-[9px] text-[var(--text-muted)]">{father.path_summary}</p>
+                <p className="text-[9px] text-[var(--text-muted)]">{father.goal_summary}</p>
+              </div>
+
+              <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-10 w-full text-[12px] font-semibold" data-testid="approve-practice-btn">
+                {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approvazione...</> : <><CheckCircle className="w-4 h-4 mr-2" />Approva e Procedi</>}
+              </Button>
+            </div>
           )}
 
-          {/* ── DOCUMENTS SECTION ── */}
-          {!canStart && (
-            <DocumentSection
-              documents={documents}
-              missingDocs={missingDocs}
-              docLabels={DOC_KEY_LABELS}
-              canUpload={canUpload}
-              uploading={uploading}
-              onFileSelect={handleFileSelect}
-              catalog={catalog}
-            />
-          )}
-
-          {/* ── OFFICIAL CHANNEL CARD ── */}
-          {!canStart && channel && (
-            <ChannelCard channel={channel} catalog={catalog} status={status} />
-          )}
-
-          {/* ── AGENT RESULTS / REVIEW ── */}
-          {canApprove && orchestration && (
-            <div className="bg-white rounded-xl border-2 border-amber-200 p-5" data-testid="review-gate">
-              <div className="flex items-center gap-3 mb-4">
+          {/* ── SIMPLE APPROVAL (no father review data) ── */}
+          {canApprove && !father.active && (
+            <div className="bg-white rounded-xl border-2 border-amber-200 p-5" data-testid="simple-approval-gate">
+              <div className="flex items-center gap-3 mb-3">
                 <ClipboardCheck className="w-5 h-5 text-amber-500" />
                 <div>
                   <p className="text-[13px] font-bold text-[var(--text-primary)]">La tua verifica e richiesta</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">Herion ha completato l'analisi. Leggi il riepilogo e approva per procedere.</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">Leggi il riepilogo e approva per procedere.</p>
                 </div>
               </div>
-              {orchestration.admin_summary && (
-                <div className="p-3 bg-[var(--bg-app)] rounded-lg border text-[12px] text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto mb-4" style={{ borderColor: 'var(--border-soft)' }} data-testid="admin-summary">
-                  {orchestration.admin_summary}
-                </div>
-              )}
-              <Button
-                onClick={() => setShowApprovalDialog(true)}
-                disabled={approving}
-                className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-10 w-full text-[12px] font-semibold"
-                data-testid="approve-practice-btn"
-              >
+              <Button onClick={() => setShowApprovalDialog(true)} disabled={approving} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-10 w-full text-[12px] font-semibold" data-testid="approve-practice-btn">
                 {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approvazione...</> : <><CheckCircle className="w-4 h-4 mr-2" />Approva e Procedi</>}
               </Button>
             </div>
@@ -459,36 +405,10 @@ export default function PracticeDetailPage() {
                 <Flag className="w-5 h-5 text-[#0ABFCF]" />
                 <div>
                   <p className="text-[13px] font-bold text-[var(--text-primary)]">Pronta per l'invio</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">
-                    {channel?.auto_submission === false
-                      ? "Devi inviare questa pratica tu stesso all'ente competente."
-                      : "La pratica e pronta. Conferma l'invio."
-                    }
-                  </p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">{officialAction?.requires_user_direct_step ? "Conferma dopo aver completato l'invio sul portale ufficiale." : "Conferma per completare."}</p>
                 </div>
               </div>
-              {channel?.portal_url && (
-                <a
-                  href={channel.portal_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-3 bg-[var(--bg-soft)] rounded-lg border mb-3 hover:bg-[var(--hover-soft)] transition-colors"
-                  style={{ borderColor: 'var(--border-soft)' }}
-                  data-testid="portal-link"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-[#0ABFCF] flex-shrink-0" />
-                  <div>
-                    <p className="text-[11px] font-semibold text-[var(--text-primary)]">{channel.name}</p>
-                    <p className="text-[9px] text-[var(--text-muted)] truncate">{channel.portal_url}</p>
-                  </div>
-                </a>
-              )}
-              <Button
-                onClick={() => setShowSubmitDialog(true)}
-                disabled={submitting}
-                className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg h-10 w-full text-[12px] font-semibold text-white"
-                data-testid="mark-submitted-btn"
-              >
+              <Button onClick={() => setShowSubmitDialog(true)} disabled={submitting} className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg h-10 w-full text-[12px] font-semibold text-white" data-testid="mark-submitted-btn">
                 {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Confermando...</> : <><Send className="w-4 h-4 mr-2" />Ho inviato la pratica</>}
               </Button>
             </div>
@@ -501,54 +421,43 @@ export default function PracticeDetailPage() {
                 <Flag className="w-5 h-5 text-emerald-500" />
                 <div>
                   <p className="text-[13px] font-bold text-[var(--text-primary)]">In attesa di conferma</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">Quando l'ente conferma la ricezione o l'accettazione, chiudi la pratica.</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">Quando l'ente conferma, chiudi la pratica.</p>
                 </div>
               </div>
-              <Button
-                onClick={handleMarkCompleted}
-                variant="outline"
-                className="rounded-lg h-9 text-[11px] font-semibold"
-                data-testid="mark-completed-btn"
-              >
+              <Button onClick={handleMarkCompleted} variant="outline" className="rounded-lg h-9 text-[11px] font-semibold" data-testid="mark-completed-btn">
                 <CheckCircle className="w-3.5 h-3.5 mr-1.5" />Conferma completamento
               </Button>
             </div>
           )}
 
-          {/* ── RUN AGENTS ACTION (when documents uploaded) ── */}
-          {canRunAgents && documents.length > 0 && !orchestration && (
+          {/* ── RUN AGENTS ── */}
+          {canRunAgents && (
             <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="run-agents-card">
               <div className="flex items-center gap-3 mb-3">
                 <Cog className="w-5 h-5 text-[var(--text-muted)]" />
                 <div>
                   <p className="text-[13px] font-bold text-[var(--text-primary)]">Avvia l'analisi di Herion</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">
-                    {missingDocs.length > 0
-                      ? `${missingDocs.length} documenti mancanti. Puoi procedere, ma l'analisi potrebbe essere incompleta.`
-                      : 'Tutti i documenti richiesti sono presenti. Puoi avviare l\'analisi.'
-                    }
-                  </p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">{docsSummary.missing_count > 0 ? `${docsSummary.missing_count} documenti mancanti. L'analisi potrebbe essere incompleta.` : 'Documenti presenti. Puoi avviare l\'analisi.'}</p>
                 </div>
               </div>
-              <Button
-                onClick={handleOrchestrate}
-                disabled={orchestrating}
-                className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-10 w-full text-[12px] font-semibold"
-                data-testid="run-workflow-btn"
-              >
+              <Button onClick={handleOrchestrate} disabled={orchestrating} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-10 w-full text-[12px] font-semibold" data-testid="run-workflow-btn">
                 {orchestrating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analisi in corso...</> : <><Play className="w-4 h-4 mr-2" />Avvia Analisi Herion</>}
               </Button>
             </div>
           )}
 
-          {/* ── AGENT LOGS — what Herion did ── */}
-          {practice.agent_logs?.length > 0 && (
+          {/* ── DOCUMENTS ── */}
+          {!canStart && <DocumentSection documents={documents} docsSummary={docsSummary} canUpload={canUpload} uploading={uploading} onFileSelect={handleFileSelect} />}
+
+          {/* ── DELEGATION ── */}
+          {!canStart && !isDone && (
+            <DelegationSection delegation={delegation} officialAction={officialAction} onDelegate={() => setShowDelegateDialog(true)} onRevoke={handleRevokeDelegation} />
+          )}
+
+          {/* ── AGENT LOGS ── */}
+          {completedActivities.length > 0 && (
             <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
-              <button
-                onClick={() => setShowAgentLogs(!showAgentLogs)}
-                className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[var(--hover-soft)] transition-colors"
-                data-testid="agent-logs-toggle"
-              >
+              <button onClick={() => setShowAgentLogs(!showAgentLogs)} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[var(--hover-soft)] transition-colors" data-testid="agent-logs-toggle">
                 <div className="flex items-center gap-2">
                   <Bot className="w-3.5 h-3.5 text-[#0ABFCF]" />
                   <p className="text-[11px] font-bold text-[var(--text-primary)]">Cosa ha fatto Herion</p>
@@ -558,31 +467,23 @@ export default function PracticeDetailPage() {
               </button>
               {showAgentLogs && (
                 <div className="border-t px-5 py-3 space-y-2" style={{ borderColor: 'var(--border-soft)' }}>
-                  {practice.agent_logs.map((log) => {
-                    const isOk = log.status === 'completed';
-                    return (
-                      <div key={log.id} className="flex items-start gap-2.5 py-1.5" data-testid={`agent-log-${log.id}`}>
-                        <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                          isOk ? 'bg-emerald-50' : 'bg-red-50'
-                        }`}>
-                          {isOk ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-[var(--text-primary)]">{log.branded_name || log.agent_type}</p>
-                          <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed">{log.explanation}</p>
-                          {log.output_data && typeof log.output_data === 'string' && log.output_data.length > 10 && (
-                            <p className="text-[9px] text-[var(--text-muted)] mt-0.5 truncate">{log.output_data.substring(0, 120)}...</p>
-                          )}
-                        </div>
+                  {completedActivities.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2.5 py-1.5">
+                      <div className="w-5 h-5 rounded bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="w-3 h-3 text-emerald-500" />
                       </div>
-                    );
-                  })}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold text-[var(--text-primary)]">{a.label}</p>
+                        {a.completed_at && <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(a.completed_at), 'dd MMM HH:mm', { locale: it })}</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* ── COMPLETED STATE ── */}
+          {/* ── COMPLETED ── */}
           {isDone && (
             <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5 text-center" data-testid="completed-card">
               <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
@@ -594,6 +495,21 @@ export default function PracticeDetailPage() {
 
         {/* ════ RIGHT COLUMN ════ */}
         <div className="space-y-4">
+          {/* ── CURRENT AGENT ── */}
+          {ws.current_agent && (
+            <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="current-agent-card">
+              <div className="flex items-center gap-2 mb-2">
+                <Bot className="w-3.5 h-3.5 text-[#0ABFCF]" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Agente attivo</p>
+              </div>
+              <p className="text-[12px] font-semibold text-[var(--text-primary)]">{ws.current_agent.name}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{ws.current_agent.title}</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">{ws.current_agent.message}</p>
+              <span className={`inline-flex text-[8px] font-bold px-1.5 py-0.5 rounded-full mt-2 ${ws.current_agent.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : ws.current_agent.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                {ws.current_agent.status === 'completed' ? 'Completato' : ws.current_agent.status === 'in_progress' ? 'In corso' : ws.current_agent.status}
+              </span>
+            </div>
+          )}
 
           {/* ── CHAT ── */}
           <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-chat">
@@ -601,12 +517,11 @@ export default function PracticeDetailPage() {
               <Bot className="w-3.5 h-3.5 text-[var(--text-muted)]" />
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Chiedi a Herion</p>
             </div>
-            <ScrollArea className="h-[200px] mb-3">
+            <ScrollArea className="h-[180px] mb-3">
               <div className="space-y-2 pr-2">
                 {chatHistory.length === 0 && !chatLoading && (
                   <div className="text-center py-4">
                     <p className="text-[11px] text-[var(--text-secondary)] mb-1">Hai domande sulla pratica?</p>
-                    <p className="text-[10px] text-[var(--text-muted)] mb-3">Chiedi e riceverai una risposta chiara</p>
                     {['Cosa devo fare adesso?', 'Manca qualcosa?', 'Qual e lo stato?'].map((q, i) => (
                       <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[11px] text-[var(--text-primary)] p-2.5 bg-[var(--hover-soft)] rounded-lg hover:bg-[#0ABFCF]/10 transition-colors mb-1.5" data-testid={`chat-suggestion-${i}`}>{q}</button>
                     ))}
@@ -614,60 +529,35 @@ export default function PracticeDetailPage() {
                 )}
                 {chatHistory.map(msg => (
                   <div key={msg.id}>
-                    <div className="flex justify-end mb-1">
-                      <div className="bg-[var(--text-primary)] text-white px-2.5 py-1.5 rounded-lg text-[10px] max-w-[85%]">{msg.question}</div>
-                    </div>
+                    <div className="flex justify-end mb-1"><div className="bg-[var(--text-primary)] text-white px-2.5 py-1.5 rounded-lg text-[10px] max-w-[85%]">{msg.question}</div></div>
                     <div className="flex gap-1.5 mb-1">
-                      <div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Bot className="w-3 h-3 text-[var(--text-secondary)]" />
-                      </div>
-                      <div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg text-[10px] text-[var(--text-primary)] max-w-[85%] whitespace-pre-wrap" style={{ borderColor: 'var(--border-soft)' }}>
-                        {msg.answer}
-                      </div>
+                      <div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[var(--text-secondary)]" /></div>
+                      <div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg text-[10px] text-[var(--text-primary)] max-w-[85%] whitespace-pre-wrap" style={{ borderColor: 'var(--border-soft)' }}>{msg.answer}</div>
                     </div>
                   </div>
                 ))}
-                {chatLoading && (
-                  <div className="flex gap-1.5">
-                    <div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-3 h-3" />
-                    </div>
-                    <div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg" style={{ borderColor: 'var(--border-soft)' }}>
-                      <Loader2 className="w-3 h-3 animate-spin text-[var(--text-secondary)]" />
-                    </div>
-                  </div>
-                )}
+                {chatLoading && <div className="flex gap-1.5"><div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3" /></div><div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg" style={{ borderColor: 'var(--border-soft)' }}><Loader2 className="w-3 h-3 animate-spin text-[var(--text-secondary)]" /></div></div>}
                 <div ref={chatEndRef} />
               </div>
             </ScrollArea>
             <form onSubmit={handleChat} className="flex gap-1.5">
-              <Input
-                value={chatQuestion}
-                onChange={e => setChatQuestion(e.target.value)}
-                placeholder="Domanda..."
-                className="rounded-lg h-8 text-[10px] flex-1"
-                style={{ borderColor: 'var(--border-soft)' }}
-                disabled={chatLoading}
-                data-testid="chat-input"
-              />
-              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-8 w-8 p-0" data-testid="chat-send-btn">
-                <Send className="w-3 h-3" />
-              </Button>
+              <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Domanda..." className="rounded-lg h-8 text-[10px] flex-1" style={{ borderColor: 'var(--border-soft)' }} disabled={chatLoading} data-testid="chat-input" />
+              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-8 w-8 p-0" data-testid="chat-send-btn"><Send className="w-3 h-3" /></Button>
             </form>
           </div>
 
           {/* ── TIMELINE ── */}
-          {timeline.length > 0 && (
+          {ws.timeline_summary?.length > 0 && (
             <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-timeline">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Cronologia</p>
-              <ScrollArea className="h-[180px]">
+              <ScrollArea className="h-[160px]">
                 <div className="space-y-2">
-                  {timeline.map((event) => (
-                    <div key={event.id} className="flex items-start gap-2">
-                      <Circle className="w-2.5 h-2.5 text-[var(--text-muted)] flex-shrink-0 mt-1" fill="currentColor" />
+                  {ws.timeline_summary.map((event, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Circle className={`w-2.5 h-2.5 flex-shrink-0 mt-1 ${event.type === 'success' ? 'text-emerald-500' : event.type === 'error' ? 'text-red-500' : event.type === 'warning' ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} fill="currentColor" />
                       <div className="min-w-0">
-                        <p className="text-[10px] font-medium text-[var(--text-primary)]">{event.event_label}</p>
-                        <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(event.timestamp), 'dd MMM, HH:mm', { locale: it })}</p>
+                        <p className="text-[10px] font-medium text-[var(--text-primary)]">{event.event}</p>
+                        {event.time && <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(event.time), 'dd MMM, HH:mm', { locale: it })}</p>}
                       </div>
                     </div>
                   ))}
@@ -680,77 +570,58 @@ export default function PracticeDetailPage() {
 
       {/* ── DIALOGS ── */}
       <AlertDialog open={showStatusDialog.open} onOpenChange={o => setShowStatusDialog({ open: o, status: '' })}>
-        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-center">Cambia stato</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[12px]">Questa azione verra registrata.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleStatusChange} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Conferma</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm"><AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Cambia stato</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">Questa azione verra registrata.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleStatusChange} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Conferma</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <AlertDialogContent className="rounded-xl shadow-xl max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-center">Conferma Approvazione</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[12px]">
-              Confermando, autorizzi Herion a procedere con <span className="font-semibold text-[var(--text-primary)]">{practice.practice_type_label}</span> per <span className="font-semibold text-[var(--text-primary)]">{practice.client_name}</span>.
-              {channel?.auto_submission === false && (
-                <span className="block mt-2 text-amber-600 font-medium">
-                  Nota: l'invio ufficiale dovra essere effettuato da te sul portale dell'ente.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprove} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]" data-testid="confirm-approve-btn">Approva</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-md"><AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Conferma Approvazione</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">Confermando, autorizzi Herion a procedere con <span className="font-semibold text-[var(--text-primary)]">{practice.practice_type_label}</span>.{officialAction?.requires_user_direct_step && <span className="block mt-2 text-amber-600 font-medium">L'invio ufficiale dovra essere fatto da te.</span>}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleApprove} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]" data-testid="confirm-approve-btn">Approva</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <AlertDialogContent className="rounded-xl shadow-xl max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-center">Conferma Invio</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[12px]">
-              Confermi di aver inviato la pratica all'ente competente?
-              <span className="block mt-2 text-[var(--text-muted)]">
-                Questa azione registra che hai completato l'invio. Non e reversibile.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleMarkSubmitted('manual')} className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg flex-1 text-[12px] text-white" data-testid="confirm-submit-btn">Confermo l'invio</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-md"><AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Conferma Invio</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">Confermi di aver inviato la pratica all'ente?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={() => handleMarkSubmitted('manual')} className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg flex-1 text-[12px] text-white" data-testid="confirm-submit-btn">Confermo l'invio</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-center">Carica documento</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[12px]">
-              File: <span className="font-medium text-[var(--text-primary)]">{pendingFile?.name}</span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="px-6 pb-2">
-            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Categoria</label>
-            <Select value={uploadCategory} onValueChange={setUploadCategory}>
-              <SelectTrigger className="rounded-lg h-9 text-[12px] mt-1.5" style={{ borderColor: 'var(--border-soft)' }}><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-lg">
-                {DOC_UPLOAD_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm"><AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Carica documento</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">File: <span className="font-medium text-[var(--text-primary)]">{pendingFile?.name}</span></AlertDialogDescription></AlertDialogHeader><div className="px-6 pb-2"><label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Categoria</label><Select value={uploadCategory} onValueChange={setUploadCategory}><SelectTrigger className="rounded-lg h-9 text-[12px] mt-1.5" style={{ borderColor: 'var(--border-soft)' }}><SelectValue /></SelectTrigger><SelectContent className="rounded-lg">{DOC_UPLOAD_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent></Select></div><AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleFileUpload} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Carica</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDelegateDialog} onOpenChange={setShowDelegateDialog}>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-md">
+          <AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Concedi delega a Herion</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">Scegli il livello di delega. Puoi revocarla in qualsiasi momento.</AlertDialogDescription></AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-2">
+            {Object.entries(DELEGATION_LEVEL_LABELS).map(([key, cfg]) => (
+              <button key={key} onClick={() => setDelegateLevel(key)} className={`w-full p-3 rounded-lg border text-left transition-colors ${delegateLevel === key ? 'border-[#0ABFCF] bg-[#0ABFCF]/5' : 'border-[var(--border-soft)] hover:bg-[var(--hover-soft)]'}`} data-testid={`delegate-level-${key}`}>
+                <p className={`text-[12px] font-semibold ${cfg.color}`}>{cfg.label}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">{cfg.desc}</p>
+              </button>
+            ))}
           </div>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFileUpload} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Carica</AlertDialogAction>
-          </AlertDialogFooter>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleDelegate} className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg flex-1 text-[12px] text-white" data-testid="confirm-delegate-btn">Concedi delega</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showProofDialog} onOpenChange={setShowProofDialog}>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm">
+          <AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Registra ricevuta</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">Inserisci il numero di protocollo o il riferimento della ricevuta.</AlertDialogDescription></AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-3">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Tipo</label>
+              <Select value={proofType} onValueChange={setProofType}>
+                <SelectTrigger className="rounded-lg h-9 text-[12px] mt-1" style={{ borderColor: 'var(--border-soft)' }}><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  <SelectItem value="protocol_number">Numero protocollo</SelectItem>
+                  <SelectItem value="receipt_pdf">Ricevuta PDF</SelectItem>
+                  <SelectItem value="pec_delivery">Consegna PEC</SelectItem>
+                  <SelectItem value="portal_confirmation">Conferma portale</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Codice/Riferimento</label>
+              <Input value={proofCode} onChange={e => setProofCode(e.target.value)} placeholder="Es. 2026-PROT-12345" className="rounded-lg h-9 text-[12px] mt-1" style={{ borderColor: 'var(--border-soft)' }} data-testid="proof-code-input" />
+            </div>
+          </div>
+          <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleUploadProof} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]" data-testid="confirm-proof-btn">Registra</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -762,16 +633,9 @@ export default function PracticeDetailPage() {
 // SUB-COMPONENTS
 // ═══════════════════════════════════════
 
-function UnderstandingGate({ practice, catalog, channel, onStart }) {
-  const requiredDocs = catalog?.required_documents || [];
-  const DOC_LABELS = {
-    identity: 'Documento di identita', tax_declarations: 'Dichiarazioni fiscali',
-    vat_documents: 'Documenti IVA', invoices: 'Fatture',
-    company_documents: 'Documenti societari', accounting: 'Documenti contabili',
-    compliance: 'Conformita', payroll: 'Buste paga', tax: 'Documenti fiscali',
-    practice_documents: 'Documenti pratica',
-  };
-
+function UnderstandingGate({ practice, workspace, onStart }) {
+  const oa = workspace.official_action;
+  const ds = workspace.documents_summary || {};
   return (
     <div className="bg-white rounded-xl border p-6" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="understanding-gate">
       <div className="flex items-center gap-3 mb-4">
@@ -779,78 +643,52 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
         <h2 className="text-[14px] font-bold text-[var(--text-primary)]">Prima di iniziare</h2>
       </div>
 
-      {/* What is this practice */}
       <div className="mb-4">
         <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Di cosa si tratta</p>
-        <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">
-          {catalog?.user_explanation || practice.description || 'Pratica fiscale/amministrativa.'}
-        </p>
+        <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{oa?.action_description || practice.description || 'Pratica fiscale/amministrativa.'}</p>
       </div>
 
-      {/* Required documents */}
-      {requiredDocs.length > 0 && (
+      {ds.missing_labels?.length > 0 && (
         <div className="mb-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Documenti che ti servono</p>
           <div className="space-y-1">
-            {requiredDocs.map((doc, i) => (
+            {ds.missing_labels.map((doc, i) => (
               <div key={i} className="flex items-center gap-2 py-1">
-                <div className="w-4 h-4 rounded bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-2.5 h-2.5 text-amber-600" />
-                </div>
-                <p className="text-[11px] text-[var(--text-primary)]">{DOC_LABELS[doc] || doc}</p>
+                <div className="w-4 h-4 rounded bg-amber-50 flex items-center justify-center flex-shrink-0"><FileText className="w-2.5 h-2.5 text-amber-600" /></div>
+                <p className="text-[11px] text-[var(--text-primary)]">{doc}</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* How it works - accountant framing */}
       <div className="mb-4">
         <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Cosa fara Herion per te</p>
         <div className="space-y-1.5">
           {[
-            { text: 'Raccoglie e organizza i tuoi documenti', label: 'Herion' },
-            { text: 'Verifica completezza e conformita', label: 'Herion' },
-            { text: 'Tu verifichi il risultato e approvi', label: 'Tu' },
-            channel?.auto_submission === false
-              ? { text: "Invii la pratica all'ente con le tue credenziali", label: 'Tu' }
-              : { text: 'La pratica viene completata', label: 'Herion' },
+            { text: 'Raccoglie e organizza i tuoi documenti', who: 'Herion' },
+            { text: 'Verifica completezza e conformita', who: 'Herion' },
+            { text: 'Tu verifichi il risultato e approvi', who: 'Tu' },
+            oa?.requires_user_direct_step ? { text: "Invii la pratica all'ente con le tue credenziali", who: 'Tu' } : { text: 'La pratica viene completata', who: 'Herion' },
           ].map((step, i) => (
             <div key={i} className="flex items-center gap-2.5">
-              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                step.label === 'Tu' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
-              }`}>{step.label}</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${step.who === 'Tu' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{step.who}</span>
               <p className="text-[11px] text-[var(--text-secondary)]">{step.text}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Where it goes */}
-      {channel && (
+      {oa && (
         <div className="mb-5 p-3 bg-[var(--bg-soft)] rounded-lg">
           <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Ente di destinazione</p>
-          <p className="text-[11px] font-semibold text-[var(--text-primary)]">{channel.name}</p>
-          {channel.required_channel && channel.required_channel !== 'preparation_only' && (
-            <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">
-              Canale: {channel.required_channel === 'official_portal' ? 'Portale ufficiale' : channel.required_channel === 'PEC' ? 'PEC' : channel.required_channel}
-            </p>
-          )}
-          {channel.auto_submission === false && (
-            <p className="text-[10px] text-amber-600 font-medium mt-1">
-              L'invio ufficiale va fatto da te sul portale dell'ente.
-              Herion prepara tutto, tu invii.
-            </p>
-          )}
+          <p className="text-[11px] font-semibold text-[var(--text-primary)]">{oa.entity_name}</p>
+          {oa.submission_channel !== 'unknown' && <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Canale: {oa.submission_channel === 'official_portal' ? 'Portale ufficiale' : oa.submission_channel === 'PEC' ? 'PEC' : oa.submission_channel}</p>}
+          {oa.requires_user_direct_step && <p className="text-[10px] text-amber-600 font-medium mt-1">L'invio ufficiale va fatto da te. Herion prepara tutto, tu invii.</p>}
         </div>
       )}
 
-      {/* CTA */}
-      <Button
-        onClick={onStart}
-        className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-11 w-full text-[13px] font-semibold"
-        data-testid="start-practice-btn"
-      >
+      <Button onClick={onStart} className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-11 w-full text-[13px] font-semibold" data-testid="start-practice-btn">
         <Play className="w-4 h-4 mr-2" />Inizia la pratica
       </Button>
     </div>
@@ -858,149 +696,93 @@ function UnderstandingGate({ practice, catalog, channel, onStart }) {
 }
 
 
-function GuidanceCard({ status, practice, channel, catalog, missingDocs, docLabels }) {
-  // Messaging labels as per real-accountant model
-  const hasAgentLogs = practice?.agent_logs?.length > 0;
-  const orchestration = practice?.orchestration_result;
-  const isExternal = channel?.auto_submission === false;
+function OfficialStepCard({ action, proof, status, delegation, onOfficialStepComplete, onShowProofDialog }) {
+  if (!action) return null;
+  const isReady = status === 'ready_for_submission';
+  const isSubmitted = ['submitted_manually', 'submitted_via_channel', 'waiting_external_response'].includes(status);
+  const needsProof = isSubmitted && proof.expected && proof.status === 'missing';
 
-  // What Herion already did
-  let herionDid = [];
-  if (hasAgentLogs) herionDid.push('Analisi completata da ' + practice.agent_logs.length + ' agenti specializzati');
-  if (orchestration) herionDid.push('Riepilogo preparato per la tua verifica');
-
-  // What Herion can do under delegation
-  let herionCan = [];
-  if (['draft', 'waiting_user_documents', 'documents_received'].includes(status)) {
-    herionCan = ['Raccogliere e organizzare i documenti', 'Verificare la completezza', 'Preparare il dossier per l\'invio'];
-  } else if (['internal_processing', 'in_progress'].includes(status)) {
-    herionCan = ['Validare conformita e requisiti', 'Preparare il riepilogo'];
-  } else if (['waiting_user_review', 'waiting_approval'].includes(status)) {
-    herionCan = ['Guidarti al portale ufficiale dopo la tua approvazione'];
-  } else if (status === 'ready_for_submission') {
-    herionCan = ['Monitorare lo stato dopo l\'invio', 'Inviarti promemoria'];
-  }
-
-  // What user must do
-  let userMust = '';
-  let userMustLabel = '';
-  let bgClass = 'bg-[var(--bg-soft)]';
-
-  switch (status) {
-    case 'waiting_user_documents':
-    case 'documents_received':
-      userMust = missingDocs.length > 0
-        ? `Carica i documenti mancanti: ${missingDocs.map(d => docLabels[d] || d).join(', ')}.`
-        : 'Tutti i documenti sono presenti. Avvia l\'analisi di Herion.';
-      userMustLabel = missingDocs.length > 0 ? 'Richiede la tua azione' : 'Preparato da Herion';
-      bgClass = missingDocs.length > 0 ? 'bg-amber-50/50' : 'bg-emerald-50/50';
-      break;
-    case 'internal_processing':
-    case 'in_progress':
-    case 'processing':
-      userMust = 'Nessuna azione richiesta ora. Herion sta lavorando.';
-      userMustLabel = 'Herion sta lavorando';
-      bgClass = 'bg-blue-50/50';
-      break;
-    case 'internal_validation_passed':
-    case 'waiting_user_review':
-    case 'waiting_approval':
-      userMust = 'Leggi il riepilogo qui sotto e approva per procedere.';
-      userMustLabel = 'Richiede la tua azione';
-      bgClass = 'bg-amber-50/50';
-      break;
-    case 'internal_validation_failed':
-      userMust = 'Ci sono problemi da risolvere. Controlla i dettagli sotto.';
-      userMustLabel = 'Richiede la tua azione';
-      bgClass = 'bg-red-50/50';
-      break;
-    case 'waiting_signature':
-      userMust = 'Firma i documenti richiesti con la tua firma digitale.';
-      userMustLabel = 'Richiede la tua azione';
-      bgClass = 'bg-amber-50/50';
-      break;
-    case 'ready_for_submission':
-      userMust = isExternal
-        ? 'Invia la pratica all\'ente competente tramite il portale ufficiale.'
-        : 'Conferma per completare la pratica.';
-      userMustLabel = isExternal ? 'Passaggio ufficiale esterno' : 'Richiede la tua azione';
-      bgClass = 'bg-[#0ABFCF]/5';
-      break;
-    case 'submitted_manually':
-    case 'submitted_via_channel':
-      userMust = 'La pratica e stata inviata. Quando ricevi conferma dall\'ente, chiudi la pratica.';
-      userMustLabel = 'In attesa risposta ufficiale';
-      bgClass = 'bg-blue-50/50';
-      break;
-    case 'waiting_external_response':
-      userMust = 'In attesa di risposta dall\'ente. La conferma arrivera tramite il canale ufficiale.';
-      userMustLabel = 'In attesa risposta ufficiale';
-      bgClass = 'bg-purple-50/50';
-      break;
-    case 'completed':
-    case 'accepted_by_entity':
-      return null;
-    case 'blocked':
-    case 'escalated':
-      userMust = 'Questa pratica ha bisogno di un tuo intervento. Leggi sotto o chiedi a Herion.';
-      userMustLabel = 'Richiede la tua azione';
-      bgClass = 'bg-red-50/50';
-      break;
-    default:
-      return null;
-  }
-
-  // Where official response arrives
-  let officialResponseInfo = null;
-  if (['ready_for_submission', 'submitted_manually', 'submitted_via_channel', 'waiting_external_response'].includes(status) && channel) {
-    if (channel.required_channel === 'official_portal') {
-      officialResponseInfo = 'La risposta ufficiale arrivera nella tua area riservata sul portale dell\'ente.';
-    } else if (channel.required_channel === 'PEC') {
-      officialResponseInfo = 'La risposta ufficiale arrivera alla tua PEC.';
-    }
-  }
+  const whoActsNow = () => {
+    if (action.can_herion_submit && delegation.enabled && delegation.level === 'full') return { label: 'Herion con delega', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (action.requires_user_direct_step) return { label: 'Tu', color: 'text-amber-600', bg: 'bg-amber-50' };
+    if (action.can_herion_submit) return { label: 'Herion', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    return { label: 'Tu', color: 'text-amber-600', bg: 'bg-amber-50' };
+  };
+  const actor = whoActsNow();
 
   return (
-    <div className={`${bgClass} rounded-xl px-5 py-4`} data-testid="guidance-card">
-      {/* Label badge */}
-      <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 ${
-        userMustLabel === 'Richiede la tua azione' ? 'bg-amber-100 text-amber-700' :
-        userMustLabel === 'Passaggio ufficiale esterno' ? 'bg-purple-100 text-purple-700' :
-        userMustLabel === 'In attesa risposta ufficiale' ? 'bg-blue-100 text-blue-700' :
-        userMustLabel === 'Herion sta lavorando' ? 'bg-blue-100 text-blue-600' :
-        'bg-emerald-100 text-emerald-700'
-      }`} data-testid="guidance-label">
-        {userMustLabel}
-      </span>
+    <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="official-step-card">
+      <div className="flex items-center gap-2 mb-3">
+        <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Passaggio Ufficiale</p>
+      </div>
 
-      <p className="text-[12px] text-[var(--text-primary)] mt-1 leading-relaxed">{userMust}</p>
-
-      {/* What Herion already did */}
-      {herionDid.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {herionDid.map((item, i) => (
-            <span key={i} className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
-              <CheckCircle className="w-2.5 h-2.5" />{item}
-            </span>
-          ))}
+      <div className="space-y-3">
+        {/* Entity + Action */}
+        <div>
+          <p className="text-[13px] font-semibold text-[var(--text-primary)]">{action.entity_name}</p>
+          <p className="text-[11px] text-[var(--text-secondary)]">{action.action_label}</p>
         </div>
-      )}
 
-      {/* Where official response arrives */}
-      {officialResponseInfo && (
-        <p className="text-[10px] text-[var(--text-muted)] mt-2 flex items-center gap-1.5">
-          <Info className="w-3 h-3 flex-shrink-0" />{officialResponseInfo}
+        {/* Key details grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-[10px]">
+            <span className="text-[var(--text-muted)] font-medium">Canale:</span>{' '}
+            <span className="font-semibold text-[var(--text-primary)]">{action.submission_channel === 'official_portal' ? 'Portale ufficiale' : action.submission_channel === 'PEC' ? 'PEC' : action.submission_channel}</span>
+          </div>
+          <div className="text-[10px]">
+            <span className="text-[var(--text-muted)] font-medium">Chi agisce:</span>{' '}
+            <span className={`font-semibold ${actor.color}`}>{actor.label}</span>
+          </div>
+          {action.credentials_required && (
+            <div className="text-[10px] flex items-center gap-1">
+              <Key className="w-3 h-3 text-amber-500" />
+              <span className="text-amber-600 font-medium">Credenziali richieste</span>
+            </div>
+          )}
+          <div className="text-[10px]">
+            <span className="text-[var(--text-muted)] font-medium">Herion prepara:</span>{' '}
+            <span className="font-semibold text-emerald-600">{action.can_herion_prepare ? 'Si' : 'No'}</span>
+          </div>
+        </div>
+
+        {/* Portal link */}
+        {action.portal_url && (
+          <a href={action.portal_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2.5 bg-[var(--bg-soft)] rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid="portal-link">
+            <ExternalLink className="w-3 h-3 text-[#0ABFCF] flex-shrink-0" />
+            <span className="text-[10px] text-[#0ABFCF] font-medium truncate">Vai al portale ufficiale</span>
+          </a>
+        )}
+
+        {/* Proof / Receipt status */}
+        {proof.expected && (
+          <div className={`p-2.5 rounded-lg ${proof.status === 'received' || proof.status === 'verified' ? 'bg-emerald-50' : 'bg-amber-50/50'}`}>
+            <div className="flex items-center gap-2">
+              <Receipt className={`w-3.5 h-3.5 ${proof.status === 'received' || proof.status === 'verified' ? 'text-emerald-500' : 'text-amber-500'}`} />
+              <div className="flex-1">
+                <p className="text-[10px] font-semibold text-[var(--text-primary)]">
+                  {proof.status === 'received' ? 'Ricevuta registrata' : proof.status === 'verified' ? 'Ricevuta verificata' : 'Ricevuta attesa'}
+                </p>
+                {proof.reference_code && <p className="text-[9px] text-[var(--text-muted)]">Rif: {proof.reference_code}</p>}
+                {proof.proof_type_label && <p className="text-[9px] text-[var(--text-muted)]">{proof.proof_type_label}</p>}
+              </div>
+              {needsProof && <Button variant="outline" size="sm" className="h-6 text-[9px] px-2 rounded" onClick={onShowProofDialog} data-testid="upload-proof-btn">Carica</Button>}
+            </div>
+          </div>
+        )}
+
+        {/* Security note */}
+        <p className="text-[9px] text-[var(--text-muted)] flex items-center gap-1">
+          <Lock className="w-3 h-3 flex-shrink-0" />Herion non conserva le tue credenziali. L'accesso al portale avviene sempre sotto il tuo controllo.
         </p>
-      )}
+      </div>
     </div>
   );
 }
 
 
-function DocumentSection({ documents, missingDocs, docLabels, canUpload, uploading, onFileSelect, catalog }) {
+function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileSelect }) {
   const uploadedDocs = documents.filter(d => !d.is_deleted);
-  const requiredDocKeys = catalog?.required_documents || [];
-
   return (
     <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="document-section">
       <div className="flex items-center justify-between mb-1">
@@ -1015,15 +797,15 @@ function DocumentSection({ documents, missingDocs, docLabels, canUpload, uploadi
         )}
       </div>
 
-      {/* Missing documents — clear CTAs */}
-      {missingDocs.length > 0 && (
+      {/* Missing docs from workspace */}
+      {docsSummary.missing_count > 0 && (
         <div className="mb-3">
-          <p className="text-[10px] font-bold text-amber-700 mb-1.5">Da caricare ({missingDocs.length})</p>
+          <p className="text-[10px] font-bold text-amber-700 mb-1.5">Da caricare ({docsSummary.missing_count})</p>
           <div className="space-y-1">
-            {missingDocs.map((doc, i) => (
-              <div key={i} className="flex items-center gap-2.5 py-1.5 px-3 bg-amber-50/60 rounded-lg" data-testid={`missing-doc-${doc}`}>
+            {(docsSummary.missing_labels || []).map((label, i) => (
+              <div key={i} className="flex items-center gap-2.5 py-1.5 px-3 bg-amber-50/60 rounded-lg" data-testid={`missing-doc-${i}`}>
                 <Upload className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                <p className="text-[11px] text-amber-800 font-medium flex-1">{docLabels[doc] || doc}</p>
+                <p className="text-[11px] text-amber-800 font-medium flex-1">{label}</p>
                 <span className="text-[9px] text-amber-600 font-semibold">Richiesto</span>
               </div>
             ))}
@@ -1031,41 +813,25 @@ function DocumentSection({ documents, missingDocs, docLabels, canUpload, uploadi
         </div>
       )}
 
-      {/* Uploaded documents with clarity labels */}
+      {/* Uploaded docs */}
       {uploadedDocs.length > 0 ? (
         <div className="space-y-1">
           {uploadedDocs.map(doc => {
             const isP7m = doc.original_filename?.endsWith('.p7m');
             const isGenerated = doc.source === 'system' || doc.source === 'agent';
             const isSigned = isP7m || doc.signed;
-            const needsSignature = doc.needs_signature && !isSigned;
-            const catLabel = DOC_UPLOAD_CATEGORIES.find(c => c.key === doc.category)?.label || '';
-
-            let badge = null;
-            if (isGenerated) {
-              badge = <span className="text-[8px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">Generato da Herion</span>;
-            } else if (isSigned) {
-              badge = (
-                <span className="text-[8px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded" title="Documento firmato digitalmente">
-                  Firmato {isP7m ? '(p7m)' : ''}
-                </span>
-              );
-            } else if (needsSignature) {
-              badge = <span className="text-[8px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">Richiede firma</span>;
-            } else {
-              badge = <span className="text-[8px] font-bold bg-[var(--bg-soft)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Ricevuto</span>;
-            }
-
+            const needsSig = doc.needs_signature && !isSigned;
+            let badge = isGenerated ? <span className="text-[8px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">Generato da Herion</span>
+              : isSigned ? <span className="text-[8px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Firmato {isP7m ? '(p7m)' : ''}</span>
+              : needsSig ? <span className="text-[8px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">Richiede firma</span>
+              : <span className="text-[8px] font-bold bg-[var(--bg-soft)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Ricevuto</span>;
             return (
               <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid={`document-${doc.id}`}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <File className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{doc.original_filename}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {catLabel && <span className="text-[9px] text-[var(--text-muted)]">{catLabel}</span>}
-                      {badge}
-                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">{badge}</div>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded"><Download className="w-3 h-3" /></Button>
@@ -1073,7 +839,7 @@ function DocumentSection({ documents, missingDocs, docLabels, canUpload, uploadi
             );
           })}
         </div>
-      ) : missingDocs.length === 0 ? (
+      ) : docsSummary.missing_count === 0 ? (
         <div className="border border-dashed rounded-xl p-5 text-center" style={{ borderColor: 'var(--border-soft)' }}>
           <Upload className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-2 opacity-40" strokeWidth={1.5} />
           <p className="text-[12px] text-[var(--text-secondary)] font-medium">Nessun documento ancora</p>
@@ -1081,13 +847,10 @@ function DocumentSection({ documents, missingDocs, docLabels, canUpload, uploadi
         </div>
       ) : null}
 
-      {/* p7m explanation */}
       {uploadedDocs.some(d => d.original_filename?.endsWith('.p7m')) && (
         <div className="mt-3 p-3 bg-[var(--bg-soft)] rounded-lg flex items-start gap-2">
           <Shield className="w-3.5 h-3.5 text-[#0ABFCF] flex-shrink-0 mt-0.5" />
-          <p className="text-[10px] text-[var(--text-secondary)]">
-            I file <strong>.p7m</strong> sono documenti firmati digitalmente. Questa firma garantisce l'autenticita e l'integrita del documento.
-          </p>
+          <p className="text-[10px] text-[var(--text-secondary)]">I file <strong>.p7m</strong> sono firmati digitalmente. La firma garantisce autenticita e integrita.</p>
         </div>
       )}
     </div>
@@ -1095,98 +858,67 @@ function DocumentSection({ documents, missingDocs, docLabels, canUpload, uploadi
 }
 
 
-function ChannelCard({ channel, catalog, status }) {
-  // Don't show for internal-only or draft
-  if (!channel || channel.destination_type === 'internal') return null;
-  if (['draft'].includes(status)) return null;
-
-  const channelTypeLabel = {
-    official_portal: 'Portale ufficiale',
-    PEC: 'PEC (Posta Elettronica Certificata)',
-    email: 'Email',
-    preparation_only: 'Solo preparazione',
-    escalation: 'Escalation professionale',
-  };
-
-  const authLabels = {
-    SPID: 'SPID', CIE: 'CIE (Carta Identita Elettronica)',
-    CNS: 'CNS (Carta Nazionale dei Servizi)', Credenziali: 'Credenziali portale',
-  };
-
-  // Determine auth method from notes or channel data
-  const authNeeded = channel.notes?.includes('SPID') ? 'SPID' :
-    channel.notes?.includes('CIE') ? 'CIE' :
-    channel.notes?.includes('CNS') ? 'CNS' : null;
+function DelegationSection({ delegation, officialAction, onDelegate, onRevoke }) {
+  const isActive = delegation.enabled;
+  const levelCfg = DELEGATION_LEVEL_LABELS[delegation.level] || DELEGATION_LEVEL_LABELS.assist;
 
   return (
-    <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="channel-card">
-      <div className="flex items-center gap-2 mb-3">
-        <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Canale Ufficiale</p>
+    <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="delegation-section">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <UserCheck className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Delega</p>
+        </div>
+        {isActive ? (
+          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${levelCfg.bg} ${levelCfg.color}`}>{levelCfg.label}</span>
+        ) : (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Non attiva</span>
+        )}
       </div>
 
-      <div className="space-y-2.5">
-        {/* Entity */}
-        <div>
-          <p className="text-[13px] font-semibold text-[var(--text-primary)]">{channel.name}</p>
-          <p className="text-[10px] text-[var(--text-secondary)]">
-            {channel.destination_type === 'tax_authority' ? 'Autorita fiscale' :
-             channel.destination_type === 'social_security' ? 'Ente previdenziale' :
-             channel.destination_type === 'chamber_registry' ? 'Camera di Commercio' :
-             channel.destination_type === 'tax_payment' ? 'Pagamento fiscale' :
-             channel.destination_type === 'public_portal' ? 'Portale pubblico' :
-             'Ente competente'}
+      {isActive ? (
+        <div className="space-y-2.5">
+          <p className="text-[11px] text-[var(--text-secondary)]">{levelCfg.desc}</p>
+
+          {/* Scope labels */}
+          <div className="flex flex-wrap gap-1">
+            {Object.entries(delegation.scope_labels || {}).map(([key, label]) => (
+              <span key={key} className="text-[9px] bg-[var(--bg-soft)] text-[var(--text-primary)] px-2 py-0.5 rounded-full font-medium">{label}</span>
+            ))}
+          </div>
+
+          {/* What still needs user */}
+          {officialAction?.requires_user_direct_step && (
+            <p className="text-[10px] text-amber-600 flex items-center gap-1">
+              <Info className="w-3 h-3 flex-shrink-0" />L'invio ufficiale richiede la tua azione diretta
+            </p>
+          )}
+
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] text-[var(--text-muted)]">
+              {delegation.granted_at && `Concessa il ${format(new Date(delegation.granted_at), 'dd MMM yyyy', { locale: it })}`}
+            </p>
+            <Button variant="outline" size="sm" className="h-7 text-[10px] px-3 rounded-lg text-red-500 border-red-200 hover:bg-red-50" onClick={onRevoke} data-testid="revoke-delegation-btn">Revoca</Button>
+          </div>
+
+          <p className="text-[9px] text-[var(--text-muted)] flex items-center gap-1">
+            <Lock className="w-2.5 h-2.5 flex-shrink-0" />Ogni azione delegata e tracciata. Puoi revocare in qualsiasi momento.
           </p>
         </div>
-
-        {/* Submission method */}
-        <div className="flex items-center gap-2 text-[10px]">
-          <span className="text-[var(--text-muted)] font-medium">Come:</span>
-          <span className="font-semibold text-[var(--text-primary)]">
-            {channelTypeLabel[channel.required_channel] || channel.required_channel}
-          </span>
-        </div>
-
-        {/* Who submits */}
-        <div className="flex items-center gap-2 text-[10px]">
-          <span className="text-[var(--text-muted)] font-medium">Chi invia:</span>
-          <span className={`font-semibold ${channel.auto_submission ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {channel.auto_submission ? 'Herion' : 'Tu'}
-          </span>
-        </div>
-
-        {/* Authentication */}
-        {authNeeded && (
-          <div className="flex items-center gap-2 text-[10px]">
-            <span className="text-[var(--text-muted)] font-medium">Autenticazione:</span>
-            <span className="font-semibold text-[var(--text-primary)]">{authLabels[authNeeded] || authNeeded}</span>
+      ) : (
+        <div className="space-y-2.5">
+          <p className="text-[11px] text-[var(--text-secondary)]">Concedi a Herion la delega per agire per tuo conto su questa pratica.</p>
+          <div className="text-[10px] text-[var(--text-muted)] space-y-1">
+            <p>Con la delega, Herion puo:</p>
+            <p className="pl-2">- Preparare e monitorare la pratica</p>
+            <p className="pl-2">- Richiedere documenti mancanti</p>
+            <p className="pl-2">- Segnalarti i passaggi che richiedono la tua azione</p>
           </div>
-        )}
-
-        {/* Portal URL */}
-        {channel.portal_url && (
-          <a
-            href={channel.portal_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 p-2.5 bg-[var(--bg-soft)] rounded-lg hover:bg-[var(--hover-soft)] transition-colors"
-            data-testid="channel-portal-link"
-          >
-            <ExternalLink className="w-3 h-3 text-[#0ABFCF] flex-shrink-0" />
-            <span className="text-[10px] text-[#0ABFCF] font-medium truncate">Vai al portale ufficiale</span>
-          </a>
-        )}
-
-        {/* What happens after */}
-        {channel.preparation_only && (
-          <div className="p-2.5 bg-amber-50/50 rounded-lg">
-            <p className="text-[10px] text-amber-700">
-              <Info className="w-3 h-3 inline mr-1" />
-              Herion prepara la documentazione. L'invio ufficiale va completato sul portale dell'ente.
-            </p>
-          </div>
-        )}
-      </div>
+          <Button variant="outline" className="rounded-lg h-9 text-[11px] font-semibold w-full" onClick={onDelegate} data-testid="grant-delegation-btn">
+            <UserCheck className="w-3.5 h-3.5 mr-1.5" />Concedi delega
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,173 @@
+{
+  "summary": "Iteration 25 - Frontend PracticeDetailPage Refactor Testing Complete. All 16 features tested successfully. Verified: (1) Login with admin@aic.it / Admin123! works. (2) Draft practice 98cf9182 shows understanding gate with workspace data (entity, required docs, Herion/Tu labels). (3) 6-step progress bar with Comprendi highlighted for draft. (4) 'Inizia la pratica' CTA button present and functional. (5) Click 'Inizia la pratica' transitions to waiting_user_documents. (6) Escalated practice d9c4fca6 shows blocker cards with severity labels (Escalation attiva - high, Documenti mancanti - medium). (7) Guidance card shows 'RICHIEDE LA TUA AZIONE' label. (8) Official Step Card shows entity name, action label, channel, who acts, credentials, portal link, proof status, security note. (9) Delegation section shows current state with level label (Assistenza). (10) Grant delegation dialog shows 3 levels (assist/partial/full) with Italian descriptions. (11) Revoke delegation button works. (12) Current Agent card shows agent name, title, status. (13) Chat section present with suggestion buttons. (14) Timeline shows color-coded events. (15) Documents section shows missing docs with 'Da caricare' labels. (16) All UI text in Italian.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_25.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PracticeDetailPage correctly uses workspace endpoint as source of truth for all UI state",
+    "UnderstandingGate component correctly displays entity name, required docs, and Herion/Tu labels from workspace.official_action and workspace.documents_summary",
+    "OfficialStepCard correctly shows all required fields: entity_name, action_label, submission_channel, who acts (Tu/Herion/Delegated), credentials_required, portal_url, proof status, security note",
+    "DelegationSection correctly shows active/inactive state with level labels (Assistenza/Parziale/Completa) and scope_labels",
+    "Grant delegation dialog correctly shows 3 levels with Italian descriptions",
+    "Blocker cards correctly display severity-based styling (red for high, amber for medium)",
+    "Current agent card correctly shows agent name, title, and status from workspace.current_agent",
+    "Timeline correctly displays color-coded events from workspace.timeline_summary",
+    "All UI text is in Italian as required"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only testing)",
+    "frontend": "100% (16/16 features verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Used existing practices: 98cf9182-e7df-4b73-a2e4-1c69775e7caa (draft vat_registration), d9c4fca6-a27d-4f97-a006-d191505549f9 (escalated with delegation active). Reset 98cf9182 back to draft status after testing.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 25 tested the frontend PracticeDetailPage refactor. All features working correctly: (1) Workspace endpoint integration - page loads data from GET /api/practices/{id}/workspace. (2) UnderstandingGate shows for draft practices with entity, docs, Herion/Tu labels. (3) OfficialStepCard shows entity, channel, who acts, credentials, portal link, proof status, security note. (4) DelegationSection shows active/inactive state with level labels and scope_labels. (5) Grant delegation dialog has 3 levels (assist/partial/full). (6) Revoke delegation works. (7) Blocker cards show severity-based styling. (8) Current agent card shows agent info. (9) Timeline shows color-coded events. (10) Documents section shows missing docs with 'Da caricare' labels. Test practices: 98cf9182 (draft), d9c4fca6 (escalated with delegation).",
+  "features_tested": {
+    "login": {
+      "status": "PASS",
+      "details": ["admin@aic.it / Admin123! login successful", "Redirects to dashboard after login"]
+    },
+    "draft_practice_understanding_gate": {
+      "status": "PASS",
+      "details": [
+        "Understanding gate 'Prima di iniziare' displayed for draft practice",
+        "Entity name: 'Agenzia delle Entrate - Apertura P.IVA Persone Fisiche'",
+        "Required docs: 'Documento di identita', 'Dichiarazioni fiscali'",
+        "Herion/Tu labels showing who does what",
+        "Ente di destinazione section with channel info"
+      ]
+    },
+    "six_step_progress_bar": {
+      "status": "PASS",
+      "details": [
+        "6 steps displayed: Comprendi, Carica, Elabora, Verifica, Firma, Completa",
+        "Comprendi step highlighted for draft practice",
+        "Carica step highlighted after starting practice"
+      ]
+    },
+    "start_practice_button": {
+      "status": "PASS",
+      "details": [
+        "'Inizia la pratica' CTA button present",
+        "Button has data-testid='start-practice-btn'",
+        "Click transitions practice to waiting_user_documents status"
+      ]
+    },
+    "escalated_practice_blockers": {
+      "status": "PASS",
+      "details": [
+        "Blocker cards displayed for escalated practice",
+        "'Escalation attiva' with high severity (red styling)",
+        "'Documenti mancanti' with medium severity (amber styling)",
+        "Severity labels visible"
+      ]
+    },
+    "guidance_card": {
+      "status": "PASS",
+      "details": [
+        "Guidance card displayed with 'RICHIEDE LA TUA AZIONE' label",
+        "Shows headline and subheadline from workspace.ui_guidance",
+        "Shows next_step_label and next_step_detail"
+      ]
+    },
+    "official_step_card": {
+      "status": "PASS",
+      "details": [
+        "Entity name: 'Agenzia delle Entrate - Apertura P.IVA Persone Fisiche'",
+        "Action label: 'Apertura Partita IVA persone fisiche'",
+        "Channel: 'Portale ufficiale'",
+        "Who acts: 'Tu'",
+        "Credentials required indicator",
+        "Portal link: 'Vai al portale ufficiale'",
+        "Proof status: 'Ricevuta attesa'",
+        "Security note about credentials"
+      ]
+    },
+    "delegation_section_state": {
+      "status": "PASS",
+      "details": [
+        "Shows 'Non attiva' when delegation inactive",
+        "Shows level label 'Assistenza' when active",
+        "Shows scope labels: 'Preparazione documenti', 'Verifica completezza'",
+        "Shows tracking note: 'Concessa il 11 apr 2026'"
+      ]
+    },
+    "grant_delegation_dialog": {
+      "status": "PASS",
+      "details": [
+        "Dialog opens on 'Concedi delega' button click",
+        "3 levels displayed: Assistenza, Parziale, Completa",
+        "Assist description: 'Herion prepara, tu invii'",
+        "Partial description: 'Herion puo agire in parte per tuo conto'",
+        "Full description: 'Herion puo agire per tuo conto dove consentito'",
+        "Level buttons have data-testid='delegate-level-{level}'"
+      ]
+    },
+    "revoke_delegation": {
+      "status": "PASS",
+      "details": [
+        "Revoke button present when delegation active",
+        "Click revokes delegation successfully",
+        "Toast notification 'Delega revocata' shown",
+        "Section updates to show 'Non attiva'"
+      ]
+    },
+    "current_agent_card": {
+      "status": "PASS",
+      "details": [
+        "Card displayed in right column",
+        "Shows agent name: 'Herion Guard'",
+        "Shows title: 'Protezione confini'",
+        "Shows status: 'Completato'"
+      ]
+    },
+    "chat_section": {
+      "status": "PASS",
+      "details": [
+        "Chat section present with 'CHIEDI A HERION' header",
+        "Suggestion buttons: 'Cosa devo fare adesso?', 'Manca qualcosa?', 'Qual e lo stato?'",
+        "Input field and send button present"
+      ]
+    },
+    "timeline": {
+      "status": "PASS",
+      "details": [
+        "Timeline section present with 'CRONOLOGIA' header",
+        "Events displayed with color-coded dots",
+        "Events include: 'Delega richiesta', 'Escalation attivata', 'Rischio valutato', 'guard_completed'"
+      ]
+    },
+    "documents_section": {
+      "status": "PASS",
+      "details": [
+        "Documents section present",
+        "Missing docs shown with 'Da caricare' label",
+        "Missing docs: 'Documento di identita', 'Dichiarazioni fiscali'",
+        "'Richiesto' badge on each missing doc"
+      ]
+    },
+    "italian_ui_text": {
+      "status": "PASS",
+      "details": [
+        "All UI text in Italian",
+        "Labels: 'Prima di iniziare', 'Inizia la pratica', 'Documenti mancanti'",
+        "Buttons: 'Concedi delega', 'Revoca', 'Carica'",
+        "Status labels: 'Non iniziata', 'In attesa dei tuoi documenti'"
+      ]
+    }
+  }
+}

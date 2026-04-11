@@ -191,6 +191,8 @@ export default function PracticeDetailPage() {
   if (!practice) return <div className="text-center py-16"><p className="text-[var(--text-secondary)]">Pratica non trovata</p><Button onClick={() => navigate('/practices')} variant="outline" className="mt-4 rounded-lg">Torna alle pratiche</Button></div>;
 
   const statusCfg = STATUS_MAP[practice.status] || STATUS_MAP.draft;
+  const PRIORITY_BADGE = { urgent: { label: 'Urgente', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' }, high: { label: 'Alta', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' }, normal: { label: 'Normale', bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-400' }, low: { label: 'Bassa', bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-300' } };
+  const pCfg = PRIORITY_BADGE[practice.priority] || PRIORITY_BADGE.normal;
 
   return (
     <div className="space-y-5" data-testid="practice-detail-page">
@@ -205,6 +207,9 @@ export default function PracticeDetailPage() {
           <p className="text-[12px] text-[var(--text-secondary)]">{practice.client_name} &middot; {practice.country}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${pCfg.bg} ${pCfg.text}`} data-testid="practice-priority-badge">
+            <span className={`w-1.5 h-1.5 rounded-full ${pCfg.dot}`} />{pCfg.label}
+          </span>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: statusCfg.color }} data-testid="practice-status-badge">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusCfg.color }} />
             {statusCfg.label}

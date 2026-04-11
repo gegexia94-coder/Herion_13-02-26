@@ -24,6 +24,13 @@ const STATUS_CFG = {
   rejected: { label: 'Rifiutata', color: '#EF4444' },
 };
 
+const PRIORITY_CFG = {
+  urgent: { label: 'Urgente', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  high: { label: 'Alta', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  normal: { label: 'Normale', bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-400' },
+  low: { label: 'Bassa', bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-300' },
+};
+
 export default function PracticesListPage() {
   const [practices, setPractices] = useState([]);
   const [filteredPractices, setFilteredPractices] = useState([]);
@@ -115,8 +122,9 @@ export default function PracticesListPage() {
       {filteredPractices.length > 0 ? (
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_120px_80px] sm:grid-cols-[1fr_120px_100px_80px] px-5 py-2.5 border-b text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]" style={{ borderColor: 'var(--border-soft)' }}>
+          <div className="grid grid-cols-[1fr_70px_100px_80px] sm:grid-cols-[1fr_70px_100px_90px_80px] px-5 py-2.5 border-b text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]" style={{ borderColor: 'var(--border-soft)' }}>
             <span>Nome</span>
+            <span>Priorita</span>
             <span>Stato</span>
             <span className="hidden sm:block">Data</span>
             <span className="text-right">Azioni</span>
@@ -125,12 +133,17 @@ export default function PracticesListPage() {
           <div className="divide-y" style={{ borderColor: 'var(--border-soft)' }}>
             {filteredPractices.map((p, idx) => {
               const cfg = STATUS_CFG[p.status] || STATUS_CFG.draft;
+              const pcfg = PRIORITY_CFG[p.priority] || PRIORITY_CFG.normal;
               return (
-                <div key={p.id} className="grid grid-cols-[1fr_120px_80px] sm:grid-cols-[1fr_120px_100px_80px] items-center px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${idx}`}>
+                <div key={p.id} className="grid grid-cols-[1fr_70px_100px_80px] sm:grid-cols-[1fr_70px_100px_90px_80px] items-center px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${idx}`}>
                   <Link to={`/practices/${p.id}`} className="min-w-0">
                     <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{p.client_name}</p>
                     <p className="text-[10px] text-[var(--text-muted)] truncate">{p.practice_type_label}</p>
                   </Link>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold ${pcfg.bg} ${pcfg.text}`} data-testid={`priority-${idx}`}>
+                    <span className={`w-1 h-1 rounded-full ${pcfg.dot}`} />
+                    {pcfg.label}
+                  </span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: cfg.color }}>
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
                     {cfg.label}

@@ -626,9 +626,25 @@ async def refresh_practice_priority(practice_id: str):
     if practice.get("priority") != new_priority:
         await db.practices.update_one(
             {"id": practice_id},
-            {"$set": {"priority": new_priority, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"priority": new_priority}}
         )
     return new_priority
+
+
+async def refresh_all_priorities(user_id: str = None):
+    """Recalculate priority for all active practices. Optionally scoped to a user."""
+    query = {"status": {"$nin": ["completed", "submitted"]}}
+    if user_id:
+        query["user_id"] = user_id
+    practices = await db.practices.find(query, {"_id": 0, "id": 1, "status": 1, "risk_level": 1, "deadline": 1, "updated_at": 1}).to_list(500)
+    updates = []
+    for p in practices:
+        new_pri = evaluate_practice_priority(p)
+        if p.get("priority") != new_pri:
+            updates.append({"id": p["id"], "priority": new_pri})
+    for u in updates:
+        await db.practices.update_one({"id": u["id"]}, {"$set": {"priority": u["priority"]}})
+    return len(updates)
 
 
 # ========================
@@ -671,6 +687,7 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
 
     await db.practices.insert_one(practice_doc)
 
+    await refresh_practice_priority(practice_doc["id"])
     await add_timeline_event(practice_doc["id"], user["id"], "practice_created", {
         "practice_type": practice.practice_type,
         "client_name": practice.client_name
@@ -691,6 +708,14 @@ async def get_practices(user: dict = Depends(get_current_user)):
     is_admin = user.get("role") in ["admin", "creator"]
     query = {} if is_admin else {"user_id": user["id"]}
     practices = await db.practices.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
+    for p in practices:
+        p["priority"] = evaluate_practice_priority(p)
+        p["priority_label"] = PRIORITY_LEVELS.get(p["priority"], {}).get("label", p["priority"])
+        p["priority_order"] = priority_order.get(p["priority"], 2)
+    practices.sort(key=lambda x: (x["priority_order"], x.get("created_at", "")))
+    for p in practices:
+        p.pop("priority_order", None)
     return practices
 
 @api_router.get("/practices/{practice_id}")
@@ -701,6 +726,8 @@ async def get_practice(practice_id: str, user: dict = Depends(get_current_user))
     practice = await db.practices.find_one(query, {"_id": 0})
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
+    practice["priority"] = evaluate_practice_priority(practice)
+    practice["priority_label"] = PRIORITY_LEVELS.get(practice["priority"], {}).get("label", practice["priority"])
     return practice
 
 @api_router.put("/practices/{practice_id}")
@@ -723,6 +750,8 @@ async def update_practice(practice_id: str, update: PracticeUpdate, user: dict =
 
     await db.practices.update_one({"id": practice_id}, {"$set": update_data})
     await log_activity(user["id"], "practice", "practice_updated", {"practice_id": practice_id, "changes": list(update_data.keys())})
+
+    await refresh_practice_priority(practice_id)
 
     updated = await db.practices.find_one({"id": practice_id}, {"_id": 0})
     return updated
@@ -5058,9 +5087,11 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     ).sort("created_at", -1).limit(10).to_list(10)
 
     # Recalculate priority for all returned practices
+    priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
     for p in recent_practices:
         p["priority"] = evaluate_practice_priority(p)
         p["priority_label"] = PRIORITY_LEVELS.get(p["priority"], {}).get("label", p["priority"])
+    recent_practices.sort(key=lambda x: (priority_order.get(x["priority"], 2), x.get("created_at", "")))
 
     # Critical practices: waiting_approval + blocked + urgent
     critical = await db.practices.find(
@@ -5076,6 +5107,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     for c in critical:
         c["priority"] = evaluate_practice_priority(c)
         c["priority_label"] = PRIORITY_LEVELS.get(c["priority"], {}).get("label", c["priority"])
+    critical.sort(key=lambda x: (priority_order.get(x["priority"], 2), x.get("created_at", "")))
 
     # Recent activity logs
     activity_logs = await db.activity_logs.find(
@@ -5417,6 +5449,7 @@ app.add_middleware(
 async def startup():
     await db.users.create_index("email", unique=True)
     await db.practices.create_index([("user_id", 1), ("created_at", -1)])
+    await db.practices.create_index([("user_id", 1), ("priority", 1)])
     await db.documents.create_index([("practice_id", 1), ("is_deleted", 1)])
     await db.activity_logs.create_index([("user_id", 1), ("timestamp", -1)])
     await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
@@ -5460,6 +5493,11 @@ async def startup():
     # Ensure admin has required identity fields
     if existing and not existing.get("first_name"):
         await db.users.update_one({"email": admin_email}, {"$set": {"first_name": "Admin", "last_name": "Herion", "name": "Admin Herion"}})
+
+    # Refresh priorities on startup for all active practices
+    updated_count = await refresh_all_priorities()
+    if updated_count > 0:
+        logger.info(f"Startup: refreshed priority for {updated_count} practices")
 
     Path("/app/memory").mkdir(exist_ok=True)
     creator_pw = os.environ.get("CREATOR_PASSWORD")

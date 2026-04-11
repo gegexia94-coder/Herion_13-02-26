@@ -14,42 +14,50 @@ Build "Herion AI" — a controlled execution platform with orchestration of mult
 
 ## What's Been Implemented
 
-### Core Platform
-- Multi-agent orchestration (12 specialized agents)
-- Practice CRUD with lifecycle management
-- Priority Engine (deadlines, risk, stall time)
-- Email Center with 34 templates
-- Creator Control Room
-- Cookie-based JWT authentication
+### Automatic Intelligent Priority System (Batch 12 — 2026-04-11)
+- **Backend `evaluate_practice_priority()`**: Computes priority from deadline proximity, status, risk level, stall time
+  - Deadline passed → urgent
+  - waiting_approval + high risk → urgent
+  - waiting_approval + medium risk → high
+  - failed/blocked/escalated → high or urgent
+  - Stale (>5 days no update, active) → high
+  - completed/submitted → low
+  - Default → normal
+- **`refresh_practice_priority()`**: Persists computed priority per practice
+- **`refresh_all_priorities()`**: Bulk refresh on startup for all active practices
+- Priority recalculated on: create, status change, approval, orchestration
+- Priority sorted in all API responses (urgent first, then high, normal, low)
+- **Frontend Dashboard Smart Sections**:
+  - "Urgente Ora" — red alert section for urgent practices
+  - "In Attesa di Approvazione" — amber section for approval-needed practices
+  - "Tutte le Pratiche" — table with PRIORITA column, colored badges
+- **Priority badges** on Dashboard, Practices List, Practice Detail header
+- **Colors**: urgent=red, high=amber, normal=blue, low=gray
 
-### UI System (Batch 11 — 2026-04-11) — MAJOR REFACTOR
-- **Global Design System**: CSS tokens (#FBFBFB, #E8F9FF, #C4D9FF, #C5BAFF), Manrope font, shadow/spacing scale
-- **Geometric H Logo**: Custom SVG mark replacing image mascot
-- **Left Sidebar Navigation**: Collapsible, 3 items (Dashboard, Pratiche, Comunicazione), user menu
-- **Welcome Page**: Hero with HERION watermark, carousel (5 slides), Chi siamo, value props, stats, CTA
-- **Dashboard**: Operational control panel — critical alert, quick actions, practice table (Nome/Stato/Azione), reminder carousel, critical practices block, activity log
-- **Practice Detail**: 2-column layout. Left (70%): status timeline, collapsible agent pipeline, documents, agent logs. Right (30%): blockers, AI suggestions, chat, timeline, collapsed activity log
-- **Practices List**: Clean table with search, filters, delete
-- **Login/Register**: Centered minimal forms with geometric H logo
-- **Color reduction**: Removed decorative gradients, enforced white/gray + blue + red/yellow for meaning only
+### UI System Refactor (Batch 11 — 2026-04-11)
+- Global Design System with CSS tokens, Manrope font
+- Geometric H Logo (SVG), Left Collapsible Sidebar
+- Welcome Page (hero carousel, chi siamo, CTA)
+- Dashboard as operational control panel
+- Practice Detail 2-column layout
+- Login/Register simplified forms
 
 ### Visual Agent Pipeline System (Batch 10 — 2026-04-11)
-- 12-agent horizontal pipeline: Intake → Ledger → Compliance → Documents → Delegate → Deadline → Flow → Routing → Research → Monitor → Advisor → Guard
-- Visual states: not_started, in_progress, completed, failed
-- Collapsible summary (default compact), expandable full view
-- Interactive node popovers with agent output
+- 12-agent collapsible pipeline with visual states
+- Interactive node popovers
 
 ### Previous Batches (1-9)
 - Dashboard KPIs, quick actions, priority sorting
 - Navigation reduced to 3 sections
-- Toast/Alert spam fixed (inline feedback)
+- Toast/Alert spam fixed
 - Backend Priority Engine
 - Convenience wrapper endpoints
 
 ## Testing Status
-- Iteration 18: 100% pass — Full UI refactor verified (all pages, navigation, Italian text, color system)
-- Iteration 17: 100% pass — Agent Pipeline verified
-- Iteration 16: 100% pass — Operational control center verified
+- Iteration 19: 100% pass — Priority system verified (backend 9/9 + frontend all)
+- Iteration 18: 100% pass — Full UI refactor
+- Iteration 17: 100% pass — Agent Pipeline
+- Iteration 16: 100% pass — Operational control center
 
 ## 3rd Party Integrations
 - OpenAI GPT-5.2 — Agent orchestration (Emergent LLM Key)

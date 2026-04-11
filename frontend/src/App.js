@@ -25,6 +25,8 @@ import AlertCenterPage from "@/pages/AlertCenterPage";
 import DocumentVaultPage from "@/pages/DocumentVaultPage";
 import FollowUpPage from "@/pages/FollowUpPage";
 import EmailCenterPage from "@/pages/EmailCenterPage";
+import SearchPage from "@/pages/SearchPage";
+import SupportPage from "@/pages/SupportPage";
 
 function App() {
   return (
@@ -51,6 +53,8 @@ function App() {
             <Route path="/vault" element={<DocumentVaultPage />} />
             <Route path="/follow-ups" element={<FollowUpPage />} />
             <Route path="/email-center" element={<EmailCenterPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="/activity-log" element={<ActivityLogPage />} />
             <Route path="/creator" element={<CreatorControlRoom />} />
             <Route path="/profile" element={<ProfileSettingsPage />} />

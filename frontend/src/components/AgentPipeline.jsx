@@ -2,166 +2,243 @@ import { useState } from 'react';
 import {
   ClipboardList, Calculator, ShieldCheck, FileText, KeyRound, Timer,
   GitBranch, Navigation, Search, Activity, MessageCircle, ShieldAlert,
-  CheckCircle, XCircle, Loader2, Play, Lock, ChevronDown, ChevronUp
+  CheckCircle, XCircle, Loader2, Play, Lock, ChevronDown, ChevronUp, X, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const PIPELINE_AGENTS = [
-  { type: 'intake', name: 'Raccolta', branded: 'Herion Intake', icon: ClipboardList },
-  { type: 'ledger', name: 'Contabilita', branded: 'Herion Ledger', icon: Calculator },
-  { type: 'compliance', name: 'Conformita', branded: 'Herion Compliance', icon: ShieldCheck },
-  { type: 'documents', name: 'Documenti', branded: 'Herion Documents', icon: FileText },
-  { type: 'delegate', name: 'Delega', branded: 'Herion Delegate', icon: KeyRound },
-  { type: 'deadline', name: 'Scadenze', branded: 'Herion Deadline', icon: Timer },
-  { type: 'flow', name: 'Flusso', branded: 'Herion Flow', icon: GitBranch },
-  { type: 'routing', name: 'Instradamento', branded: 'Herion Routing', icon: Navigation },
-  { type: 'research', name: 'Ricerca', branded: 'Herion Research', icon: Search },
-  { type: 'monitor', name: 'Monitoraggio', branded: 'Herion Monitor', icon: Activity },
-  { type: 'advisor', name: 'Spiegazione', branded: 'Herion Advisor', icon: MessageCircle },
-  { type: 'guard', name: 'Guardia', branded: 'Herion Guard', icon: ShieldAlert },
+const PHASES = [
+  {
+    name: 'Analisi',
+    agents: [
+      { type: 'intake', name: 'Raccolta', icon: ClipboardList },
+      { type: 'ledger', name: 'Contabilita', icon: Calculator },
+      { type: 'research', name: 'Ricerca', icon: Search },
+    ]
+  },
+  {
+    name: 'Conformita',
+    agents: [
+      { type: 'compliance', name: 'Conformita', icon: ShieldCheck },
+      { type: 'guard', name: 'Guardia', icon: ShieldAlert },
+    ]
+  },
+  {
+    name: 'Documenti',
+    agents: [
+      { type: 'documents', name: 'Documenti', icon: FileText },
+      { type: 'delegate', name: 'Delega', icon: KeyRound },
+    ]
+  },
+  {
+    name: 'Esecuzione',
+    agents: [
+      { type: 'deadline', name: 'Scadenze', icon: Timer },
+      { type: 'flow', name: 'Flusso', icon: GitBranch },
+      { type: 'routing', name: 'Instradamento', icon: Navigation },
+      { type: 'monitor', name: 'Monitoraggio', icon: Activity },
+      { type: 'advisor', name: 'Spiegazione', icon: MessageCircle },
+    ]
+  },
 ];
+
+const ALL_AGENTS = PHASES.flatMap(p => p.agents);
 
 function getAgentState(agentType, agentLogs, practiceStatus) {
   const log = agentLogs?.find(l => l.agent_type === agentType);
   if (!log) {
     if (practiceStatus === 'in_progress' || practiceStatus === 'processing') {
       const completedTypes = (agentLogs || []).filter(l => l.status === 'completed' || l.status === 'failed').map(l => l.agent_type);
-      const pipelineIdx = PIPELINE_AGENTS.findIndex(a => a.type === agentType);
-      const lastCompletedIdx = PIPELINE_AGENTS.reduce((max, a, i) => completedTypes.includes(a.type) ? Math.max(max, i) : max, -1);
-      if (pipelineIdx === lastCompletedIdx + 1) return 'in_progress';
+      const idx = ALL_AGENTS.findIndex(a => a.type === agentType);
+      const lastIdx = ALL_AGENTS.reduce((max, a, i) => completedTypes.includes(a.type) ? Math.max(max, i) : max, -1);
+      if (idx === lastIdx + 1) return 'running';
     }
-    return 'not_started';
+    return 'pending';
   }
   if (log.status === 'completed') return 'completed';
   if (log.status === 'failed' || log.status === 'error') return 'failed';
-  if (log.status === 'running') return 'in_progress';
-  return 'not_started';
+  if (log.status === 'running') return 'running';
+  return 'pending';
 }
 
-function AgentNode({ agent, state, log }) {
-  const [showDetail, setShowDetail] = useState(false);
-  const Icon = agent.icon;
+function getActiveAgent(agentLogs, status) {
+  if (!agentLogs?.length && (status === 'draft' || status === 'pending')) return null;
+  for (const agent of ALL_AGENTS) {
+    const state = getAgentState(agent.type, agentLogs, status);
+    if (state === 'running') return { ...agent, state: 'running' };
+  }
+  const lastLog = agentLogs?.[agentLogs.length - 1];
+  if (lastLog) {
+    const cfg = ALL_AGENTS.find(a => a.type === lastLog.agent_type);
+    return cfg ? { ...cfg, state: lastLog.status } : null;
+  }
+  return null;
+}
 
-  const stateStyle = {
-    not_started: 'bg-[var(--bg-app)] border-[var(--border-soft)] text-[var(--text-muted)]',
-    in_progress: 'bg-blue-50 border-blue-200 text-blue-600',
-    completed: 'bg-emerald-50 border-emerald-200 text-emerald-600',
-    failed: 'bg-red-50 border-red-200 text-red-500',
-  };
+function getStatusMessage(practice) {
+  const status = practice?.status;
+  const hasLogs = practice?.agent_logs?.length > 0;
+  if (status === 'draft') return 'Pratica pronta per essere elaborata. Avvia il workflow per iniziare.';
+  if (status === 'waiting_approval') return 'L\'analisi e completata. Verifica il riepilogo e approva per procedere.';
+  if (status === 'completed') return 'Pratica completata con successo.';
+  if (status === 'blocked') return 'Pratica bloccata. Verifica il motivo e risolvi per continuare.';
+  if (status === 'escalated') return 'Pratica in escalation. Richiede revisione professionale.';
+  if (hasLogs) return 'Il sistema sta elaborando la tua pratica.';
+  return 'Pratica in elaborazione.';
+}
 
-  return (
-    <div className="relative flex flex-col items-center" data-testid={`pipeline-node-${agent.type}`}>
-      <button
-        onClick={() => log && setShowDetail(!showDetail)}
-        className={`relative w-9 h-9 rounded-lg border flex items-center justify-center transition-all duration-200 ${stateStyle[state] || stateStyle.not_started} ${log ? 'cursor-pointer hover:scale-105' : 'cursor-default'} ${state === 'in_progress' ? 'animate-pulse' : ''}`}
-        data-testid={`pipeline-node-btn-${agent.type}`}
-      >
-        {state === 'completed' && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center"><CheckCircle className="w-2.5 h-2.5 text-white" strokeWidth={3} /></div>}
-        {state === 'failed' && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center"><XCircle className="w-2.5 h-2.5 text-white" strokeWidth={3} /></div>}
-        {state === 'in_progress' && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center"><Loader2 className="w-2.5 h-2.5 text-white animate-spin" strokeWidth={3} /></div>}
-        <Icon className="w-4 h-4" strokeWidth={1.5} />
-      </button>
-      <p className={`text-[8px] font-semibold mt-1 text-center max-w-[50px] leading-tight ${state === 'not_started' ? 'text-[var(--text-muted)]' : 'text-[var(--text-secondary)]'}`}>{agent.name}</p>
-
-      {showDetail && log && (
-        <div className="absolute top-full mt-2 z-30 w-72 bg-white rounded-xl border shadow-lg p-3 text-left" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-soft)' }} data-testid={`pipeline-popover-${agent.type}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-[var(--text-primary)]">{agent.branded}</span>
-            <button onClick={() => setShowDetail(false)} className="p-0.5 rounded hover:bg-[var(--hover-soft)]"><ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /></button>
-          </div>
-          {log.output_data && (
-            <div className="p-2 bg-[var(--bg-app)] rounded-lg text-[10px] text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto border" style={{ borderColor: 'var(--border-soft)' }}>
-              {typeof log.output_data === 'string' ? log.output_data.substring(0, 600) : JSON.stringify(log.output_data, null, 2).substring(0, 600)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function getNextStep(practice) {
+  const status = practice?.status;
+  if (status === 'draft') return 'Clicca "Avvia Pipeline" per iniziare';
+  if (status === 'waiting_approval') return 'Clicca "Approva" per procedere';
+  if (status === 'blocked') return 'Risolvi il problema indicato sopra';
+  if (status === 'completed') return null;
+  const active = getActiveAgent(practice?.agent_logs, status);
+  if (active) {
+    const idx = ALL_AGENTS.findIndex(a => a.type === active.type);
+    const next = ALL_AGENTS[idx + 1];
+    if (next) return `Prossimo: ${next.name}`;
+  }
+  return 'Attendere il completamento';
 }
 
 export function AgentPipeline({ practice, onRunWorkflow, onApprove, orchestrating, approving }) {
-  const [expanded, setExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const agentLogs = practice?.agent_logs || [];
   const status = practice?.status || 'draft';
   const canRun = practice && !['approved', 'submitted', 'completed'].includes(status);
   const isWaiting = status === 'waiting_approval';
   const hasRun = agentLogs.length > 0;
 
-  const completedCount = PIPELINE_AGENTS.filter(a => getAgentState(a.type, agentLogs, status) === 'completed').length;
-  const failedCount = PIPELINE_AGENTS.filter(a => getAgentState(a.type, agentLogs, status) === 'failed').length;
-  const totalAgents = PIPELINE_AGENTS.length;
+  const completedCount = ALL_AGENTS.filter(a => getAgentState(a.type, agentLogs, status) === 'completed').length;
+  const failedCount = ALL_AGENTS.filter(a => getAgentState(a.type, agentLogs, status) === 'failed').length;
+  const totalAgents = ALL_AGENTS.length;
   const pct = Math.round((completedCount / totalAgents) * 100);
+  const activeAgent = getActiveAgent(agentLogs, status);
+  const statusMsg = getStatusMessage(practice);
+  const nextStep = getNextStep(practice);
 
   return (
-    <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="agent-pipeline">
-      {/* Compact summary header — always visible */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[var(--hover-soft)] transition-colors text-left"
-        data-testid="pipeline-toggle"
-      >
-        <div className="flex items-center gap-3">
-          <GitBranch className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
-          <div>
-            <p className="text-[12px] font-semibold text-[var(--text-primary)]">Pipeline Agenti</p>
-            <p className="text-[10px] text-[var(--text-muted)]">
-              {hasRun ? `${completedCount}/${totalAgents} completati${failedCount > 0 ? ` \u00B7 ${failedCount} errori` : ''}` : '12 agenti pronti'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {hasRun && (
-            <div className="flex items-center gap-2" data-testid="pipeline-progress">
-              <div className="w-16 h-1.5 bg-[var(--bg-app)] rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-700 ${failedCount > 0 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${pct}%` }} />
+    <>
+      {/* ── COMPACT SUMMARY (always visible) ── */}
+      <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="agent-pipeline">
+        <div className="px-5 py-4">
+          {/* Status message */}
+          <p className="text-[13px] text-[var(--text-primary)] leading-relaxed mb-3" data-testid="pipeline-status-msg">{statusMsg}</p>
+
+          {/* Active agent indicator */}
+          {activeAgent && (
+            <div className="flex items-center gap-2 mb-3">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeAgent.state === 'running' ? 'bg-blue-50 text-blue-600' : activeAgent.state === 'completed' ? 'bg-emerald-50 text-emerald-600' : activeAgent.state === 'failed' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
+                {activeAgent.state === 'running' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <activeAgent.icon className="w-3.5 h-3.5" strokeWidth={1.5} />}
               </div>
-              <span className="text-[10px] font-bold text-[var(--text-primary)]">{pct}%</span>
+              <div>
+                <p className="text-[11px] font-semibold text-[var(--text-primary)]">
+                  {activeAgent.state === 'running' ? `${activeAgent.name} in esecuzione` : `Ultimo: ${activeAgent.name}`}
+                </p>
+                {nextStep && <p className="text-[10px] text-[var(--text-muted)]">{nextStep}</p>}
+              </div>
             </div>
           )}
-          {expanded ? <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />}
-        </div>
-      </button>
 
-      {/* Expanded pipeline detail */}
-      {expanded && (
-        <div className="border-t px-5 py-4" style={{ borderColor: 'var(--border-soft)' }}>
-          {/* Pipeline nodes */}
-          <div className="overflow-x-auto pb-2">
-            <div className="flex items-start gap-1 min-w-[580px] lg:min-w-0 justify-center">
-              {PIPELINE_AGENTS.map((agent, idx) => {
-                const state = getAgentState(agent.type, agentLogs, status);
-                const log = agentLogs.find(l => l.agent_type === agent.type);
-                const isLast = idx === PIPELINE_AGENTS.length - 1;
-                return (
-                  <div key={agent.type} className="flex items-start">
-                    <AgentNode agent={agent} state={state} log={log} />
-                    {!isLast && (
-                      <div className="mt-4 w-3 sm:w-5 flex items-center">
-                        <div className={`h-px w-full ${state === 'completed' ? 'bg-emerald-300' : state === 'failed' ? 'bg-red-200' : 'bg-[var(--border-soft)]'}`} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+          {/* Progress bar */}
+          {hasRun && (
+            <div className="flex items-center gap-3 mb-3" data-testid="pipeline-progress">
+              <div className="flex-1 h-2 bg-[var(--bg-app)] rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-700 ${failedCount > 0 ? 'bg-amber-400' : 'bg-[#0ABFCF]'}`} style={{ width: `${pct}%` }} />
+              </div>
+              <span className="text-[11px] font-bold text-[var(--text-primary)] w-10 text-right">{pct}%</span>
             </div>
-          </div>
+          )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t" style={{ borderColor: 'var(--border-soft)' }}>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
             {canRun && (
-              <Button onClick={onRunWorkflow} disabled={orchestrating} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-9 px-5 text-[11px] font-semibold" data-testid="pipeline-run-btn">
+              <Button onClick={onRunWorkflow} disabled={orchestrating} className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-10 px-5 text-[12px] font-semibold" data-testid="pipeline-run-btn">
                 {orchestrating ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Esecuzione...</> : <><Play className="w-3.5 h-3.5 mr-2" />{hasRun ? 'Riesegui' : 'Avvia Pipeline'}</>}
               </Button>
             )}
             {isWaiting && (
-              <Button onClick={onApprove} disabled={approving} variant="outline" className="rounded-lg h-9 px-5 text-[11px] font-semibold border-emerald-200 text-emerald-700 hover:bg-emerald-50" data-testid="pipeline-approve-btn">
-                {approving ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Approvazione...</> : <><Lock className="w-3.5 h-3.5 mr-2" />Approva</>}
+              <Button onClick={onApprove} disabled={approving} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 px-5 text-[12px] font-semibold" data-testid="pipeline-approve-btn">
+                {approving ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Approvazione...</> : <><CheckCircle className="w-3.5 h-3.5 mr-2" />Approva</>}
+              </Button>
+            )}
+            {hasRun && (
+              <Button variant="outline" onClick={() => setModalOpen(true)} className="rounded-xl h-10 px-4 text-[12px] font-semibold text-[var(--text-secondary)]" style={{ borderColor: 'var(--border-soft)' }} data-testid="view-agents-btn">
+                <Eye className="w-3.5 h-3.5 mr-2" />Attivita Agenti
               </Button>
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── AGENT DETAIL MODAL ── */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" data-testid="agents-modal">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" style={{ borderColor: 'var(--border-soft)' }}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border-soft)' }}>
+              <div>
+                <h3 className="text-[15px] font-bold text-[var(--text-primary)]">Attivita degli Agenti</h3>
+                <p className="text-[11px] text-[var(--text-muted)]">{completedCount}/{totalAgents} completati{failedCount > 0 ? ` \u00B7 ${failedCount} errori` : ''}</p>
+              </div>
+              <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-[var(--hover-soft)]" data-testid="close-modal-btn">
+                <X className="w-4 h-4 text-[var(--text-muted)]" />
+              </button>
+            </div>
+
+            {/* Phases */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+              {PHASES.map(phase => (
+                <div key={phase.name}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">{phase.name}</p>
+                  <div className="space-y-1.5">
+                    {phase.agents.map(agent => {
+                      const state = getAgentState(agent.type, agentLogs, status);
+                      const log = agentLogs.find(l => l.agent_type === agent.type);
+                      const Icon = agent.icon;
+                      return (
+                        <div key={agent.type} className="flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-app)]" data-testid={`modal-agent-${agent.type}`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            state === 'completed' ? 'bg-emerald-50 text-emerald-600' :
+                            state === 'failed' ? 'bg-red-50 text-red-500' :
+                            state === 'running' ? 'bg-blue-50 text-blue-600' :
+                            'bg-gray-100 text-gray-400'
+                          }`}>
+                            {state === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                             state === 'completed' ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> :
+                             state === 'failed' ? <XCircle className="w-4 h-4" strokeWidth={2} /> :
+                             <Icon className="w-4 h-4" strokeWidth={1.5} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[12px] font-semibold text-[var(--text-primary)]">{agent.name}</p>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                                state === 'completed' ? 'bg-emerald-50 text-emerald-600' :
+                                state === 'failed' ? 'bg-red-50 text-red-600' :
+                                state === 'running' ? 'bg-blue-50 text-blue-600' :
+                                'bg-gray-100 text-gray-400'
+                              }`}>
+                                {state === 'completed' ? 'Completato' : state === 'failed' ? 'Errore' : state === 'running' ? 'In corso' : 'In attesa'}
+                              </span>
+                            </div>
+                            {log?.explanation && (
+                              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{log.explanation}</p>
+                            )}
+                            {state === 'running' && (
+                              <p className="text-[10px] text-blue-600 mt-0.5">Sta elaborando in questo momento...</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }

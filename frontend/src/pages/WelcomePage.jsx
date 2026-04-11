@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { HerionMark, HerionMarkLight } from '@/components/HerionLogo';
+import { HerionBrand, HerionMarkLight } from '@/components/HerionLogo';
 
 const HERO_SLIDES = [
   { heading: 'Chiarezza in ogni operazione', body: 'Ogni pratica ha un percorso visibile, ogni passaggio ha una spiegazione. Niente piu confusione.' },
@@ -67,11 +67,11 @@ export default function WelcomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b" style={{ borderColor: 'var(--border-soft)' }}>
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <HerionMark size={30} />
+            <HerionBrand size={34} showText />
           </Link>
           <div className="flex items-center gap-2">
-            <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
-            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
+            <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
+            <Link to="/register"><Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
           </div>
         </div>
       </nav>
@@ -101,7 +101,7 @@ export default function WelcomePage() {
           </p>
 
           <Link to="/register">
-            <Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg h-12 px-8 text-sm font-semibold shadow-lg shadow-black/5" data-testid="hero-cta-btn">
+            <Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-12 px-8 text-sm font-semibold shadow-lg shadow-[#0ABFCF]/10" data-testid="hero-cta-btn">
               Inizia ora <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>

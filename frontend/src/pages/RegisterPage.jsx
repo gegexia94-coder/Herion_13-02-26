@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRight, Eye, EyeOff, AlertCircle, User, Building2, Briefcase } from 'lucide-react';
-import { HerionMark } from '@/components/HerionLogo';
+import { HerionBrand } from '@/components/HerionLogo';
 import { toast } from 'sonner';
 
 const CLIENT_TYPES = [
@@ -84,7 +84,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-[var(--bg-app)] flex items-start justify-center py-12 px-6" data-testid="register-page">
       <div className="w-full max-w-lg animate-fade-in-up">
         <div className="flex flex-col items-center mb-8">
-          <HerionMark size={40} />
+          <HerionBrand size={44} showText />
           <h2 className="text-xl font-bold text-[var(--text-primary)] mt-4 tracking-tight">Crea il tuo account</h2>
           <p className="text-[12px] text-[var(--text-secondary)] mt-1">Compila i campi per iniziare</p>
         </div>
@@ -167,7 +167,7 @@ export default function RegisterPage() {
             <FieldError field="terms_consent" />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg h-11 text-[13px] font-semibold" data-testid="register-submit-btn">
+          <Button type="submit" disabled={loading} className="w-full bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-11 text-[13px] font-semibold" data-testid="register-submit-btn">
             {loading ? 'Creazione...' : 'Crea account'}
             {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
           </Button>

@@ -1,72 +1,45 @@
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_ai-practice-manager/artifacts/bki0f2lu_560feac8-8d0d-487d-8f06-bef0f544b06a-1.png';
+
+export function HerionBrand({ size = 32, className = '', showText = false }) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`} data-testid="herion-brand">
+      <img
+        src={LOGO_URL}
+        alt="Herion"
+        className="object-contain"
+        style={{ width: size, height: size }}
+        data-testid="herion-logo-img"
+      />
+      {showText && (
+        <div className="flex flex-col leading-none">
+          <span className="text-[14px] font-bold tracking-tight text-[#0ABFCF]">Herion</span>
+          <span className="text-[8px] text-[var(--text-muted)] tracking-wide">Virtual Accountant</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function HerionMark({ size = 32, className = '' }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 40 40"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
+    <img
+      src={LOGO_URL}
+      alt="H"
+      className={`object-contain ${className}`}
+      style={{ width: size, height: size }}
       data-testid="herion-mark"
-    >
-      <rect width="40" height="40" rx="10" fill="#1E2430" />
-      <path
-        d="M12 10L12 30"
-        stroke="url(#h-grad)"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M28 10L28 30"
-        stroke="url(#h-grad)"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12 20L28 20"
-        stroke="url(#h-grad)"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
-      <circle cx="12" cy="10" r="2" fill="#C4D9FF" />
-      <circle cx="28" cy="10" r="2" fill="#C5BAFF" />
-      <circle cx="12" cy="30" r="2" fill="#C5BAFF" />
-      <circle cx="28" cy="30" r="2" fill="#C4D9FF" />
-      <defs>
-        <linearGradient id="h-grad" x1="12" y1="10" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#C4D9FF" />
-          <stop offset="1" stopColor="#C5BAFF" />
-        </linearGradient>
-      </defs>
-    </svg>
+    />
   );
 }
 
 export function HerionMarkLight({ size = 32, className = '' }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 40 40"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
+    <img
+      src={LOGO_URL}
+      alt="H"
+      className={`object-contain brightness-150 ${className}`}
+      style={{ width: size, height: size }}
       data-testid="herion-mark-light"
-    >
-      <rect width="40" height="40" rx="10" fill="white" fillOpacity="0.1" />
-      <path d="M12 10L12 30" stroke="url(#h-grad-l)" strokeWidth="3.5" strokeLinecap="round" />
-      <path d="M28 10L28 30" stroke="url(#h-grad-l)" strokeWidth="3.5" strokeLinecap="round" />
-      <path d="M12 20L28 20" stroke="url(#h-grad-l)" strokeWidth="3.5" strokeLinecap="round" />
-      <circle cx="12" cy="10" r="2" fill="#C4D9FF" />
-      <circle cx="28" cy="10" r="2" fill="#C5BAFF" />
-      <circle cx="12" cy="30" r="2" fill="#C5BAFF" />
-      <circle cx="28" cy="30" r="2" fill="#C4D9FF" />
-      <defs>
-        <linearGradient id="h-grad-l" x1="12" y1="10" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#C4D9FF" />
-          <stop offset="1" stopColor="#C5BAFF" />
-        </linearGradient>
-      </defs>
-    </svg>
+    />
   );
 }

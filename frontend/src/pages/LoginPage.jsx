@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { HerionMark } from '@/components/HerionLogo';
+import { HerionBrand } from '@/components/HerionLogo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center px-6" data-testid="login-page">
       <div className="w-full max-w-sm animate-fade-in-up">
         <div className="flex flex-col items-center mb-10">
-          <HerionMark size={44} />
+          <HerionBrand size={48} showText />
           <h2 className="text-xl font-bold text-[var(--text-primary)] mt-5 tracking-tight">Bentornato</h2>
           <p className="text-[var(--text-secondary)] text-[13px] mt-1">Accedi al tuo account Herion</p>
         </div>
@@ -66,7 +66,7 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg h-11 text-[13px] font-semibold shadow-sm transition-all" data-testid="login-submit-btn">
+          <Button type="submit" disabled={loading} className="w-full bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-11 text-[13px] font-semibold shadow-sm transition-all" data-testid="login-submit-btn">
             {loading ? 'Accesso...' : 'Accedi'}
             {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
           </Button>

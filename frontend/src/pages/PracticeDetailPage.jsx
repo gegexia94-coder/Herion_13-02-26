@@ -235,6 +235,23 @@ export default function PracticeDetailPage() {
         </div>
       </div>
 
+      {/* ── GUIDANCE HINT (what should I do next?) ── */}
+      {practice.status === 'draft' && (
+        <div className="bg-[var(--bg-soft)] rounded-xl px-5 py-3 text-[12px] text-[var(--text-secondary)]" data-testid="guidance-hint">
+          <span className="font-semibold text-[var(--text-primary)]">Prossimo passo:</span> Avvia il workflow per analizzare la pratica. Clicca "Avvia Pipeline" qui sotto.
+        </div>
+      )}
+      {practice.status === 'waiting_approval' && (
+        <div className="bg-amber-50/50 rounded-xl px-5 py-3 text-[12px] text-amber-800" data-testid="guidance-hint">
+          <span className="font-semibold">Prossimo passo:</span> L'analisi e completata. Verifica il riepilogo e approva per procedere.
+        </div>
+      )}
+      {practice.status === 'blocked' && (
+        <div className="bg-red-50/50 rounded-xl px-5 py-3 text-[12px] text-red-800" data-testid="guidance-hint">
+          <span className="font-semibold">Azione richiesta:</span> La pratica e bloccata. Leggi il motivo qui sotto e risolvi per continuare.
+        </div>
+      )}
+
       {/* ── MAIN ACTION (dynamic based on state) ── */}
       {isWaitingApproval && orchestration && (
         <div className="bg-white rounded-xl border-2 border-amber-200 p-5" data-testid="approval-gate">
@@ -432,9 +449,10 @@ export default function PracticeDetailPage() {
               <div className="space-y-2 pr-2">
                 {chatHistory.length === 0 && !chatLoading && (
                   <div className="text-center py-4">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-2">Fai una domanda sulla pratica</p>
-                    {['Stato attuale?', 'Documenti mancanti?', 'Prossimo passo?'].map((q, i) => (
-                      <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[10px] text-[var(--text-primary)] p-2 bg-[var(--hover-soft)] rounded-lg hover:bg-[var(--surface-accent-1)]/20 transition-colors mb-1" data-testid={`chat-suggestion-${i}`}>{q}</button>
+                    <p className="text-[11px] text-[var(--text-secondary)] mb-1">Hai domande sulla pratica?</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-3">Chiedi e riceverai una risposta chiara e semplice</p>
+                    {['Cosa devo fare adesso?', 'Manca qualcosa?', 'Qual e lo stato?'].map((q, i) => (
+                      <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[11px] text-[var(--text-primary)] p-2.5 bg-[var(--hover-soft)] rounded-lg hover:bg-[var(--surface-accent-1)]/20 transition-colors mb-1.5" data-testid={`chat-suggestion-${i}`}>{q}</button>
                     ))}
                   </div>
                 )}

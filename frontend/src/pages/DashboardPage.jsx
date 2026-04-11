@@ -80,33 +80,46 @@ export default function DashboardPage() {
   const stablePractices = (stats?.recent_practices || []).filter(p => p.priority !== 'urgent' && p.status !== 'waiting_approval');
 
   return (
-    <div className="space-y-5" data-testid="dashboard-page">
+    <div className="space-y-6" data-testid="dashboard-page">
+
+      {/* ── GREETING + GUIDANCE ── */}
+      <div>
+        <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+          Ciao{user?.first_name ? `, ${user.first_name}` : ''}
+        </h1>
+        <p className="text-[13px] text-[var(--text-secondary)] mt-1">
+          {criticalCount > 0
+            ? `Hai ${criticalCount} ${criticalCount === 1 ? 'pratica che richiede' : 'pratiche che richiedono'} la tua attenzione. Inizia da qui.`
+            : 'Tutto sotto controllo. Ecco la tua panoramica.'
+          }
+        </p>
+      </div>
 
       {/* ── CRITICAL ALERT ── */}
       {criticalCount > 0 && (
-        <div className="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-5 py-3.5" data-testid="critical-alert">
+        <div className="flex items-center justify-between bg-red-50/70 border border-red-100 rounded-xl px-5 py-3.5" data-testid="critical-alert">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
             <div>
               <p className="text-[13px] font-semibold text-red-800">
                 {criticalCount} {criticalCount === 1 ? 'pratica richiede' : 'pratiche richiedono'} attenzione
               </p>
-              <p className="text-[11px] text-red-600/70">Pratiche urgenti, bloccate o in attesa di approvazione</p>
+              <p className="text-[11px] text-red-600/60">Clicca per risolvere la piu urgente</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="rounded-lg text-[11px] font-semibold border-red-200 text-red-700 hover:bg-red-100 h-8 px-4" data-testid="resolve-critical-btn"
+          <Button variant="outline" size="sm" className="rounded-xl text-[11px] font-semibold border-red-200 text-red-700 hover:bg-red-100 h-9 px-5" data-testid="resolve-critical-btn"
             onClick={() => { const first = stats?.critical_practices?.[0]; if (first) navigate(`/practices/${first.id}`); }}>
             Risolvi ora
           </Button>
         </div>
       )}
 
-      {/* ── ACTIONS ── */}
+      {/* ── QUICK ACTIONS ── */}
       <div className="flex items-center gap-2.5" data-testid="quick-actions">
-        <Button onClick={() => navigate('/practices/new')} className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-lg text-[12px] font-semibold gap-2 h-9 px-5" data-testid="create-practice-btn">
+        <Button onClick={() => navigate('/practices/new')} className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[12px] font-semibold gap-2 h-10 px-5" data-testid="create-practice-btn">
           <Plus className="w-3.5 h-3.5" /> Nuova Pratica
         </Button>
-        <Button variant="outline" onClick={() => navigate('/email-center')} className="rounded-lg text-[12px] font-semibold gap-2 h-9 px-5 text-[var(--text-secondary)]" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
+        <Button variant="outline" onClick={() => navigate('/email-center')} className="rounded-xl text-[12px] font-semibold gap-2 h-10 px-5 text-[var(--text-secondary)]" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
           <Send className="w-3.5 h-3.5" /> Comunicazione
         </Button>
       </div>

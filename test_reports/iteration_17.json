@@ -1,0 +1,137 @@
+{
+  "summary": "Iteration 17 Testing Complete - AgentPipeline Component. All features verified: 12 agent nodes displayed horizontally, correct visual states (completed=green check, failed=red X, not_started=gray), progress bar with percentage, connector line colors based on previous agent state, 'Avvia Pipeline'/'Riesegui Pipeline' button logic, 'Approva Pratica' button for waiting_approval status, popover with output data on completed agent click, WorkflowStepper renders below pipeline.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_17.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AgentPipeline.jsx is well-structured with proper data-testid attributes for all interactive elements",
+    "All UI text is correctly in Italian (Raccolta, Contabilita, Conformita, etc.)",
+    "Component handles all edge cases: draft (no logs), escalated (with logs), waiting_approval"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "None - used existing practices",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 17 tested the new AgentPipeline component on PracticeDetailPage. All features verified working: (1) Pipeline renders 12 agents horizontally: Raccolta, Contabilita, Conformita, Documenti, Delega, Scadenze, Flusso, Instradamento, Ricerca, Monitoraggio, Spiegazione, Guardia. (2) Visual states: completed agents show green checkmark badge, failed agents show red X badge, not_started agents are gray, in_progress agents pulse with blue spinner. (3) Progress bar shows percentage (e.g., 92% for 11/12 completed). (4) Connector lines: green after completed agents, red/orange after failed agents, gray for not_started. (5) Button logic: 'Avvia Pipeline' for draft practices with no runs, 'Riesegui Pipeline' for practices that have been run, 'Approva Pratica' appears when status is waiting_approval. (6) Popover: clicking on completed/failed agent node opens popover showing branded name, status label, and output_data. (7) WorkflowStepper renders below pipeline showing practice lifecycle steps. Test practices used: b50d4f78-5295-4119-a361-8aec381fee43 (escalated, 12 logs, 11 completed, 1 failed/monitor), d8f241d9-9fa8-45a4-ae5f-5484db8ae9e3 (draft, no logs), 347e6d7b-fa95-4de8-b26d-a8963d983b3f (waiting_approval).",
+  "features_tested": {
+    "agent_pipeline_renders": {
+      "status": "PASS",
+      "details": [
+        "AgentPipeline component found via [data-testid='agent-pipeline']",
+        "12 agent nodes rendered horizontally",
+        "All agent types present: intake, ledger, compliance, documents, delegate, deadline, flow, routing, research, monitor, advisor, guard"
+      ]
+    },
+    "visual_states": {
+      "status": "PASS",
+      "details": [
+        "Completed agents: green checkmark badge (bg-[#10B981])",
+        "Failed agents: red X badge (bg-[#EF4444])",
+        "Not started agents: gray styling (bg-[#F8F9FA], ring-[#E2E8F0])",
+        "In progress agents: blue spinner with pulse animation"
+      ]
+    },
+    "progress_bar": {
+      "status": "PASS",
+      "details": [
+        "Progress indicator found via [data-testid='pipeline-progress']",
+        "Shows percentage (92% for escalated practice with 11/12 completed)",
+        "Progress bar color: green for success, amber when failures present"
+      ]
+    },
+    "connector_lines": {
+      "status": "PASS",
+      "details": [
+        "Green connectors (bg-[#10B981]) after completed agents",
+        "Red/orange connectors (bg-[#FCA5A5]) after failed agents",
+        "Gray connectors (bg-[#E2E8F0]) for not_started agents"
+      ]
+    },
+    "run_button_logic": {
+      "status": "PASS",
+      "details": [
+        "Draft practice (no runs): shows 'Avvia Pipeline'",
+        "Practice with runs: shows 'Riesegui Pipeline'",
+        "Completed/approved/submitted practices: run button hidden"
+      ]
+    },
+    "approve_button": {
+      "status": "PASS",
+      "details": [
+        "Approve button found via [data-testid='pipeline-approve-btn']",
+        "Shows 'Approva Pratica' when status is waiting_approval",
+        "Hidden for other statuses"
+      ]
+    },
+    "popover_functionality": {
+      "status": "PASS",
+      "details": [
+        "Clicking completed agent node opens popover",
+        "Popover shows branded name (e.g., 'Herion Intake')",
+        "Popover shows status label ('Completato' or 'Errore')",
+        "Popover shows output_data content (truncated at 800 chars)"
+      ]
+    },
+    "workflow_stepper": {
+      "status": "PASS",
+      "details": [
+        "WorkflowStepper component found via [data-testid='workflow-stepper']",
+        "Renders below AgentPipeline",
+        "Shows practice lifecycle steps with current step highlighted"
+      ]
+    },
+    "login_flow": {
+      "status": "PASS",
+      "details": [
+        "Login with admin@aic.it / Admin123! successful",
+        "Cookie-based auth working",
+        "Redirects to dashboard after login"
+      ]
+    },
+    "italian_text": {
+      "status": "PASS",
+      "details": [
+        "All UI text in Italian",
+        "Agent names: Raccolta, Contabilita, Conformita, Documenti, Delega, Scadenze, Flusso, Instradamento, Ricerca, Monitoraggio, Spiegazione, Guardia",
+        "Buttons: Avvia Pipeline, Riesegui Pipeline, Approva Pratica",
+        "Status labels: Completato, Errore, Non avviato, In esecuzione"
+      ]
+    }
+  },
+  "test_practices_used": {
+    "escalated_with_logs": {
+      "id": "b50d4f78-5295-4119-a361-8aec381fee43",
+      "status": "escalated",
+      "agent_logs": "12 logs (11 completed, 1 failed/monitor)",
+      "progress": "92%"
+    },
+    "draft_no_logs": {
+      "id": "d8f241d9-9fa8-45a4-ae5f-5484db8ae9e3",
+      "status": "draft",
+      "agent_logs": "0 logs",
+      "button_shown": "Avvia Pipeline"
+    },
+    "waiting_approval": {
+      "id": "347e6d7b-fa95-4de8-b26d-a8963d983b3f",
+      "status": "waiting_approval",
+      "button_shown": "Approva Pratica"
+    }
+  }
+}

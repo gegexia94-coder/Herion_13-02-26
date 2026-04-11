@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Upload, Clock, CheckCircle, AlertCircle, History, Play, Loader2, File, Download, Sparkles, AlertTriangle, FileDown, ClipboardList, Calculator, ShieldCheck, FileText, MessageCircle, Send, Bot, ChevronDown, ChevronUp, KeyRound, Timer, GitBranch, Activity, ShieldAlert, CircleDot, CheckCircle2, XCircle, ArrowRight, Lock, Circle, Shield, RefreshCw } from 'lucide-react';
+import { AgentPipeline } from '@/components/AgentPipeline';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -466,6 +467,15 @@ export default function PracticeDetailPage() {
           <p className="text-[10px] text-[#94A3B8] mt-2 text-center">Approvando, confermi di aver verificato i dati e autorizzi l'invio della pratica</p>
         </div>
       )}
+
+      {/* Agent Pipeline — Visual execution pipeline */}
+      <AgentPipeline
+        practice={practice}
+        onRunWorkflow={handleOrchestrate}
+        onApprove={() => setShowApprovalDialog(true)}
+        orchestrating={orchestrating}
+        approving={approving}
+      />
 
       {/* Workflow Stepper - Step by step state visualization */}
       <WorkflowStepper practice={practice} timeline={timeline} />

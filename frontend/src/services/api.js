@@ -41,6 +41,12 @@ export const orchestrateAgents = (practiceId, query) =>
   api.post('/agents/orchestrate', { practice_id: practiceId, query });
 export const approvePractice = (practiceId) =>
   api.post(`/practices/${practiceId}/approve`);
+export const startPractice = (practiceId) =>
+  api.post(`/practices/${practiceId}/start`);
+export const markPracticeSubmitted = (practiceId, submissionType = 'manual', notes = '') =>
+  api.post(`/practices/${practiceId}/mark-submitted`, { submission_type: submissionType, notes });
+export const markPracticeCompleted = (practiceId) =>
+  api.post(`/practices/${practiceId}/mark-completed`);
 export const runPracticeWorkflow = (practiceId) =>
   api.post(`/practices/${practiceId}/run`);
 export const getPracticeTimeline = (practiceId) =>

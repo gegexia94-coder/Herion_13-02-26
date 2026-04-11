@@ -9,16 +9,31 @@ import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const STATUS_CFG = {
-  draft: { label: 'Bozza', color: '#5B6475' },
-  in_progress: { label: 'In Elaborazione', color: '#3B82F6' },
-  processing: { label: 'In Elaborazione', color: '#3B82F6' },
-  waiting_approval: { label: 'Approvazione', color: '#F59E0B' },
-  approved: { label: 'Approvata', color: '#10B981' },
-  submitted: { label: 'Inviata', color: '#06B6D4' },
+  draft: { label: 'Non iniziata', color: '#5B6475' },
+  waiting_user_documents: { label: 'Attesa documenti', color: '#F59E0B' },
+  documents_received: { label: 'Documenti ricevuti', color: '#3B82F6' },
+  internal_processing: { label: 'In revisione', color: '#3B82F6' },
+  internal_validation_passed: { label: 'Revisione OK', color: '#10B981' },
+  internal_validation_failed: { label: 'Problemi', color: '#EF4444' },
+  waiting_user_review: { label: 'Verifica richiesta', color: '#F59E0B' },
+  waiting_signature: { label: 'Attesa firma', color: '#F59E0B' },
+  ready_for_submission: { label: 'Pronta invio', color: '#06B6D4' },
+  submitted_manually: { label: 'Inviata', color: '#06B6D4' },
+  submitted_via_channel: { label: 'Inviata', color: '#06B6D4' },
+  waiting_external_response: { label: 'Attesa ente', color: '#8B5CF6' },
+  accepted_by_entity: { label: 'Accettata', color: '#10B981' },
+  rejected_by_entity: { label: 'Rifiutata', color: '#EF4444' },
   completed: { label: 'Completata', color: '#10B981' },
   blocked: { label: 'Bloccata', color: '#EF4444' },
+  // Legacy
+  in_progress: { label: 'Elaborazione', color: '#3B82F6' },
+  processing: { label: 'Elaborazione', color: '#3B82F6' },
+  waiting_approval: { label: 'Verifica richiesta', color: '#F59E0B' },
+  approved: { label: 'Approvata', color: '#10B981' },
+  submitted: { label: 'Inviata', color: '#06B6D4' },
   escalated: { label: 'Escalation', color: '#EF4444' },
   failed: { label: 'Fallita', color: '#EF4444' },
+  pending: { label: 'In attesa', color: '#F59E0B' },
 };
 
 const PRIORITY_CFG = {
@@ -76,8 +91,12 @@ export default function DashboardPage() {
 
   // Smart sections: group by priority
   const urgentPractices = (stats?.recent_practices || []).filter(p => p.priority === 'urgent');
-  const waitingPractices = (stats?.recent_practices || []).filter(p => p.status === 'waiting_approval' && p.priority !== 'urgent');
-  const stablePractices = (stats?.recent_practices || []).filter(p => p.priority !== 'urgent' && p.status !== 'waiting_approval');
+  const waitingPractices = (stats?.recent_practices || []).filter(p =>
+    ['waiting_approval', 'waiting_user_review', 'waiting_signature', 'ready_for_submission'].includes(p.status) && p.priority !== 'urgent'
+  );
+  const stablePractices = (stats?.recent_practices || []).filter(p =>
+    p.priority !== 'urgent' && !['waiting_approval', 'waiting_user_review', 'waiting_signature', 'ready_for_submission'].includes(p.status)
+  );
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
@@ -274,15 +293,15 @@ function PracticeRow({ practice: p, onRun, onApprove, actionLoading }) {
             className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-[var(--surface-accent-1)]/20 text-[var(--text-primary)] hover:bg-[var(--surface-accent-1)]/40 transition-colors flex items-center gap-1 disabled:opacity-50"
             data-testid={`run-${p.id}`}>
             {actionLoading === p.id + '-run' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-            Esegui
+            Apri
           </button>
         )}
-        {p.status === 'waiting_approval' && (
+        {['waiting_approval', 'waiting_user_review'].includes(p.status) && (
           <button onClick={() => onApprove(p.id)} disabled={!!actionLoading}
             className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors flex items-center gap-1 disabled:opacity-50"
             data-testid={`approve-${p.id}`}>
             {actionLoading === p.id + '-approve' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
-            Approva
+            Verifica
           </button>
         )}
       </div>
@@ -308,12 +327,12 @@ function PracticeSection({ title, icon, practices, onRun, onApprove, actionLoadi
             </Link>
             <div className="flex items-center gap-2 flex-shrink-0">
               <PriorityBadge priority={p.priority} />
-              {p.status === 'waiting_approval' && (
+              {['waiting_approval', 'waiting_user_review'].includes(p.status) && (
                 <button onClick={() => onApprove(p.id)} disabled={!!actionLoading}
                   className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors flex items-center gap-1 disabled:opacity-50"
                   data-testid={`section-approve-${p.id}`}>
                   {actionLoading === p.id + '-approve' ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle className="w-2.5 h-2.5" />}
-                  Approva
+                  Verifica
                 </button>
               )}
               {p.status === 'draft' && (

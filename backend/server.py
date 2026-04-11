@@ -582,14 +582,16 @@ def evaluate_practice_priority(practice: dict) -> str:
             pass
 
     # Rule B: Status-based
-    if status == "waiting_approval":
+    if status in ("waiting_approval", "waiting_user_review", "waiting_signature"):
         score = max(score, 2)
-    elif status == "failed":
+    elif status in ("failed", "internal_validation_failed", "rejected_by_entity"):
         score = max(score, 2)
     elif status == "escalated":
         score = max(score, 3)
     elif status == "blocked":
         score = max(score, 2)
+    elif status == "waiting_user_documents":
+        score = max(score, 1)
 
     # Rule C: Risk interaction
     if risk == "high":
@@ -598,7 +600,7 @@ def evaluate_practice_priority(practice: dict) -> str:
             score = 3  # high risk + waiting → urgent
 
     # Rule D: Stale practices (no update for >7 days while processing)
-    if updated_str and status in ("in_progress", "processing"):
+    if updated_str and status in ("in_progress", "processing", "internal_processing", "waiting_user_documents"):
         try:
             upd = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
             if upd.tzinfo is None:
@@ -610,7 +612,7 @@ def evaluate_practice_priority(practice: dict) -> str:
             pass
 
     # Rule E: Completed → low
-    if status in ("completed", "submitted"):
+    if status in ("completed", "submitted", "submitted_manually", "submitted_via_channel", "accepted_by_entity"):
         score = 0
 
     levels = ["low", "normal", "high", "urgent"]
@@ -633,7 +635,7 @@ async def refresh_practice_priority(practice_id: str):
 
 async def refresh_all_priorities(user_id: str = None):
     """Recalculate priority for all active practices. Optionally scoped to a user."""
-    query = {"status": {"$nin": ["completed", "submitted"]}}
+    query = {"status": {"$nin": ["completed", "submitted", "submitted_manually", "submitted_via_channel", "accepted_by_entity"]}}
     if user_id:
         query["user_id"] = user_id
     practices = await db.practices.find(query, {"_id": 0, "id": 1, "status": 1, "risk_level": 1, "deadline": 1, "updated_at": 1}).to_list(500)
@@ -728,6 +730,40 @@ async def get_practice(practice_id: str, user: dict = Depends(get_current_user))
         raise HTTPException(status_code=404, detail="Pratica non trovata")
     practice["priority"] = evaluate_practice_priority(practice)
     practice["priority_label"] = PRIORITY_LEVELS.get(practice["priority"], {}).get("label", practice["priority"])
+
+    # Enrich with catalog info
+    practice_type = practice.get("practice_type", "")
+    catalog_entry = await db.practice_catalog.find_one({"practice_id": practice_type}, {"_id": 0})
+
+    # Fallback mapping for legacy practice types to catalog IDs
+    if not catalog_entry:
+        PRACTICE_TYPE_TO_CATALOG = {
+            "vat_registration": "VAT_OPEN_PF",
+            "vat_closure": "VAT_CLOSURE_PF",
+            "tax_declaration": "VAT_DECLARATION",
+            "f24_payment": "F24_PREPARATION",
+            "inps_registration": "INPS_GESTIONE_SEP",
+            "company_formation": "COMPANY_CLOSURE",
+        }
+        mapped_id = PRACTICE_TYPE_TO_CATALOG.get(practice_type)
+        if mapped_id:
+            catalog_entry = await db.practice_catalog.find_one({"practice_id": mapped_id}, {"_id": 0})
+    practice["catalog_info"] = catalog_entry
+
+    # Enrich with channel/entity info from authority registry
+    channel_entry = None
+    if catalog_entry:
+        catalog_id = catalog_entry.get("practice_id", "")
+        channel_entry = await db.authority_registry.find_one(
+            {"related_practices": catalog_id}, {"_id": 0}
+        )
+    practice["channel_info"] = channel_entry
+
+    # Add step position for 6-step flow
+    status = practice.get("status", "draft")
+    practice["current_step"] = PRACTICE_STEP_MAP.get(status, 0)
+    practice["user_status"] = USER_STATUS_DISPLAY.get(status, USER_STATUS_DISPLAY.get("draft"))
+
     return practice
 
 @api_router.put("/practices/{practice_id}")
@@ -1279,17 +1315,91 @@ CREATOR_EMAIL = "gegexia94@gmail.com"
 CREATOR_NAME = "Gege-Xia"
 CREATOR_UUID = "HERION-CREATOR-001"
 STATUS_LABELS = {
+    # New semantic statuses
     "draft": "Bozza",
+    "waiting_user_documents": "In Attesa Documenti",
+    "documents_received": "Documenti Ricevuti",
+    "internal_processing": "In Elaborazione Interna",
+    "internal_validation_passed": "Validazione Interna Superata",
+    "internal_validation_failed": "Validazione Fallita",
+    "waiting_user_review": "In Attesa della Tua Verifica",
+    "waiting_signature": "In Attesa di Firma",
+    "ready_for_submission": "Pronta per l'Invio",
+    "submitted_manually": "Inviata Manualmente",
+    "submitted_via_channel": "Inviata via Canale Ufficiale",
+    "waiting_external_response": "In Attesa Risposta Ente",
+    "accepted_by_entity": "Accettata dall'Ente",
+    "rejected_by_entity": "Rifiutata dall'Ente",
+    "completed": "Completata",
+    "blocked": "Bloccata",
+    # Legacy compatibility
     "pending": "In Attesa",
     "in_progress": "In Elaborazione",
     "processing": "In Elaborazione",
     "waiting_approval": "In Attesa di Approvazione",
     "approved": "Approvata",
     "submitted": "Inviata",
-    "completed": "Completata",
-    "blocked": "Bloccata",
     "escalated": "Escalation",
     "rejected": "Rifiutata",
+}
+
+# Maps practice status to the 6-step flow position (0-indexed)
+# Steps: 0=Comprendi, 1=Carica, 2=Elabora, 3=Verifica, 4=Firma, 5=Completa
+PRACTICE_STEP_MAP = {
+    "draft": 0,
+    "waiting_user_documents": 1,
+    "documents_received": 1,
+    "internal_processing": 2,
+    "internal_validation_passed": 3,
+    "internal_validation_failed": 3,
+    "waiting_user_review": 3,
+    "waiting_signature": 4,
+    "ready_for_submission": 5,
+    "submitted_manually": 5,
+    "submitted_via_channel": 5,
+    "waiting_external_response": 5,
+    "accepted_by_entity": 5,
+    "rejected_by_entity": 5,
+    "completed": 5,
+    "blocked": -1,
+    # Legacy
+    "pending": 1,
+    "in_progress": 2,
+    "processing": 2,
+    "waiting_approval": 3,
+    "approved": 5,
+    "submitted": 5,
+    "escalated": -1,
+    "rejected": -1,
+}
+
+# User-facing status categories (simplified for UI)
+USER_STATUS_DISPLAY = {
+    "draft": {"label": "Non iniziata", "color": "#5B6475", "category": "not_started"},
+    "waiting_user_documents": {"label": "In attesa dei tuoi documenti", "color": "#F59E0B", "category": "waiting_user"},
+    "documents_received": {"label": "Documenti ricevuti", "color": "#3B82F6", "category": "under_review"},
+    "internal_processing": {"label": "In revisione da Herion", "color": "#3B82F6", "category": "under_review"},
+    "internal_validation_passed": {"label": "Revisione completata", "color": "#10B981", "category": "under_review"},
+    "internal_validation_failed": {"label": "Problemi trovati", "color": "#EF4444", "category": "blocked"},
+    "waiting_user_review": {"label": "In attesa della tua verifica", "color": "#F59E0B", "category": "waiting_user"},
+    "waiting_signature": {"label": "In attesa della tua firma", "color": "#F59E0B", "category": "waiting_user"},
+    "ready_for_submission": {"label": "Pronta per l'invio", "color": "#06B6D4", "category": "ready"},
+    "submitted_manually": {"label": "Inviata", "color": "#06B6D4", "category": "submitted"},
+    "submitted_via_channel": {"label": "Inviata", "color": "#06B6D4", "category": "submitted"},
+    "waiting_external_response": {"label": "In attesa risposta ente", "color": "#8B5CF6", "category": "waiting_external"},
+    "accepted_by_entity": {"label": "Accettata dall'ente", "color": "#10B981", "category": "completed"},
+    "rejected_by_entity": {"label": "Rifiutata dall'ente", "color": "#EF4444", "category": "blocked"},
+    "completed": {"label": "Completata", "color": "#10B981", "category": "completed"},
+    "blocked": {"label": "Bloccata", "color": "#EF4444", "category": "blocked"},
+    # Legacy
+    "pending": {"label": "In attesa", "color": "#F59E0B", "category": "waiting_user"},
+    "in_progress": {"label": "In elaborazione", "color": "#3B82F6", "category": "under_review"},
+    "processing": {"label": "In elaborazione", "color": "#3B82F6", "category": "under_review"},
+    "waiting_approval": {"label": "In attesa della tua verifica", "color": "#F59E0B", "category": "waiting_user"},
+    "approved": {"label": "Approvata", "color": "#10B981", "category": "completed"},
+    "submitted": {"label": "Inviata", "color": "#06B6D4", "category": "submitted"},
+    "escalated": {"label": "Escalation", "color": "#EF4444", "category": "blocked"},
+    "rejected": {"label": "Rifiutata", "color": "#EF4444", "category": "blocked"},
 }
 
 DELEGATION_STATUS = {
@@ -1669,8 +1779,8 @@ Prepara il tuo riepilogo coordinato completo per l'approvazione dell'utente."""
             "reason": "Delega mancante"
         })
     else:
-        final_status = "waiting_approval"
-        final_label = STATUS_LABELS["waiting_approval"]
+        final_status = "waiting_user_review"
+        final_label = STATUS_LABELS["waiting_user_review"]
         await add_timeline_event(req.practice_id, user["id"], "waiting_approval", {
             "risk_level": risk_level,
             "delegation_status": delegation_status
@@ -1749,7 +1859,7 @@ async def approve_practice(practice_id: str, user: dict = Depends(get_current_us
     if not practice:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
 
-    if practice.get("status") != "waiting_approval":
+    if practice.get("status") not in ("waiting_approval", "waiting_user_review"):
         raise HTTPException(status_code=400, detail="La pratica non e in attesa di approvazione")
 
     # Governance check for approval
@@ -1795,68 +1905,156 @@ async def approve_practice(practice_id: str, user: dict = Depends(get_current_us
 
     await db.approval_snapshots.insert_one(approval_snapshot)
 
+    # Determine next status based on practice channel info
+    catalog_entry = await db.practice_catalog.find_one({"practice_id": practice.get("practice_type", "")}, {"_id": 0})
+    needs_external_submission = False
+    if catalog_entry:
+        channel = catalog_entry.get("expected_channel", "preparation_only")
+        needs_external_submission = channel in ("official_portal", "PEC")
+
+    if needs_external_submission:
+        next_status = "ready_for_submission"
+        next_label = STATUS_LABELS["ready_for_submission"]
+        message = "Pratica approvata. Pronta per l'invio all'ente competente."
+    else:
+        next_status = "completed"
+        next_label = STATUS_LABELS["completed"]
+        message = "Pratica approvata e completata."
+
     await db.practices.update_one(
         {"id": practice_id},
         {"$set": {
-            "status": "approved",
-            "status_label": STATUS_LABELS["approved"],
+            "status": next_status,
+            "status_label": next_label,
             "approval_snapshot_id": approval_snapshot["id"],
             "approved_at": now,
+            "completed_at": now if next_status == "completed" else None,
             "updated_at": now
         }}
     )
     await add_timeline_event(practice_id, user["id"], "approved", {
         "approval_snapshot_id": approval_snapshot["id"],
-        "risk_level": orchestration.get("risk_level")
+        "risk_level": orchestration.get("risk_level"),
+        "next_status": next_status
     })
 
-    submitted_at = datetime.now(timezone.utc).isoformat()
-    await db.practices.update_one(
-        {"id": practice_id},
-        {"$set": {
-            "status": "submitted",
-            "status_label": STATUS_LABELS["submitted"],
-            "submitted_at": submitted_at,
-            "updated_at": submitted_at
-        }}
-    )
-    await add_timeline_event(practice_id, user["id"], "submitted", {
-        "submission_type": "simulated",
-        "note": "Invio simulato dalla piattaforma"
-    })
-
-    completed_at = datetime.now(timezone.utc).isoformat()
-    await db.practices.update_one(
-        {"id": practice_id},
-        {"$set": {
-            "status": "completed",
-            "status_label": STATUS_LABELS["completed"],
-            "completed_at": completed_at,
-            "updated_at": completed_at
-        }}
-    )
-    await add_timeline_event(practice_id, user["id"], "completed", {
-        "note": "Pratica completata con successo"
-    })
+    if next_status == "completed":
+        await add_timeline_event(practice_id, user["id"], "completed", {
+            "note": "Pratica completata — nessun invio esterno richiesto"
+        })
 
     await log_activity(user["id"], "practice", "practice_approved", {
         "practice_id": practice_id,
         "approval_snapshot_id": approval_snapshot["id"]
     })
 
-    await create_notification(user["id"], "Pratica Approvata e Completata",
-        f"La pratica '{practice.get('practice_type_label')}' e stata approvata, inviata e completata con successo.", "success")
+    await create_notification(user["id"], "Pratica Approvata",
+        f"La pratica '{practice.get('practice_type_label')}' e stata approvata. {message}", "success")
 
     approval_snapshot.pop("_id", None)
-
     await refresh_practice_priority(practice_id)
 
     return {
-        "message": "Pratica approvata, inviata e completata con successo",
+        "message": message,
         "approval_snapshot": approval_snapshot,
-        "final_status": "completed",
-        "transitions": ["waiting_approval", "approved", "submitted", "completed"]
+        "final_status": next_status,
+        "needs_external_submission": needs_external_submission,
     }
+
+
+class SubmissionMarkRequest(BaseModel):
+    submission_type: str = "manual"  # "manual" or "channel"
+    notes: Optional[str] = None
+
+
+@api_router.post("/practices/{practice_id}/start")
+async def start_practice(practice_id: str, user: dict = Depends(get_current_user)):
+    """Transition from draft to waiting_user_documents (user acknowledged understanding)."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    if practice.get("status") != "draft":
+        raise HTTPException(status_code=400, detail="La pratica non e in stato bozza")
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {
+            "status": "waiting_user_documents",
+            "status_label": STATUS_LABELS["waiting_user_documents"],
+            "updated_at": now
+        }}
+    )
+    await add_timeline_event(practice_id, user["id"], "status_changed", {
+        "from": "draft", "to": "waiting_user_documents",
+        "note": "Utente ha compreso la pratica e iniziato il percorso"
+    })
+    await log_activity(user["id"], "practice", "practice_started", {"practice_id": practice_id})
+    await refresh_practice_priority(practice_id)
+    return {"message": "Pratica avviata", "status": "waiting_user_documents"}
+
+
+@api_router.post("/practices/{practice_id}/mark-submitted")
+async def mark_practice_submitted(practice_id: str, req: SubmissionMarkRequest, user: dict = Depends(get_current_user)):
+    """User marks practice as submitted (manually or via channel)."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    if practice.get("status") != "ready_for_submission":
+        raise HTTPException(status_code=400, detail="La pratica non e pronta per l'invio")
+
+    now = datetime.now(timezone.utc).isoformat()
+    new_status = "submitted_manually" if req.submission_type == "manual" else "submitted_via_channel"
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {
+            "status": new_status,
+            "status_label": STATUS_LABELS[new_status],
+            "submitted_at": now,
+            "updated_at": now
+        }}
+    )
+    await add_timeline_event(practice_id, user["id"], "submitted", {
+        "submission_type": req.submission_type,
+        "notes": req.notes
+    })
+    await log_activity(user["id"], "practice", "practice_submitted", {
+        "practice_id": practice_id, "submission_type": req.submission_type
+    })
+    await create_notification(user["id"], "Pratica Inviata",
+        f"Hai confermato l'invio della pratica '{practice.get('practice_type_label')}'.", "success")
+    await refresh_practice_priority(practice_id)
+    return {"message": "Invio confermato", "status": new_status}
+
+
+@api_router.post("/practices/{practice_id}/mark-completed")
+async def mark_practice_completed(practice_id: str, user: dict = Depends(get_current_user)):
+    """User marks practice as fully completed (accepted by entity or done)."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    if practice.get("status") not in ("submitted_manually", "submitted_via_channel", "waiting_external_response", "accepted_by_entity"):
+        raise HTTPException(status_code=400, detail="La pratica non e in uno stato che permette la chiusura")
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {
+            "status": "completed",
+            "status_label": STATUS_LABELS["completed"],
+            "completed_at": now,
+            "updated_at": now
+        }}
+    )
+    await add_timeline_event(practice_id, user["id"], "completed", {
+        "note": "Pratica completata dall'utente"
+    })
+    await log_activity(user["id"], "practice", "practice_completed", {"practice_id": practice_id})
+    await create_notification(user["id"], "Pratica Completata",
+        f"La pratica '{practice.get('practice_type_label')}' e stata completata.", "success")
+    await refresh_practice_priority(practice_id)
+    return {"message": "Pratica completata", "status": "completed"}
 
 # ========================
 # PRACTICE TIMELINE

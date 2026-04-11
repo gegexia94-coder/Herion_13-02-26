@@ -72,7 +72,7 @@ export default function AgentsPage() {
   // Metrics
   const activeAgents = new Set(allLogs.filter(l => l.status === 'running').map(l => l.agent_type)).size;
   const tasksInProgress = allLogs.filter(l => l.status === 'running').length;
-  const waitingApproval = practices.filter(p => p.status === 'waiting_approval').length;
+  const waitingApproval = practices.filter(p => ['waiting_approval', 'waiting_user_review'].includes(p.status)).length;
   const completedToday = allLogs.filter(l => {
     if (!l.timestamp) return false;
     const d = new Date(l.timestamp);
@@ -230,7 +230,7 @@ export default function AgentsPage() {
             <span className="ml-auto text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{waitingApproval}</span>
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--border-soft)' }}>
-            {practices.filter(p => p.status === 'waiting_approval').map(p => (
+            {practices.filter(p => ['waiting_approval', 'waiting_user_review'].includes(p.status)).map(p => (
               <Link key={p.id} to={`/practices/${p.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`approval-${p.id}`}>
                 <div className="min-w-0">
                   <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{p.client_name}</p>

@@ -1,0 +1,153 @@
+{
+  "summary": "Iteration 21 - Herion Practice Flow Refactor Testing Complete. All features verified: (1) Pre-practice Understanding Gate with mandatory explanation screen before starting practice, (2) 6-Step Practice Flow (Comprendi→Carica→Elabora→Verifica→Firma→Completa), (3) Document Clarity System with clear categories (Da caricare, Ricevuto, Generato da Herion, Richiede firma, Firmato p7m), (4) Expanded Practice Status Semantics (16 statuses mapped to 8 user-facing categories), (5) Official Channel / Entity-Aware Practice Layer showing entity name, submission method, portal link, who submits, authentication needed. All UI text is in Italian. Backend API tests: 17/17 passed. Frontend UI tests: All passed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_herion_v21_practice_flow.py",
+    "/app/test_reports/pytest/pytest_results_v21.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Understanding Gate correctly displays: 'Prima di iniziare' header, practice explanation, required documents, how-it-works steps, destination entity, and 'Inizia la pratica' CTA",
+    "6-step progress bar correctly shows: Comprendi→Carica→Elabora→Verifica→Firma→Completa with proper step highlighting based on status",
+    "POST /api/practices/{id}/start correctly transitions draft to waiting_user_documents",
+    "POST /api/practices/{id}/mark-submitted correctly transitions ready_for_submission to submitted_manually",
+    "POST /api/practices/{id}/mark-completed correctly transitions submitted practices to completed",
+    "GET /api/practices/{id} returns enriched data: catalog_info, channel_info, current_step, user_status",
+    "Status labels updated: 'Non iniziata' instead of 'Bozza' in user-facing UI",
+    "Dashboard shows 'Verifica' button for waiting_user_review practices",
+    "Document Section shows missing docs with 'Da caricare' labels",
+    "Channel Card displays entity name, submission method, portal link, and who-submits info"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_herion_v21_practice_flow.py"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Created test practices with TEST_ prefix for testing, cleaned up after tests",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 21 tested the major practice flow refactor. Key features verified: (1) Understanding Gate: Shows 'Prima di iniziare' header, 'Cos'è questa pratica' explanation, 'Documenti necessari' list, 'Come funziona' 4-step flow, 'Destinazione' entity info, 'Inizia la pratica' CTA button. (2) 6-Step Progress Bar: Comprendi→Carica→Elabora→Verifica→Firma→Completa with proper highlighting. (3) New endpoints: POST /start (draft→waiting_user_documents), POST /mark-submitted (ready_for_submission→submitted_manually), POST /mark-completed (submitted→completed). (4) Enriched practice response: catalog_info, channel_info, current_step, user_status. (5) Status labels: 'Non iniziata' for draft, 'In attesa dei tuoi documenti' for waiting_user_documents. (6) Document Section: Shows 'Da caricare' labels for missing docs. (7) Channel Card: Shows entity name, submission method, portal link, who-submits. (8) Dashboard: 'Verifica' button for waiting_user_review practices. All tests passed.",
+  "features_tested": {
+    "understanding_gate": {
+      "status": "PASS",
+      "details": [
+        "'Prima di iniziare' header displayed",
+        "'Cos'è questa pratica' explanation section",
+        "'Documenti necessari' list with required documents",
+        "'Come funziona' 4-step flow explanation",
+        "'Destinazione' entity info (Agenzia delle Entrate)",
+        "'Inizia la pratica' CTA button",
+        "Gate hidden after clicking start"
+      ]
+    },
+    "six_step_progress_bar": {
+      "status": "PASS",
+      "details": [
+        "Step 'Comprendi' (understand) present",
+        "Step 'Carica' (upload) present",
+        "Step 'Elabora' (process) present",
+        "Step 'Verifica' (review) present",
+        "Step 'Firma' (sign) present",
+        "Step 'Completa' (complete) present",
+        "Correct step highlighted based on status"
+      ]
+    },
+    "start_practice_endpoint": {
+      "status": "PASS",
+      "details": [
+        "POST /api/practices/{id}/start works",
+        "Transitions draft to waiting_user_documents",
+        "Returns correct status in response",
+        "Rejects non-draft practices with 400 error"
+      ]
+    },
+    "mark_submitted_endpoint": {
+      "status": "PASS",
+      "details": [
+        "POST /api/practices/{id}/mark-submitted works",
+        "Transitions ready_for_submission to submitted_manually",
+        "Accepts submission_type and notes parameters",
+        "Rejects non-ready practices with 400 error"
+      ]
+    },
+    "mark_completed_endpoint": {
+      "status": "PASS",
+      "details": [
+        "POST /api/practices/{id}/mark-completed works",
+        "Transitions submitted practices to completed",
+        "Rejects non-submitted practices with 400 error"
+      ]
+    },
+    "enriched_practice_response": {
+      "status": "PASS",
+      "details": [
+        "catalog_info field present with practice catalog data",
+        "channel_info field present with authority registry data",
+        "current_step field present (0-5 based on status)",
+        "user_status field present with label, color, category"
+      ]
+    },
+    "status_labels": {
+      "status": "PASS",
+      "details": [
+        "'Non iniziata' for draft status",
+        "'In attesa dei tuoi documenti' for waiting_user_documents",
+        "All 16 statuses mapped correctly",
+        "Filter dropdown has new status options"
+      ]
+    },
+    "document_section": {
+      "status": "PASS",
+      "details": [
+        "Shows missing documents with 'Da caricare' labels",
+        "Shows uploaded documents with category labels",
+        "Upload button available when canUpload is true"
+      ]
+    },
+    "channel_card": {
+      "status": "PASS",
+      "details": [
+        "Entity name displayed (Agenzia delle Entrate)",
+        "Submission method shown (Portale ufficiale)",
+        "Portal link available",
+        "'Chi invia' info shown (Tu/Herion)"
+      ]
+    },
+    "guidance_card": {
+      "status": "PASS",
+      "details": [
+        "Shows 'Carica i documenti necessari' after start",
+        "Lists missing documents",
+        "Shows next action hint"
+      ]
+    },
+    "dashboard_verifica_button": {
+      "status": "PASS",
+      "details": [
+        "'Verifica' button shown for waiting_user_review practices",
+        "Button triggers approval flow"
+      ]
+    },
+    "chat_section": {
+      "status": "PASS",
+      "details": [
+        "Chat section in right column",
+        "Chat suggestions available",
+        "Input field and send button present"
+      ]
+    }
+  }
+}

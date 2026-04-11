@@ -11,15 +11,29 @@ import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const STATUS_CFG = {
-  draft: { label: 'Bozza', color: '#5B6475' },
+  draft: { label: 'Non iniziata', color: '#5B6475' },
+  waiting_user_documents: { label: 'Attesa documenti', color: '#F59E0B' },
+  documents_received: { label: 'Documenti ricevuti', color: '#3B82F6' },
+  internal_processing: { label: 'In revisione', color: '#3B82F6' },
+  internal_validation_passed: { label: 'Revisione OK', color: '#10B981' },
+  internal_validation_failed: { label: 'Problemi', color: '#EF4444' },
+  waiting_user_review: { label: 'Verifica richiesta', color: '#F59E0B' },
+  waiting_signature: { label: 'Attesa firma', color: '#F59E0B' },
+  ready_for_submission: { label: 'Pronta invio', color: '#06B6D4' },
+  submitted_manually: { label: 'Inviata', color: '#06B6D4' },
+  submitted_via_channel: { label: 'Inviata', color: '#06B6D4' },
+  waiting_external_response: { label: 'Attesa ente', color: '#8B5CF6' },
+  accepted_by_entity: { label: 'Accettata', color: '#10B981' },
+  rejected_by_entity: { label: 'Rifiutata', color: '#EF4444' },
+  completed: { label: 'Completata', color: '#10B981' },
+  blocked: { label: 'Bloccata', color: '#EF4444' },
+  // Legacy
   pending: { label: 'In Attesa', color: '#F59E0B' },
   in_progress: { label: 'Elaborazione', color: '#3B82F6' },
   processing: { label: 'Elaborazione', color: '#3B82F6' },
-  waiting_approval: { label: 'Approvazione', color: '#F59E0B' },
+  waiting_approval: { label: 'Verifica richiesta', color: '#F59E0B' },
   approved: { label: 'Approvata', color: '#10B981' },
   submitted: { label: 'Inviata', color: '#06B6D4' },
-  completed: { label: 'Completata', color: '#10B981' },
-  blocked: { label: 'Bloccata', color: '#EF4444' },
   escalated: { label: 'Escalation', color: '#EF4444' },
   rejected: { label: 'Rifiutata', color: '#EF4444' },
 };
@@ -98,9 +112,10 @@ export default function PracticesListPage() {
           <SelectTrigger className="w-full sm:w-36 rounded-lg h-9 text-[12px]" style={{ borderColor: 'var(--border-soft)' }} data-testid="status-filter"><SelectValue placeholder="Stato" /></SelectTrigger>
           <SelectContent className="rounded-lg">
             <SelectItem value="all">Tutti</SelectItem>
-            <SelectItem value="draft">Bozza</SelectItem>
-            <SelectItem value="in_progress">Elaborazione</SelectItem>
-            <SelectItem value="waiting_approval">Approvazione</SelectItem>
+            <SelectItem value="draft">Non iniziata</SelectItem>
+            <SelectItem value="waiting_user_documents">Attesa documenti</SelectItem>
+            <SelectItem value="waiting_user_review">Verifica richiesta</SelectItem>
+            <SelectItem value="ready_for_submission">Pronta invio</SelectItem>
             <SelectItem value="completed">Completata</SelectItem>
             <SelectItem value="blocked">Bloccata</SelectItem>
           </SelectContent>

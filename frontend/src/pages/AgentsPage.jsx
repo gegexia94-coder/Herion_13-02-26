@@ -211,10 +211,10 @@ export default function AgentsPage() {
               );
             })}
             {allLogs.length === 0 && (
-              <div className="text-center py-12">
-                <Bot className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2 opacity-40" strokeWidth={1.5} />
-                <p className="text-[12px] text-[var(--text-secondary)]">Nessuna attivita ancora</p>
-                <p className="text-[10px] text-[var(--text-muted)]">Gli agenti si attiveranno quando avvii una pratica</p>
+              <div className="text-center py-12 px-5">
+                <Bot className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-2 opacity-30" strokeWidth={1.5} />
+                <p className="text-[12px] font-medium text-[var(--text-primary)]">Nessuna attivita agenti</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-xs mx-auto">Gli agenti si attivano automaticamente quando avvii l'analisi di una pratica. Vai su una pratica e clicca "Avvia Analisi".</p>
               </div>
             )}
           </div>

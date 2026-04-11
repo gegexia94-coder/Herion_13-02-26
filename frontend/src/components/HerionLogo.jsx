@@ -1,15 +1,7 @@
-const LOGO_URL = 'https://customer-assets.emergentagent.com/job_ai-practice-manager/artifacts/bki0f2lu_560feac8-8d0d-487d-8f06-bef0f544b06a-1.png';
-
 export function HerionBrand({ size = 32, className = '', showText = false }) {
   return (
-    <div className={`flex items-center gap-2 ${className}`} data-testid="herion-brand">
-      <img
-        src={LOGO_URL}
-        alt="Herion"
-        className="object-contain"
-        style={{ width: size, height: size }}
-        data-testid="herion-logo-img"
-      />
+    <div className={`flex items-center gap-2.5 ${className}`} data-testid="herion-brand">
+      <HerionIcon size={size} />
       {showText && (
         <div className="flex flex-col leading-none">
           <span className="text-[14px] font-bold tracking-tight text-[#0ABFCF]">Herion</span>
@@ -20,26 +12,39 @@ export function HerionBrand({ size = 32, className = '', showText = false }) {
   );
 }
 
+export function HerionIcon({ size = 28, color = '#0ABFCF' }) {
+  const h = size;
+  const w = Math.round(size * 0.88);
+  return (
+    <svg
+      viewBox="0 0 28 32"
+      width={w}
+      height={h}
+      fill="none"
+      data-testid="herion-logo-icon"
+    >
+      {/* Left pillar — pill-shaped */}
+      <rect x="1" y="1" width="8" height="30" rx="4" fill={color} />
+      {/* Right pillar — pill-shaped */}
+      <rect x="19" y="1" width="8" height="30" rx="4" fill={color} />
+      {/* Bridge — connecting crossbar with subtle rounded ends */}
+      <rect x="9" y="12.5" width="10" height="7" rx="3" fill={color} />
+    </svg>
+  );
+}
+
 export function HerionMark({ size = 32, className = '' }) {
   return (
-    <img
-      src={LOGO_URL}
-      alt="H"
-      className={`object-contain ${className}`}
-      style={{ width: size, height: size }}
-      data-testid="herion-mark"
-    />
+    <div className={className}>
+      <HerionIcon size={size} />
+    </div>
   );
 }
 
 export function HerionMarkLight({ size = 32, className = '' }) {
   return (
-    <img
-      src={LOGO_URL}
-      alt="H"
-      className={`object-contain brightness-150 ${className}`}
-      style={{ width: size, height: size }}
-      data-testid="herion-mark-light"
-    />
+    <div className={className}>
+      <HerionIcon size={size} color="rgba(255,255,255,0.5)" />
+    </div>
   );
 }

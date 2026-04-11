@@ -58,18 +58,18 @@ export default function SearchPage() {
       {loading && <div className="flex justify-center py-12"><RefreshCw className="w-5 h-5 animate-spin text-[var(--text-muted)]" /></div>}
 
       {!loading && query && results.length === 0 && (
-        <div className="text-center py-12">
-          <Search className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-3 opacity-40" strokeWidth={1.5} />
-          <p className="text-[14px] text-[var(--text-secondary)]">Nessun risultato per "{query}"</p>
-          <p className="text-[12px] text-[var(--text-muted)] mt-1">Prova con un termine diverso</p>
+        <div className="text-center py-12 px-5">
+          <Search className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2.5 opacity-30" strokeWidth={1.5} />
+          <p className="text-[13px] font-semibold text-[var(--text-primary)]">Nessun risultato per "{query}"</p>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-sm mx-auto">Controlla l'ortografia o prova con un termine diverso. Puoi cercare per nome cliente, tipo pratica o codice fiscale.</p>
         </div>
       )}
 
       {!loading && !query && (
-        <div className="text-center py-12">
-          <Search className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-3 opacity-40" strokeWidth={1.5} />
-          <p className="text-[14px] text-[var(--text-secondary)]">Inizia a scrivere per cercare</p>
-          <p className="text-[12px] text-[var(--text-muted)] mt-1">Puoi cercare per nome cliente, tipo pratica, codice fiscale o partita IVA</p>
+        <div className="text-center py-12 px-5">
+          <Search className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2.5 opacity-30" strokeWidth={1.5} />
+          <p className="text-[13px] font-semibold text-[var(--text-primary)]">Cerca nelle tue pratiche</p>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-sm mx-auto">Scrivi il nome del cliente, il tipo di pratica, il codice fiscale o la partita IVA per trovare subito quello che cerchi.</p>
         </div>
       )}
 

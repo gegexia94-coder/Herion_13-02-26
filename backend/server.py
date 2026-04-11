@@ -715,6 +715,8 @@ async def get_practices(user: dict = Depends(get_current_user)):
         p["priority"] = evaluate_practice_priority(p)
         p["priority_label"] = PRIORITY_LEVELS.get(p["priority"], {}).get("label", p["priority"])
         p["priority_order"] = priority_order.get(p["priority"], 2)
+        p["step_index"] = PRACTICE_STEP_MAP.get(p.get("status", "draft"), 0)
+        p["user_status"] = USER_STATUS_DISPLAY.get(p.get("status", "draft"), USER_STATUS_DISPLAY.get("draft"))
     practices.sort(key=lambda x: (x["priority_order"], x.get("created_at", "")))
     for p in practices:
         p.pop("priority_order", None)
@@ -5268,34 +5270,39 @@ async def create_practice_from_template(req: TemplateInstanceRequest, user: dict
 
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(get_current_user)):
-    total_practices = await db.practices.count_documents({"user_id": user["id"]})
-    pending = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["pending", "draft"]}})
-    processing = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["processing", "in_progress"]}})
-    waiting_approval = await db.practices.count_documents({"user_id": user["id"], "status": "waiting_approval"})
-    completed = await db.practices.count_documents({"user_id": user["id"], "status": "completed"})
-    blocked = await db.practices.count_documents({"user_id": user["id"], "status": {"$in": ["blocked", "escalated"]}})
+    is_admin = user.get("role") in ["admin", "creator"]
+    user_filter = {} if is_admin else {"user_id": user["id"]}
+
+    total_practices = await db.practices.count_documents(user_filter)
+    pending = await db.practices.count_documents({**user_filter, "status": {"$in": ["pending", "draft", "waiting_user_documents"]}})
+    processing = await db.practices.count_documents({**user_filter, "status": {"$in": ["processing", "in_progress", "internal_processing"]}})
+    waiting_review = await db.practices.count_documents({**user_filter, "status": {"$in": ["waiting_approval", "waiting_user_review"]}})
+    completed = await db.practices.count_documents({**user_filter, "status": {"$in": ["completed", "accepted_by_entity"]}})
+    blocked = await db.practices.count_documents({**user_filter, "status": {"$in": ["blocked", "escalated", "internal_validation_failed", "rejected_by_entity"]}})
     unread_notifications = await db.notifications.count_documents({"user_id": user["id"], "read": False})
-    urgent_count = await db.practices.count_documents({"user_id": user["id"], "priority": "urgent"})
-    high_count = await db.practices.count_documents({"user_id": user["id"], "priority": "high"})
+    urgent_count = await db.practices.count_documents({**user_filter, "priority": "urgent"})
+    high_count = await db.practices.count_documents({**user_filter, "priority": "high"})
 
     recent_practices = await db.practices.find(
-        {"user_id": user["id"]},
+        user_filter,
         {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1, "status_label": 1,
-         "risk_level": 1, "priority": 1, "current_step": 1, "created_at": 1, "updated_at": 1, "deadline": 1}
+         "risk_level": 1, "priority": 1, "current_step": 1, "created_at": 1, "updated_at": 1, "deadline": 1,
+         "agent_logs": 1}
     ).sort("created_at", -1).limit(10).to_list(10)
 
-    # Recalculate priority for all returned practices
     priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
     for p in recent_practices:
         p["priority"] = evaluate_practice_priority(p)
         p["priority_label"] = PRIORITY_LEVELS.get(p["priority"], {}).get("label", p["priority"])
+        p["user_status"] = USER_STATUS_DISPLAY.get(p.get("status", "draft"), USER_STATUS_DISPLAY.get("draft"))
+        p["step_index"] = PRACTICE_STEP_MAP.get(p.get("status", "draft"), 0)
     recent_practices.sort(key=lambda x: (priority_order.get(x["priority"], 2), x.get("created_at", "")))
 
-    # Critical practices: waiting_approval + blocked + urgent
+    # Critical practices: waiting_review + blocked + urgent
     critical = await db.practices.find(
-        {"user_id": user["id"], "$or": [
-            {"status": "waiting_approval"},
-            {"status": {"$in": ["blocked", "escalated"]}},
+        {**user_filter, "$or": [
+            {"status": {"$in": ["waiting_approval", "waiting_user_review", "waiting_signature", "ready_for_submission"]}},
+            {"status": {"$in": ["blocked", "escalated", "internal_validation_failed", "rejected_by_entity"]}},
             {"priority": {"$in": ["urgent", "high"]}},
         ]},
         {"_id": 0, "id": 1, "practice_type_label": 1, "client_name": 1, "status": 1, "status_label": 1,
@@ -5312,11 +5319,27 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         {"user_id": user["id"]}, {"_id": 0}
     ).sort("timestamp", -1).limit(8).to_list(8)
 
+    # Agent activity summary from recent practice logs
+    all_agent_logs = []
+    for p in recent_practices:
+        for log in (p.get("agent_logs") or [])[-3:]:
+            all_agent_logs.append({
+                "agent_type": log.get("agent_type"),
+                "branded_name": log.get("branded_name", log.get("agent_type", "")),
+                "status": log.get("status"),
+                "explanation": log.get("explanation", ""),
+                "practice_id": p.get("id"),
+                "client_name": p.get("client_name"),
+                "timestamp": log.get("completed_at") or log.get("started_at"),
+            })
+        p.pop("agent_logs", None)
+    all_agent_logs.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+
     return {
         "total_practices": total_practices,
         "pending": pending,
         "processing": processing,
-        "waiting_approval": waiting_approval,
+        "waiting_approval": waiting_review,
         "completed": completed,
         "blocked": blocked,
         "urgent": urgent_count,
@@ -5325,6 +5348,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "recent_practices": recent_practices,
         "critical_practices": critical,
         "activity_logs": activity_logs,
+        "agent_activity": all_agent_logs[:8],
     }
 
 # ========================

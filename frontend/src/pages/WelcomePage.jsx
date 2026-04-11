@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { HerionBrand, HerionMarkLight } from '@/components/HerionLogo';
+import { HerionBrand, HerionMarkLight, HerionIcon } from '@/components/HerionLogo';
 
 const HERO_SLIDES = [
   { heading: 'Chiarezza in ogni operazione', body: 'Ogni pratica ha un percorso visibile, ogni passaggio ha una spiegazione. Niente piu confusione.' },

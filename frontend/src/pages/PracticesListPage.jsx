@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { FileText, Plus, Search, Trash2, Eye, AlertTriangle, RefreshCw } from 'lucide-react';
-import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const STATUS_CFG = {
@@ -137,11 +135,11 @@ export default function PracticesListPage() {
       {filteredPractices.length > 0 ? (
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_70px_100px_80px] sm:grid-cols-[1fr_70px_100px_90px_80px] px-5 py-2.5 border-b text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]" style={{ borderColor: 'var(--border-soft)' }}>
+          <div className="grid grid-cols-[1fr_70px_100px_60px_80px] sm:grid-cols-[1fr_70px_100px_70px_80px] px-5 py-2.5 border-b text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]" style={{ borderColor: 'var(--border-soft)' }}>
             <span>Nome</span>
             <span>Priorita</span>
             <span>Stato</span>
-            <span className="hidden sm:block">Data</span>
+            <span>Progresso</span>
             <span className="text-right">Azioni</span>
           </div>
 
@@ -149,8 +147,10 @@ export default function PracticesListPage() {
             {filteredPractices.map((p, idx) => {
               const cfg = STATUS_CFG[p.status] || STATUS_CFG.draft;
               const pcfg = PRIORITY_CFG[p.priority] || PRIORITY_CFG.normal;
+              const stepIdx = p.step_index ?? 0;
+              const isBlocked = stepIdx === -1;
               return (
-                <div key={p.id} className="grid grid-cols-[1fr_70px_100px_80px] sm:grid-cols-[1fr_70px_100px_90px_80px] items-center px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${idx}`}>
+                <div key={p.id} className="grid grid-cols-[1fr_70px_100px_60px_80px] sm:grid-cols-[1fr_70px_100px_70px_80px] items-center px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${idx}`}>
                   <Link to={`/practices/${p.id}`} className="min-w-0">
                     <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{p.client_name}</p>
                     <p className="text-[10px] text-[var(--text-muted)] truncate">{p.practice_type_label}</p>
@@ -163,7 +163,18 @@ export default function PracticesListPage() {
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
                     {cfg.label}
                   </span>
-                  <span className="hidden sm:block text-[10px] text-[var(--text-muted)]">{format(new Date(p.created_at), 'dd MMM yy', { locale: it })}</span>
+                  {/* Progress indicator */}
+                  <div className="flex items-center gap-0.5" data-testid={`progress-${idx}`}>
+                    {isBlocked ? (
+                      <span className="text-[9px] font-bold text-red-500">!</span>
+                    ) : (
+                      [0,1,2,3,4,5].map(s => (
+                        <div key={s} className={`h-1.5 flex-1 rounded-full max-w-[8px] ${
+                          s < stepIdx ? 'bg-emerald-400' : s === stepIdx ? 'bg-[#0ABFCF]' : 'bg-[var(--border-soft)]'
+                        }`} />
+                      ))
+                    )}
+                  </div>
                   <div className="flex justify-end gap-0.5">
                     <Link to={`/practices/${p.id}`}>
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded" data-testid={`view-practice-${idx}`}><Eye className="w-3.5 h-3.5 text-[var(--text-secondary)]" /></Button>
@@ -178,12 +189,19 @@ export default function PracticesListPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border text-center py-14" style={{ borderColor: 'var(--border-soft)' }}>
-          <FileText className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2 opacity-40" strokeWidth={1.5} />
-          <p className="text-[13px] font-medium text-[var(--text-primary)]">Nessuna pratica trovata</p>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">{practices.length === 0 ? 'Inizia creando la tua prima pratica.' : 'Nessun risultato per i filtri selezionati.'}</p>
-          {practices.length === 0 && (
-            <Link to="/practices/new"><Button className="mt-4 bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg text-[12px]" data-testid="empty-create-btn"><Plus className="w-3.5 h-3.5 mr-1.5" />Crea Prima Pratica</Button></Link>
+        <div className="bg-white rounded-xl border py-14 px-6 text-center" style={{ borderColor: 'var(--border-soft)' }}>
+          <FileText className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2.5 opacity-30" strokeWidth={1.5} />
+          {practices.length === 0 ? (
+            <>
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">Nessuna pratica ancora</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-sm mx-auto">Crea la tua prima pratica per iniziare. Herion ti guidera passo dopo passo: dalla raccolta documenti fino all'invio.</p>
+              <Link to="/practices/new"><Button className="mt-4 bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[11px] font-semibold h-9 px-5" data-testid="empty-create-btn"><Plus className="w-3.5 h-3.5 mr-1.5" />Crea la prima pratica</Button></Link>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">Nessun risultato</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">Prova a cambiare i filtri o il termine di ricerca.</p>
+            </>
           )}
         </div>
       )}

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDashboardStats, getReminders, runPracticeWorkflow, approvePractice } from '@/services/api';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowRight, Play, CheckCircle, AlertTriangle, RefreshCw, Send, FileText, Zap, ChevronLeft, ChevronRight, Calendar, FileCheck, Megaphone, Globe, Clock, Lock, Shield } from 'lucide-react';
+import { Plus, ArrowRight, Play, CheckCircle, AlertTriangle, RefreshCw, Send, FileText, Zap, ChevronLeft, ChevronRight, Calendar, FileCheck, Megaphone, Globe, Clock, Lock, Shield, Bot } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -194,19 +194,59 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 px-5">
-            <FileText className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2 opacity-40" strokeWidth={1.5} />
-            <p className="text-[13px] text-[var(--text-secondary)]">Nessuna pratica</p>
-            <Button variant="outline" size="sm" onClick={() => navigate('/practices/new')} className="mt-3 rounded-lg text-[12px]" data-testid="empty-create-btn">
-              Crea la prima pratica
+          <div className="px-5 py-10 text-center">
+            <FileText className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-2 opacity-30" strokeWidth={1.5} />
+            <p className="text-[12px] font-medium text-[var(--text-primary)]">Nessuna pratica ancora</p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">Crea la tua prima pratica per iniziare a gestire documenti, scadenze e adempimenti in un unico posto.</p>
+            <Button onClick={() => navigate('/practices/new')} className="mt-4 bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[11px] h-9 px-5 font-semibold" data-testid="empty-create-btn">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />Crea la prima pratica
             </Button>
           </div>
         )}
       </div>
 
-      {/* ── SECONDARY: Critical + Activity ── */}
+      {/* ── SECONDARY: Agent Activity + Critical + Activity ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {criticalCount > 0 && (
+
+        {/* AGENT ACTIVITY WIDGET */}
+        <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="agent-activity-widget">
+          <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border-soft)' }}>
+            <Bot className="w-3.5 h-3.5 text-[#0ABFCF]" />
+            <h3 className="text-[12px] font-bold text-[var(--text-primary)]">Attivita Agenti</h3>
+            <Link to="/agents" className="ml-auto text-[10px] font-semibold text-[#0ABFCF] hover:underline">Vedi tutto</Link>
+          </div>
+          {stats?.agent_activity?.length > 0 ? (
+            <div className="divide-y max-h-[220px] overflow-y-auto" style={{ borderColor: 'var(--border-soft)' }}>
+              {stats.agent_activity.slice(0, 5).map((a, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-2.5" data-testid={`agent-widget-${i}`}>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    a.status === 'completed' ? 'bg-emerald-50' : a.status === 'running' ? 'bg-blue-50' : 'bg-red-50'
+                  }`}>
+                    <Bot className={`w-3 h-3 ${
+                      a.status === 'completed' ? 'text-emerald-500' : a.status === 'running' ? 'text-blue-500' : 'text-red-500'
+                    }`} strokeWidth={1.5} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-[var(--text-primary)] truncate">{a.branded_name}</p>
+                    <p className="text-[9px] text-[var(--text-muted)] truncate">{a.client_name}</p>
+                  </div>
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                    a.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : a.status === 'running' ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'
+                  }`}>{a.status === 'completed' ? 'OK' : a.status === 'running' ? 'Attivo' : 'Err'}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-8 text-center">
+              <Bot className="w-5 h-5 text-[var(--text-muted)] mx-auto mb-1.5 opacity-30" strokeWidth={1.5} />
+              <p className="text-[11px] font-medium text-[var(--text-primary)]">Nessuna attivita agenti</p>
+              <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Gli agenti si attivano quando avvii l'analisi di una pratica</p>
+            </div>
+          )}
+        </div>
+
+        {/* CRITICAL / ATTENTION */}
+        {criticalCount > 0 ? (
           <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="critical-block">
             <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border-soft)' }}>
               <Shield className="w-3.5 h-3.5 text-amber-500" />
@@ -227,29 +267,30 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-        )}
-
-        <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="activity-log">
-          <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border-soft)' }}>
-            <Clock className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-            <h3 className="text-[12px] font-bold text-[var(--text-primary)]">Attivita Recenti</h3>
+        ) : (
+          <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="activity-log">
+            <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border-soft)' }}>
+              <Clock className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <h3 className="text-[12px] font-bold text-[var(--text-primary)]">Attivita Recenti</h3>
+            </div>
+            {stats?.activity_logs?.length > 0 ? (
+              <div className="divide-y max-h-[220px] overflow-y-auto" style={{ borderColor: 'var(--border-soft)' }}>
+                {stats.activity_logs.map((log, i) => (
+                  <div key={log.id || i} className="px-5 py-2.5" data-testid={`activity-${i}`}>
+                    <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{log.action?.replace(/_/g, ' ')}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{log.timestamp ? format(new Date(log.timestamp), 'dd MMM HH:mm', { locale: it }) : ''}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-5 py-8 text-center">
+                <Clock className="w-5 h-5 text-[var(--text-muted)] mx-auto mb-1.5 opacity-30" strokeWidth={1.5} />
+                <p className="text-[11px] font-medium text-[var(--text-primary)]">Nessuna attivita recente</p>
+                <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Le attivita appariranno qui quando lavori sulle pratiche</p>
+              </div>
+            )}
           </div>
-          {stats?.activity_logs?.length > 0 ? (
-            <div className="divide-y max-h-[220px] overflow-y-auto" style={{ borderColor: 'var(--border-soft)' }}>
-              {stats.activity_logs.map((log, i) => (
-                <div key={log.id || i} className="px-5 py-2.5" data-testid={`activity-${i}`}>
-                  <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{log.action?.replace(/_/g, ' ')}</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">{log.timestamp ? format(new Date(log.timestamp), 'dd MMM HH:mm', { locale: it }) : ''}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="px-5 py-8 text-center">
-              <Zap className="w-5 h-5 text-[var(--text-muted)] mx-auto mb-1.5 opacity-40" strokeWidth={1.5} />
-              <p className="text-[11px] text-[var(--text-muted)]">Nessuna attivita recente</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

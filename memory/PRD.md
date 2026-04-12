@@ -3,46 +3,33 @@
 ## Architecture
 Frontend: React + Tailwind + Shadcn | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | Brand: Geometric H #0ABFCF
 
-## Catalog Foundation (Batch 22 — 2026-04-12)
+## Catalog System (Batches 22-23)
 
-### Categories (5)
-| Category | Label | Official | Count |
-|----------|-------|----------|-------|
-| fiscale | Fiscale | Yes | 7 |
-| previdenziale | Previdenziale | Yes | 2 |
-| societario | Societario | Yes | 1 |
-| documentale | Documentale | No | 7 |
-| informativo | Informativo | No | 3 |
+### Foundation (Backend — Batch 22)
+- 5 categories: fiscale(7), previdenziale(2), societario(1), documentale(7), informativo(3)
+- official_procedure vs internal_support distinction
+- Enriched fields: official_action, who_acts, auth_method, proof_expected, estimated_duration, document_specs
 
-### Enriched Fields (per procedure)
-- `category` + `category_label` — clear grouping
-- `procedure_type` — "official_procedure" vs "internal_support"
-- `official_action` — {code, label, description, entity_name, form_reference}
-- `who_acts` — {herion_prepares, herion_submits, user_submits, user_signs, delegation_possible, entity_response_expected}
-- `auth_method` — SPID/CIE/CNS/None
-- `proof_expected` — {type, timing (immediate/delayed), label, optional}
-- `estimated_duration` — {label, min_days, max_days}
-- `document_specs` — [{key, name, why_needed, format, mandatory}]
+### Browser (Frontend — Batch 23)
+- Category cards with counts + "Ufficiale" badges
+- Search by name/entity/action
+- Filter: Tutte / Ufficiali / Interne
+- Expandable cards showing: CHI FA COSA, AZIONE UFFICIALE, DOCUMENTI RICHIESTI, AUTENTICAZIONE/RICEVUTA/TEMPISTICA
+- "Avvia questa procedura" CTA for official procedures
+- "Catalogo" added to sidebar navigation
 
-### Endpoints
-- GET /api/catalog/categories — categories with procedure counts
-- GET /api/catalog — all 20 entries
-- GET /api/catalog/{id} — single entry with full enrichment
-
-## Previous Batches (All tested 100%)
-- Batch 21: Refinement pass 2 (notification grouping, context panel, auth flow)
-- Batch 20: Communication + Notifications + Auth prep
-- Batch 19: Refinement pass 1 (COSA FARE, CHI AGISCE, progress bar)
+## Previous Batches (All 100%)
+- Batch 21: Refinement 2 (notification grouping, auth flow)
+- Batch 20: Communication + Notifications
+- Batch 19: Refinement 1 (COSA FARE, CHI AGISCE)
 - Batch 18: Frontend Workspace + Delegation
 - Batch 17: Backend Workspace + Delegation
-- Batch 16: Language + Agent Behavior
-- Batch 15: Empty States + Widget + Progress + Brand
-- Batch 14: Phase 1-4 (Understanding gate, 6-step, doc clarity, statuses, channel)
-- Batches 1-13: Priority, auth, catalog, governance, email, agents
+- Batches 14-16: Understanding gate, 6-step flow, language, empty states, brand
+- Batches 1-13: Priority, auth, agents, email, etc.
 
-## Testing: Iterations 21-29 all 100%
+## Testing: Iterations 21-30 all 100%
 
 ## Remaining
-- P0: Catalog expansion (bulk add procedures), frontend catalog browser
-- P1: Real SPID/CIE integration, advanced analytics
-- P2: Multi-language, catalog 120+
+- P0: Catalog expansion (bulk add procedures)
+- P1: Real SPID/CIE integration
+- P2: Advanced analytics, multi-language

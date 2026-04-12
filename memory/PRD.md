@@ -1,29 +1,34 @@
 # Herion - Controlled Execution Platform
 
 ## Architecture
-- Frontend: React + Tailwind CSS + Shadcn UI | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | Brand: Geometric H #0ABFCF
+Frontend: React + Tailwind + Shadcn | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | Brand: Geometric H #0ABFCF
 
-## Implemented (All tested 100%)
+## Implemented (All iterations 100%)
 
-### Communication + Notifications + Auth Prep (Batch 20 — 2026-04-12)
-- **Communication Page**: Workspace-driven context panel. Click email → right panel shows linked practice state, current agent, guidance, official action, who acts now. Practice links on every email. Stats: "Richiedono azione", "Inviate", "Bloccate". Create form with practice selector.
-- **Notification System**: Bell icon in sidebar with unread badge (polls every 30s). Panel overlay with type-based colors: amber=action, red=urgent, blue=Herion, green=success, purple=entity. Source labels (Herion/Sistema/Ente). Mark all read. Non-intrusive.
-- **Auth Flow Preparation**: New statuses: awaiting_authentication, submission_in_progress. "Accedi e continua" CTA on Official Step card when credentials required. Backend + frontend ready for future SPID/CIE integration.
+### Refinement Pass 2 (Batch 21 — 2026-04-12)
+- Notification grouping: consecutive same-title notifications collapsed with "+ N simili"
+- Communication context panel tightened: agent card only for in_progress, combined who-acts + action label
+- Official Step "Accedi e continua" with purple explanation box about official portal
+- Italian singular/plural handling in notification groups
 
-### Refinement Pass (Batch 19)
+### Communication + Notifications + Auth Prep (Batch 20)
+- Communication page with workspace context panel, practice links, create form with practice selector
+- Notification system: bell + panel overlay, type-based colors, source labels, mark all read
+- Auth states: awaiting_authentication, submission_in_progress, "Accedi e continua" CTA
+
+### Refinement Pass 1 (Batch 19)
 - COSA FARE box, CHI AGISCE ORA badge, blocked progress bar, Italian timeline labels
 
-### Frontend Workspace Integration (Batch 18)
+### Frontend Workspace + Delegation (Batch 18)
 - PracticeDetailPage wired to workspace, Official Step card, Delegation UI, Father Review
 
 ### Backend Workspace + Delegation (Batch 17)
-- GET /workspace, POST /delegate, /revoke-delegation, /proof, /complete-official-step
+- Workspace endpoint, delegation, proof, official step completion
 
-### Earlier (Batches 14-16): Understanding gate, 6-step flow, doc clarity, statuses, language, empty states, agent widget, progress, brand
-### Earlier (Batches 1-13): Priority, auth, catalog, governance, email, agents
+### Language + Agent Behavior (Batch 16), Empty States + Widget + Progress + Brand (Batch 15), Phase 1-4 (Batch 14), Earlier (1-13)
 
-## Testing: Iterations 21-27 all 100%
+## Testing: Iterations 21-28 all 100%
 
-## Remaining Backlog
-- P0: Real SPID/CIE embedded auth integration (UI ready, needs provider)
+## Remaining
+- P0: Real SPID/CIE embedded auth integration
 - P1: Advanced analytics, multi-language, catalog expansion

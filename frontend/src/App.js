@@ -27,6 +27,7 @@ import FollowUpPage from "@/pages/FollowUpPage";
 import EmailCenterPage from "@/pages/EmailCenterPage";
 import SearchPage from "@/pages/SearchPage";
 import SupportPage from "@/pages/SupportPage";
+import ServicesPage from "@/pages/ServicesPage";
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
             <Route path="/practices/:id" element={<PracticeDetailPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/services" element={<ServicesPage />} />
             <Route path="/deadlines" element={<DeadlineDashboardPage />} />
             <Route path="/submissions" element={<SubmissionCenterPage />} />
             <Route path="/governance" element={<GovernanceDashboardPage />} />

@@ -1,190 +1,234 @@
-import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, FileCheck, MapPin, Shield, Compass, BookOpen, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HerionBrand, HerionMarkLight, HerionIcon } from '@/components/HerionLogo';
 
-const HERO_SLIDES = [
-  { heading: 'Prepara tutto per te', body: 'Herion raccoglie documenti, verifica la completezza e prepara il dossier. Tu approvi e invii.' },
-  { heading: 'Ti guida passo dopo passo', body: 'Ogni pratica ha un percorso chiaro. Sai sempre cosa manca, cosa fare e dove andare.' },
-  { heading: 'Distingue il suo lavoro dal tuo', body: 'Herion ti dice cosa ha fatto, cosa puo fare per te e cosa devi fare tu personalmente.' },
-  { heading: 'Ti ricorda le scadenze', body: 'Promemoria, aggiornamenti e notifiche per non perdere nessun adempimento.' },
-  { heading: 'Non sostituisce, accompagna', body: 'Herion non firma al posto tuo e non invia senza la tua approvazione. Lavora con te, non al posto tuo.' },
+// ─── FLOW STEPS (visual composition) ───
+const FLOW_STEPS = [
+  { num: '01', label: 'Capisci', desc: 'Herion ti spiega cosa serve e cosa succede' },
+  { num: '02', label: 'Prepara', desc: 'Raccoglie e verifica i tuoi documenti' },
+  { num: '03', label: 'Guida', desc: 'Ti accompagna verso il portale ufficiale' },
+  { num: '04', label: 'Segue', desc: 'Monitora lo stato e ti tiene informato' },
 ];
-
-function HeroCarousel() {
-  const [current, setCurrent] = useState(0);
-  const [paused, setPaused] = useState(false);
-
-  const next = useCallback(() => setCurrent(c => (c + 1) % HERO_SLIDES.length), []);
-  const prev = () => setCurrent(c => (c - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
-
-  useEffect(() => {
-    if (paused) return;
-    const t = setInterval(next, 5000);
-    return () => clearInterval(t);
-  }, [paused, next]);
-
-  return (
-    <div
-      className="relative"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      data-testid="hero-carousel"
-    >
-      <div className="overflow-hidden">
-        <div className="transition-transform duration-500 ease-out flex" style={{ transform: `translateX(-${current * 100}%)` }}>
-          {HERO_SLIDES.map((slide, i) => (
-            <div key={i} className="w-full flex-shrink-0 px-4">
-              <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-2">{slide.heading}</h2>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-md">{slide.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-3 mt-5 px-4">
-        <button onClick={prev} className="w-7 h-7 rounded-full bg-white/80 border border-[var(--border-soft)] flex items-center justify-center hover:bg-white transition-colors" data-testid="carousel-prev">
-          <ChevronLeft className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-        </button>
-        <div className="flex gap-1.5">
-          {HERO_SLIDES.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? 'w-5 bg-[var(--surface-accent-1)]' : 'w-1.5 bg-[var(--text-muted)]/30'}`} />
-          ))}
-        </div>
-        <button onClick={next} className="w-7 h-7 rounded-full bg-white/80 border border-[var(--border-soft)] flex items-center justify-center hover:bg-white transition-colors" data-testid="carousel-next">
-          <ChevronRight className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function WelcomePage() {
   return (
     <div className="min-h-screen bg-[var(--bg-app)]" data-testid="welcome-page">
 
       {/* ─── NAV ─── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b" style={{ borderColor: 'var(--border-soft)' }}>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b" style={{ borderColor: 'var(--border-soft)' }}>
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <HerionBrand size={34} showText />
           </Link>
           <div className="flex items-center gap-2">
             <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
-            <Link to="/register"><Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
+            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
           </div>
         </div>
       </nav>
 
-      {/* ─── HERO ─── */}
-      <section className="pt-28 pb-16 px-6 relative overflow-hidden" data-testid="hero-section">
-        {/* Large background H watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden="true">
-          <span className="text-[min(40vw,320px)] font-black text-[var(--text-primary)] opacity-[0.025] leading-none tracking-tighter">
-            HERION
-          </span>
+      {/* ═══ HERO ═══ */}
+      <section className="pt-32 pb-20 px-6 relative overflow-hidden" data-testid="hero-section">
+        {/* Architectural background element */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none" aria-hidden="true">
+          <HerionIcon size={320} color="rgba(10,191,207,0.03)" />
         </div>
 
         <div className="max-w-3xl mx-auto relative">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--bg-soft)] border border-[var(--surface-accent-1)]/30 rounded-full mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-[var(--surface-accent-1)]" />
-            <span className="text-[11px] font-medium text-[var(--text-secondary)]">Assistente operativo fiscale</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#0ABFCF]/8 border border-[#0ABFCF]/15 rounded-full mb-6">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#0ABFCF] animate-pulse" />
+            <span className="text-[11px] font-semibold text-[#0ABFCF]">Commercialista digitale</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-[var(--text-primary)] leading-[1.15] tracking-tight mb-5">
-            Il tuo commercialista digitale.<br />
-            Sempre al tuo fianco.
+          <h1 className="text-3xl sm:text-4xl lg:text-[2.85rem] font-extrabold text-[var(--text-primary)] leading-[1.12] tracking-tight mb-5">
+            Gestisci pratiche fiscali<br />
+            con piu chiarezza e meno stress.
           </h1>
 
-          <p className="text-base text-[var(--text-secondary)] leading-relaxed max-w-xl mb-10">
-            Herion ti aiuta a gestire pratiche fiscali e amministrative con chiarezza. Prepara i documenti, verifica la completezza e ti guida fino all'invio ufficiale.
+          <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl mb-4">
+            Herion ti accompagna dalla preparazione dei documenti fino al completamento ufficiale. Sai sempre cosa sta succedendo, cosa devi fare e cosa viene dopo.
+          </p>
+          <p className="text-sm text-[var(--text-muted)] max-w-lg mb-10">
+            Non un gestionale. Non un portale. Un assistente operativo che resta al tuo fianco finche la pratica non e conclusa.
           </p>
 
           <Link to="/register">
-            <Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-12 px-8 text-sm font-semibold shadow-lg shadow-[#0ABFCF]/10" data-testid="hero-cta-btn">
-              Inizia ora <ArrowRight className="w-4 h-4 ml-2" />
+            <Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-12 px-8 text-[14px] font-semibold shadow-lg shadow-black/5" data-testid="hero-cta-btn">
+              Inizia il tuo percorso <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>
       </section>
 
-      {/* ─── CAROUSEL SECTION ─── */}
-      <section className="pb-16 px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-2xl border p-6 sm:p-8" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-soft)' }}>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-4">Cosa cambia con Herion</p>
-            <HeroCarousel />
-          </div>
-        </div>
-      </section>
-
-      {/* ─── CHI SIAMO ─── */}
-      <section className="py-16 px-6 bg-[var(--bg-soft)]" data-testid="about-section">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Come funziona</h2>
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
-            Herion funziona come un commercialista digitale. Raccoglie i tuoi documenti, verifica che tutto sia in ordine, prepara il dossier e ti guida verso l'invio ufficiale.
-          </p>
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-            Non firma al posto tuo, non accede ai portali con le tue credenziali e non invia nulla senza la tua approvazione esplicita. Ti dice sempre cosa ha fatto, cosa puo fare e cosa tocca a te.
-          </p>
-        </div>
-      </section>
-
-      {/* ─── VALUE PROPOSITION ─── */}
-      <section className="py-16 px-6" data-testid="value-section">
+      {/* ═══ GUIDED FLOW COMPOSITION ═══ */}
+      <section className="pb-20 px-6" data-testid="flow-section">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { title: 'Prepara', body: 'Raccoglie documenti, verifica completezza, organizza il dossier. Tu controlli e approvi.' },
-              { title: 'Guida', body: 'Ti dice dove andare, cosa serve e cosa succede dopo. Ogni passo e chiaro.' },
-              { title: 'Distingue', body: 'Separa quello che fa Herion da quello che devi fare tu. Nessuna ambiguita.' },
-            ].map((card, i) => (
-              <div key={i} className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
-                <div className={`w-8 h-8 rounded-lg mb-3 flex items-center justify-center ${i === 0 ? 'bg-[var(--surface-accent-1)]/30' : i === 1 ? 'bg-[var(--surface-accent-2)]/30' : 'bg-[var(--bg-soft)]'}`}>
-                  <span className="text-[13px] font-bold text-[var(--text-primary)]">{i + 1}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {FLOW_STEPS.map((step, i) => (
+              <div key={i} className="relative group">
+                <div className="bg-white rounded-xl border p-5 h-full transition-all duration-200 hover:shadow-md" style={{ borderColor: 'var(--border-soft)' }}>
+                  <span className="text-[28px] font-black text-[#0ABFCF]/15 block mb-2 leading-none">{step.num}</span>
+                  <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">{step.label}</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{step.desc}</p>
                 </div>
-                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1.5">{card.title}</h3>
-                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{card.body}</p>
+                {i < 3 && (
+                  <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-px bg-[var(--border-soft)]" />
+                )}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── PRODUCT PREVIEW ─── */}
-      <section className="py-16 px-6 bg-white" data-testid="preview-section">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">Cosa puo fare Herion per te</h2>
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-lg mx-auto mb-8">
-            Un commercialista digitale che lavora con te su ogni pratica. Dalla raccolta documenti alla guida verso l'invio ufficiale.
+      {/* ═══ WHY HERION HELPS ═══ */}
+      <section className="py-20 px-6 bg-white" data-testid="why-section">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-3">Perche Herion</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] leading-tight mb-4">
+            Meno confusione tra portali, enti e documenti.
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-10 max-w-xl">
+            Ogni anno, migliaia di persone e aziende perdono tempo cercando di capire cosa fare, dove andare e quali documenti servono. Herion mette ordine in tutto questo.
           </p>
-          <div className="grid grid-cols-3 gap-3 text-center">
+
+          <div className="space-y-4">
             {[
-              { num: '12', label: 'Agenti specializzati' },
-              { num: '34', label: 'Template email' },
-              { num: '100%', label: 'Controllo operativo' },
-            ].map((stat, i) => (
-              <div key={i} className="py-4 px-3 rounded-xl bg-[var(--bg-app)] border" style={{ borderColor: 'var(--border-soft)' }}>
-                <p className="text-2xl font-black text-[var(--text-primary)]">{stat.num}</p>
-                <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">{stat.label}</p>
+              { icon: FileCheck, title: 'Preparazione completa', desc: 'Herion raccoglie i documenti, verifica che siano corretti e prepara tutto per l\'invio. Tu controlli e approvi prima di procedere.' },
+              { icon: Compass, title: 'Guida verso l\'ente giusto', desc: 'Per ogni pratica, Herion ti indica l\'ente di destinazione, il portale esatto, le credenziali necessarie e il canale ufficiale. Non devi cercare nulla.' },
+              { icon: MapPin, title: 'Monitoraggio dopo l\'invio', desc: 'Dopo l\'invio, Herion acquisisce il riferimento ufficiale (protocollo, DOMUS, ricevuta) e monitora lo stato della pratica. Ti avvisa quando ci sono novita.' },
+              { icon: Shield, title: 'Continuita fino alla conclusione', desc: 'Herion non ti abbandona dopo il primo passaggio. Resta presente fino alla conferma ufficiale dell\'ente, spiegando cosa succede ad ogni fase.' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 rounded-xl hover:bg-[var(--bg-app)] transition-colors" data-testid={`why-item-${i}`}>
+                <div className="w-10 h-10 rounded-xl bg-[#0ABFCF]/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <item.icon className="w-[18px] h-[18px] text-[#0ABFCF]" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">{item.title}</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── CTA ─── */}
-      <section className="py-16 px-6 bg-[var(--text-primary)]" data-testid="cta-section">
+      {/* ═══ CHI SIAMO ═══ */}
+      <section className="py-20 px-6 bg-[var(--bg-app)]" data-testid="about-section">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-3">Chi siamo</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] leading-tight mb-6">
+            Un commercialista digitale<br />che lavora con te.
+          </h2>
+
+          <div className="space-y-4 mb-8">
+            <p className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
+              Herion nasce da un'idea semplice: le pratiche fiscali e amministrative non dovrebbero essere un labirinto. Troppe persone si perdono tra portali, scadenze, documenti e passaggi ufficiali senza sapere a che punto sono.
+            </p>
+            <p className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
+              Herion e un assistente operativo che ti accompagna dall'inizio alla fine. Prepara i documenti, verifica la completezza, ti guida verso l'ente giusto e segue lo stato della pratica fino alla conferma ufficiale. Non firma al posto tuo e non invia nulla senza la tua approvazione.
+            </p>
+            <p className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
+              Il nostro obiettivo non e solo gestire le tue pratiche. E aiutarti a capire cosa sta succedendo, a sentirti meno in difficolta e a diventare piu autonomo nel tempo. Ogni pratica completata con Herion e anche un'occasione per capire meglio come funzionano le cose.
+            </p>
+          </div>
+
+          <div className="p-5 bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)' }}>
+            <p className="text-[12px] text-[var(--text-primary)] font-semibold mb-1">Il principio di Herion</p>
+            <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed italic">
+              "Ti guidiamo senza sostituirci a te. Ti semplifichiamo le cose senza nasconderle. Ti accompagniamo finche la pratica non e davvero conclusa."
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ CONSULTATION / GUIDANCE ═══ */}
+      <section className="py-20 px-6 bg-white" data-testid="consultation-section">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-3">Orientamento</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] leading-tight mb-4">
+            Non sai da dove partire?<br />Herion ti aiuta a orientarti.
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-8 max-w-xl">
+            Prima ancora di aprire una pratica, Herion puo aiutarti a capire cosa ti serve in base alla tua situazione. Che tu sia un libero professionista, un'azienda o un privato.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { icon: Users, label: 'Libero professionista', desc: 'P.IVA, regime forfettario, contributi INPS, fatturazione, F24 e scadenze. Herion ti mostra il percorso adatto a te.' },
+              { icon: BookOpen, label: 'Azienda', desc: 'Adempimenti societari, Camera di Commercio, CU, bilanci, LIPE. Herion organizza e segue tutto il necessario.' },
+              { icon: Compass, label: 'Privato', desc: 'Dichiarazione 730, cassetto fiscale, documenti personali. Herion ti guida anche nelle pratiche piu semplici.' },
+            ].map((card, i) => (
+              <div key={i} className="p-5 rounded-xl border bg-[var(--bg-app)]" style={{ borderColor: 'var(--border-soft)' }} data-testid={`consultation-card-${i}`}>
+                <card.icon className="w-5 h-5 text-[#0ABFCF] mb-3" strokeWidth={1.5} />
+                <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1.5">{card.label}</p>
+                <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{card.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ HOW HERION STAYS WITH YOU ═══ */}
+      <section className="py-20 px-6 bg-[var(--bg-app)]" data-testid="continuity-section">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-3">Continuita</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] leading-tight mb-4">
+            Herion resta con te fino alla fine.
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-8 max-w-xl">
+            Molti strumenti ti aiutano a preparare una pratica. Pochi ti seguono anche dopo l'invio. Herion e diverso.
+          </p>
+
+          <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-soft)' }}>
+            {[
+              { phase: 'Prima', desc: 'Herion ti dice cosa serve, raccoglie i documenti e verifica che tutto sia in ordine.', color: 'bg-blue-500' },
+              { phase: 'Durante', desc: 'Ti guida verso il portale giusto, ti spiega cosa fare e ti accompagna nell\'invio.', color: 'bg-[#0ABFCF]' },
+              { phase: 'Dopo', desc: 'Acquisisce il protocollo, monitora lo stato e ti spiega cosa succede. Fino alla conferma.', color: 'bg-emerald-500' },
+            ].map((item, i) => (
+              <div key={i} className={`flex items-start gap-4 px-6 py-5 ${i < 2 ? 'border-b' : ''}`} style={i < 2 ? { borderColor: 'var(--border-soft)' } : {}} data-testid={`continuity-phase-${i}`}>
+                <div className="flex flex-col items-center pt-1">
+                  <div className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
+                  {i < 2 && <div className="w-px flex-1 bg-[var(--border-soft)] mt-1" />}
+                </div>
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--text-primary)] mb-0.5">{item.phase}</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-[var(--text-muted)] mt-4 text-center">
+            Ogni pratica e un percorso. Herion lo segue con te dall'inizio alla fine.
+          </p>
+        </div>
+      </section>
+
+      {/* ═══ LEARN / AUTONOMY ═══ */}
+      <section className="py-16 px-6 bg-white" data-testid="learn-section">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-3">Cresci con Herion</p>
+          <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] leading-tight mb-3 max-w-lg mx-auto">
+            Ogni pratica completata e un passo verso piu autonomia.
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
+            Herion non ti nasconde la complessita. Te la spiega. Con il tempo, capisci meglio come funzionano le cose e gestisci con piu sicurezza le tue pratiche fiscali e amministrative.
+          </p>
+        </div>
+      </section>
+
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="py-20 px-6 bg-[var(--text-primary)]" data-testid="cta-section">
         <div className="max-w-2xl mx-auto text-center">
-          <HerionMarkLight size={40} className="mx-auto mb-5" />
-          <h2 className="text-xl font-bold text-white mb-3">Pronto a semplificare?</h2>
-          <p className="text-sm text-white/50 mb-8 max-w-md mx-auto">
-            Inizia a gestire le tue pratiche con piu ordine, piu chiarezza e meno stress. Herion e qui per accompagnarti.
+          <HerionMarkLight size={36} className="mx-auto mb-5" />
+          <h2 className="text-xl font-bold text-white mb-3">Meno confusione. Piu controllo.</h2>
+          <p className="text-[13px] text-white/45 mb-8 max-w-md mx-auto leading-relaxed">
+            Inizia a gestire le tue pratiche con un commercialista digitale che ti accompagna davvero. Dall'inizio alla fine.
           </p>
           <Link to="/register">
-            <Button className="bg-[var(--surface-accent-1)] hover:bg-[#b3ccf7] text-[var(--text-primary)] rounded-lg h-12 px-8 text-sm font-bold" data-testid="cta-register-btn">
-              Inizia ora <ArrowRight className="w-4 h-4 ml-2" />
+            <Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-12 px-8 text-[14px] font-semibold" data-testid="cta-register-btn">
+              Inizia il tuo percorso <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>
@@ -195,8 +239,9 @@ export default function WelcomePage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <HerionMarkLight size={24} />
+            <span className="text-[11px] text-white/30 font-medium">Herion</span>
           </div>
-          <p className="text-[11px] text-white/30 text-center">Assistente operativo fiscale. Chiarezza, ordine e controllo.</p>
+          <p className="text-[10px] text-white/25 text-center">Commercialista digitale. Chiarezza, guida e continuita.</p>
           <div className="flex items-center gap-4 text-[11px]">
             <Link to="/login" className="text-white/40 hover:text-white/60 transition-colors">Accedi</Link>
             <Link to="/register" className="text-white/40 hover:text-white/60 transition-colors">Registrati</Link>

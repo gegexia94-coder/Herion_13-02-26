@@ -167,4 +167,12 @@ export const getEmailTemplate = (templateId) => api.get(`/emails/templates/${tem
 export const resolveEmailTemplate = (templateId, data) => api.post(`/emails/templates/${templateId}/resolve`, data);
 export const createDraftFromTemplate = (data) => api.post('/emails/draft-from-template', data);
 
+// Tracking & Status Intelligence
+export const updateTracking = (practiceId, data) =>
+  api.post(`/practices/${practiceId}/tracking`, data);
+export const getTrackingStatus = (practiceId) =>
+  api.get(`/practices/${practiceId}/tracking`);
+export const verifyTracking = (practiceId, data) =>
+  api.post(`/practices/${practiceId}/tracking/verify`, data);
+
 export default api;

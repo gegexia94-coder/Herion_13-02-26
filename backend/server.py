@@ -730,6 +730,17 @@ async def create_practice(practice: PracticeCreate, user: dict = Depends(get_cur
         "delegation_info": {"status": "not_required", "label": "Non richiesta"},
         "delegation": {"enabled": False, "level": "assist", "scope": [], "granted_by_user": False},
         "proof_layer": {"expected": False, "status": "missing"},
+        "tracking": {
+            "identifier_type": None,
+            "identifier_value": None,
+            "tracked_state": "not_available",
+            "entity_state": "unknown",
+            "verification_history": [],
+            "last_verified_at": None,
+            "next_expected_step": None,
+            "user_action_required": False,
+            "notes": None,
+        },
         "approval_snapshot_id": None,
         "approved_at": None,
         "submitted_at": None,
@@ -2144,6 +2155,44 @@ PROOF_TYPES = {
     "payment_receipt": "Ricevuta pagamento",
 }
 
+# ========================
+# TRACKING REFERENCE TYPES & STATES
+# ========================
+
+TRACKING_IDENTIFIER_TYPES = {
+    "domus_number": {"label": "Numero DOMUS", "description": "Codice identificativo assegnato dal sistema DOMUS dell'ente"},
+    "protocol_number": {"label": "Numero di protocollo", "description": "Numero di protocollo rilasciato dall'ente al momento della ricezione"},
+    "practice_number": {"label": "Numero pratica", "description": "Numero progressivo assegnato dall'ente alla pratica"},
+    "pec_reference": {"label": "Riferimento PEC", "description": "Identificativo della PEC certificata di invio o ricezione"},
+    "receipt_code": {"label": "Codice ricevuta", "description": "Codice univoco della ricevuta di avvenuto invio"},
+    "submission_reference": {"label": "Riferimento invio ufficiale", "description": "Codice di riferimento rilasciato al momento dell'invio sul portale"},
+    "payment_reference": {"label": "Riferimento pagamento", "description": "Codice di conferma del pagamento effettuato"},
+}
+
+TRACKING_STATES = {
+    "not_available": {"label": "Non ancora disponibile", "color": "#94A3B8", "category": "waiting", "icon": "clock"},
+    "pending_acquisition": {"label": "In attesa di acquisizione", "color": "#F59E0B", "category": "waiting", "icon": "hourglass"},
+    "acquired": {"label": "Acquisito", "color": "#3B82F6", "category": "active", "icon": "check"},
+    "verified": {"label": "Verificato da Herion", "color": "#10B981", "category": "confirmed", "icon": "shield-check"},
+    "entity_processing": {"label": "In lavorazione presso l'ente", "color": "#8B5CF6", "category": "external", "icon": "building"},
+    "entity_reviewing": {"label": "In verifica dall'ente", "color": "#8B5CF6", "category": "external", "icon": "search"},
+    "integration_requested": {"label": "Richiesta integrazione", "color": "#F59E0B", "category": "action_required", "icon": "alert"},
+    "completed": {"label": "Completata", "color": "#10B981", "category": "completed", "icon": "check-circle"},
+    "rejected": {"label": "Respinta", "color": "#EF4444", "category": "blocked", "icon": "x-circle"},
+    "expired": {"label": "Scaduta", "color": "#EF4444", "category": "blocked", "icon": "clock"},
+}
+
+TRACKED_ENTITY_STATES = {
+    "received": "Pratica ricevuta dall'ente",
+    "processing": "Pratica in lavorazione",
+    "reviewing": "Pratica in fase di verifica",
+    "waiting_integration": "L'ente richiede documentazione integrativa",
+    "approved": "Pratica approvata dall'ente",
+    "rejected": "Pratica rifiutata dall'ente",
+    "pending_response": "Risposta ufficiale non ancora disponibile",
+    "unknown": "Stato dettagliato dell'ente non ancora disponibile",
+}
+
 
 class DelegationRequest(BaseModel):
     level: str = "assist"  # assist | partial | full
@@ -2276,6 +2325,37 @@ async def upload_proof(practice_id: str, req: ProofUploadRequest, user: dict = D
         {"$set": {"proof_layer": proof, "updated_at": now}}
     )
 
+    # Auto-populate tracking if reference_code provided
+    if req.reference_code:
+        tracking = practice.get("tracking") or {}
+        proof_to_tracking = {
+            "protocol_number": "protocol_number",
+            "receipt_pdf": "receipt_code",
+            "pec_delivery": "pec_reference",
+            "portal_confirmation": "submission_reference",
+            "payment_receipt": "payment_reference",
+        }
+        tracking_type = proof_to_tracking.get(req.proof_type, "submission_reference")
+        if not tracking.get("identifier_value"):
+            tracking["identifier_type"] = tracking_type
+            tracking["identifier_value"] = req.reference_code
+            tracking["tracked_state"] = "acquired"
+            tracking["user_action_required"] = False
+            history = tracking.get("verification_history") or []
+            history.append({
+                "action": "reference_added",
+                "identifier_type": tracking_type,
+                "identifier_value": req.reference_code,
+                "timestamp": now,
+                "performed_by": "user",
+                "label": f"Riferimento {TRACKING_IDENTIFIER_TYPES.get(tracking_type, {}).get('label', tracking_type)} acquisito dalla ricevuta",
+            })
+            tracking["verification_history"] = history
+            await db.practices.update_one(
+                {"id": practice_id},
+                {"$set": {"tracking": tracking}}
+            )
+
     await add_timeline_event(practice_id, user["id"], "status_changed", {
         "note": f"Ricevuta caricata: {PROOF_TYPES.get(req.proof_type, req.proof_type)}"
     })
@@ -2342,8 +2422,363 @@ async def complete_official_step(practice_id: str, req: OfficialStepCompleteRequ
 
 
 # ========================
-# PRACTICE WORKSPACE ENDPOINT
+# TRACKING ENDPOINTS
 # ========================
+
+class TrackingUpdateRequest(BaseModel):
+    identifier_type: str  # domus_number, protocol_number, practice_number, pec_reference, receipt_code, submission_reference, payment_reference
+    identifier_value: str
+    notes: Optional[str] = None
+
+
+class TrackingVerifyRequest(BaseModel):
+    verification_outcome: str = "confirmed"  # confirmed, not_found, changed, integration_requested
+    entity_state: Optional[str] = None  # received, processing, reviewing, waiting_integration, approved, rejected
+    notes: Optional[str] = None
+    next_expected_step: Optional[str] = None
+
+
+@api_router.post("/practices/{practice_id}/tracking")
+async def update_tracking_reference(practice_id: str, req: TrackingUpdateRequest, user: dict = Depends(get_current_user)):
+    """Add or update the tracking reference for a practice."""
+    practice = await db.practices.find_one({"id": practice_id, "user_id": user["id"]}, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    if req.identifier_type not in TRACKING_IDENTIFIER_TYPES:
+        raise HTTPException(status_code=400, detail=f"Tipo riferimento non valido. Validi: {', '.join(TRACKING_IDENTIFIER_TYPES.keys())}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    tracking = practice.get("tracking") or {}
+
+    tracking["identifier_type"] = req.identifier_type
+    tracking["identifier_value"] = req.identifier_value
+    tracking["tracked_state"] = "acquired"
+    tracking["notes"] = req.notes
+    tracking["user_action_required"] = False
+
+    # Determine next expected step based on catalog
+    catalog = await db.practice_catalog.find_one({"practice_id": practice.get("practice_type", "")}, {"_id": 0})
+    if catalog:
+        flow = catalog.get("flow_definition") or {}
+        release = flow.get("expected_release") or {}
+        if release.get("timing") == "immediate":
+            tracking["next_expected_step"] = "Verifica immediata del riferimento sul portale ufficiale"
+        else:
+            duration = catalog.get("estimated_duration") or {}
+            tracking["next_expected_step"] = f"Attesa risposta ufficiale dell'ente ({duration.get('label', 'tempi variabili')})"
+    else:
+        tracking["next_expected_step"] = "Attesa conferma ufficiale dall'ente"
+
+    # Add to verification history
+    history = tracking.get("verification_history") or []
+    history.append({
+        "action": "reference_added",
+        "identifier_type": req.identifier_type,
+        "identifier_value": req.identifier_value,
+        "timestamp": now,
+        "performed_by": "user",
+        "label": f"Riferimento {TRACKING_IDENTIFIER_TYPES[req.identifier_type]['label']} acquisito",
+    })
+    tracking["verification_history"] = history
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {"tracking": tracking, "updated_at": now}}
+    )
+
+    await add_timeline_event(practice_id, user["id"], "tracking_reference_added", {
+        "identifier_type": req.identifier_type,
+        "identifier_value": req.identifier_value,
+        "note": f"Riferimento acquisito: {TRACKING_IDENTIFIER_TYPES[req.identifier_type]['label']} — {req.identifier_value}"
+    })
+    await log_activity(user["id"], "tracking", "tracking_reference_added", {
+        "practice_id": practice_id,
+        "identifier_type": req.identifier_type,
+    })
+
+    return {"message": "Riferimento acquisito", "tracking": {
+        "identifier_type": tracking["identifier_type"],
+        "identifier_type_label": TRACKING_IDENTIFIER_TYPES[req.identifier_type]["label"],
+        "identifier_value": tracking["identifier_value"],
+        "tracked_state": tracking["tracked_state"],
+        "tracked_state_label": TRACKING_STATES[tracking["tracked_state"]]["label"],
+    }}
+
+
+@api_router.get("/practices/{practice_id}/tracking")
+async def get_tracking_status(practice_id: str, user: dict = Depends(get_current_user)):
+    """Get the full tracking intelligence for a practice."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    tracking = practice.get("tracking") or {}
+    catalog = await db.practice_catalog.find_one({"practice_id": practice.get("practice_type", "")}, {"_id": 0})
+
+    return build_tracking_intelligence(tracking, catalog, practice.get("status", "draft"))
+
+
+@api_router.post("/practices/{practice_id}/tracking/verify")
+async def verify_tracking(practice_id: str, req: TrackingVerifyRequest, user: dict = Depends(get_current_user)):
+    """Herion (or admin) verifies the tracking state of a practice."""
+    is_admin = user.get("role") in ["admin", "creator"]
+    query = {"id": practice_id} if is_admin else {"id": practice_id, "user_id": user["id"]}
+    practice = await db.practices.find_one(query, {"_id": 0})
+    if not practice:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+
+    now = datetime.now(timezone.utc).isoformat()
+    tracking = practice.get("tracking") or {}
+
+    # Map verification outcome to tracked state
+    outcome_state_map = {
+        "confirmed": "verified",
+        "not_found": "pending_acquisition",
+        "changed": "entity_processing",
+        "integration_requested": "integration_requested",
+    }
+    tracking["tracked_state"] = outcome_state_map.get(req.verification_outcome, tracking.get("tracked_state", "not_available"))
+
+    if req.entity_state and req.entity_state in TRACKED_ENTITY_STATES:
+        tracking["entity_state"] = req.entity_state
+
+    tracking["last_verified_at"] = now
+    if req.next_expected_step:
+        tracking["next_expected_step"] = req.next_expected_step
+
+    # Determine user_action_required
+    tracking["user_action_required"] = tracking["tracked_state"] in ("integration_requested", "pending_acquisition")
+
+    if req.notes:
+        tracking["notes"] = req.notes
+
+    # Add to verification history
+    history = tracking.get("verification_history") or []
+    verification_labels = {
+        "confirmed": "Herion ha verificato il riferimento ufficiale",
+        "not_found": "Herion non ha trovato riscontro del riferimento",
+        "changed": "Herion ha rilevato un aggiornamento dallo stato dell'ente",
+        "integration_requested": "Herion ha rilevato una richiesta di integrazione dall'ente",
+    }
+    history.append({
+        "action": f"verification_{req.verification_outcome}",
+        "timestamp": now,
+        "performed_by": "herion",
+        "label": verification_labels.get(req.verification_outcome, "Verifica effettuata"),
+        "entity_state": req.entity_state,
+        "notes": req.notes,
+    })
+    tracking["verification_history"] = history
+
+    await db.practices.update_one(
+        {"id": practice_id},
+        {"$set": {"tracking": tracking, "updated_at": now}}
+    )
+
+    await add_timeline_event(practice_id, user["id"], "tracking_verified", {
+        "outcome": req.verification_outcome,
+        "entity_state": req.entity_state,
+        "note": verification_labels.get(req.verification_outcome, "Verifica effettuata"),
+    })
+
+    catalog = await db.practice_catalog.find_one({"practice_id": practice.get("practice_type", "")}, {"_id": 0})
+    return {
+        "message": "Verifica completata",
+        "tracking": build_tracking_intelligence(tracking, catalog, practice.get("status", "draft")),
+    }
+
+
+def build_tracking_intelligence(tracking: dict, catalog: dict, practice_status: str) -> dict:
+    """Build the full tracking intelligence block for workspace/frontend consumption."""
+    identifier_type = tracking.get("identifier_type")
+    identifier_value = tracking.get("identifier_value")
+    tracked_state = tracking.get("tracked_state", "not_available")
+    entity_state = tracking.get("entity_state", "unknown")
+    last_verified = tracking.get("last_verified_at")
+    history = tracking.get("verification_history") or []
+    user_action_required = tracking.get("user_action_required", False)
+
+    has_reference = bool(identifier_type and identifier_value)
+
+    # Build expected identifier info from catalog
+    expected_identifier = None
+    expected_timing = None
+    entity_name = None
+    tracking_route = None
+    if catalog:
+        flow = catalog.get("flow_definition") or {}
+        tm = flow.get("tracking_mode") or {}
+        release = flow.get("expected_release") or {}
+        entity_name = flow.get("target_entity")
+        # The expected identifier type comes from expected_release.type (e.g. protocol_number, receipt_pdf)
+        expected_id_type = release.get("type")
+        expected_identifier = {
+            "type": expected_id_type,
+            "type_label": TRACKING_IDENTIFIER_TYPES.get(expected_id_type, {}).get("label", release.get("label")),
+            "tracking_mode": tm.get("type"),
+            "tracking_mode_label": tm.get("label"),
+            "route_or_reference": tm.get("route_or_reference"),
+        }
+        expected_timing = {
+            "release_type": release.get("type"),
+            "release_label": release.get("label"),
+            "timing": release.get("timing"),
+            "is_immediate": release.get("timing") == "immediate",
+        }
+        tracking_route = tm.get("route_or_reference")
+
+    # State info
+    state_info = TRACKING_STATES.get(tracked_state, TRACKING_STATES["not_available"])
+    entity_state_label = TRACKED_ENTITY_STATES.get(entity_state, TRACKED_ENTITY_STATES["unknown"])
+
+    # Build next step forecast
+    next_step = tracking.get("next_expected_step")
+    if not next_step:
+        next_step = _forecast_next_step(tracked_state, entity_state, practice_status, has_reference, catalog)
+
+    # Build Herion verification summary
+    last_verification = history[-1] if history else None
+    verification_summary = None
+    if last_verification:
+        verification_summary = {
+            "label": last_verification.get("label", "Verifica effettuata"),
+            "timestamp": last_verification.get("timestamp"),
+            "performed_by": last_verification.get("performed_by", "herion"),
+            "notes": last_verification.get("notes"),
+        }
+
+    # Status explanation (human language)
+    status_explanation = _build_status_explanation(tracked_state, entity_state, has_reference, entity_name, identifier_type)
+
+    # Mini timeline milestones
+    mini_timeline = _build_mini_timeline(tracked_state, has_reference, practice_status, history)
+
+    return {
+        "has_reference": has_reference,
+        "identifier_type": identifier_type,
+        "identifier_type_label": TRACKING_IDENTIFIER_TYPES.get(identifier_type, {}).get("label") if identifier_type else None,
+        "identifier_type_description": TRACKING_IDENTIFIER_TYPES.get(identifier_type, {}).get("description") if identifier_type else None,
+        "identifier_value": identifier_value,
+        "tracked_state": tracked_state,
+        "tracked_state_label": state_info["label"],
+        "tracked_state_color": state_info["color"],
+        "tracked_state_category": state_info["category"],
+        "tracked_state_icon": state_info["icon"],
+        "entity_name": entity_name,
+        "entity_state": entity_state,
+        "entity_state_label": entity_state_label,
+        "expected_identifier": expected_identifier,
+        "expected_timing": expected_timing,
+        "tracking_route": tracking_route,
+        "verification_summary": verification_summary,
+        "verification_count": len([h for h in history if h.get("performed_by") == "herion"]),
+        "last_verified_at": last_verified,
+        "next_expected_step": next_step,
+        "user_action_required": user_action_required,
+        "status_explanation": status_explanation,
+        "mini_timeline": mini_timeline,
+    }
+
+
+def _forecast_next_step(tracked_state: str, entity_state: str, practice_status: str, has_ref: bool, catalog: dict) -> str:
+    """Determine the next expected step in plain Italian."""
+    if practice_status in ("completed", "accepted_by_entity"):
+        return "La pratica e stata completata con successo. Non sono previsti ulteriori passaggi."
+    if practice_status in ("blocked", "rejected_by_entity"):
+        return "La pratica e bloccata. Verifica il motivo e segui le indicazioni per procedere."
+    if tracked_state == "integration_requested":
+        return "L'ente ha richiesto documentazione integrativa. Serve il tuo intervento per completare il passaggio."
+    if tracked_state == "rejected":
+        return "La pratica e stata respinta dall'ente. Verifica il motivo del rifiuto."
+    if tracked_state == "verified" or tracked_state == "entity_processing":
+        duration = ""
+        if catalog:
+            d = catalog.get("estimated_duration") or {}
+            duration = f" ({d.get('label', '')})" if d.get("label") else ""
+        return f"Attendiamo la conferma ufficiale dell'ente{duration}. Non e richiesta alcuna azione da parte tua in questo momento."
+    if tracked_state == "entity_reviewing":
+        return "L'ente sta verificando la documentazione. Potrebbe essere richiesta una nuova integrazione documentale."
+    if tracked_state == "acquired" and has_ref:
+        return "Il riferimento ufficiale e stato acquisito. Herion verifichera lo stato presso l'ente."
+    if tracked_state == "pending_acquisition":
+        return "Stiamo aspettando il riferimento ufficiale della pratica. Appena disponibile, lo useremo per seguire lo stato."
+    if not has_ref:
+        if practice_status in ("submitted_manually", "submitted_via_channel", "waiting_external_response"):
+            return "La pratica e stata inviata. Inserisci il riferimento ufficiale per permettere a Herion di seguire lo stato."
+        return "Non e ancora disponibile un riferimento ufficiale. Procedi con i passaggi richiesti."
+    return "Prossimo aggiornamento atteso: conferma ufficiale dall'ente."
+
+
+def _build_status_explanation(tracked_state: str, entity_state: str, has_ref: bool, entity_name: str, identifier_type: str) -> str:
+    """Build a human-language explanation of the current tracking state."""
+    ente = entity_name or "l'ente competente"
+    id_label = TRACKING_IDENTIFIER_TYPES.get(identifier_type, {}).get("label", "riferimento") if identifier_type else "riferimento"
+
+    if tracked_state == "not_available" and not has_ref:
+        return "Riferimento ufficiale non ancora disponibile. Appena disponibile, lo useremo per seguire lo stato del procedimento."
+    if tracked_state == "pending_acquisition":
+        return f"Stiamo aspettando il {id_label} dalla pratica. Non appena sara disponibile, Herion iniziera a monitorare lo stato."
+    if tracked_state == "acquired":
+        return f"Abbiamo acquisito il {id_label}. Herion lo usera per verificare lo stato della pratica presso {ente}."
+    if tracked_state == "verified":
+        if entity_state == "processing":
+            return f"Herion ha verificato che il {id_label} e stato acquisito. La pratica risulta in lavorazione presso {ente}."
+        if entity_state == "approved":
+            return f"La pratica e stata approvata da {ente}. Il {id_label} e stato confermato."
+        return f"Herion ha verificato il {id_label}. Lo stato attuale risulta confermato."
+    if tracked_state == "entity_processing":
+        return f"La pratica risulta in lavorazione presso {ente}. L'ente sta elaborando la documentazione ricevuta."
+    if tracked_state == "entity_reviewing":
+        return f"{ente} sta verificando la documentazione. Potrebbe essere necessaria un'integrazione."
+    if tracked_state == "integration_requested":
+        return f"{ente} ha richiesto documentazione integrativa. Serve il tuo intervento per procedere."
+    if tracked_state == "completed":
+        return f"La pratica e stata completata con successo presso {ente}."
+    if tracked_state == "rejected":
+        return f"La pratica e stata respinta da {ente}. Verifica il motivo del rifiuto e le possibilita di correzione."
+    return "Stato del monitoraggio in aggiornamento."
+
+
+def _build_mini_timeline(tracked_state: str, has_ref: bool, practice_status: str, history: list) -> list:
+    """Build a compact milestone timeline for the tracking card."""
+    milestones = []
+
+    # 1. Inviata
+    is_submitted = practice_status in ("submitted_manually", "submitted_via_channel", "waiting_external_response", "completed", "accepted_by_entity")
+    milestones.append({
+        "key": "submitted",
+        "label": "Inviata",
+        "status": "done" if is_submitted else "current" if practice_status == "ready_for_submission" else "pending",
+    })
+
+    # 2. Riferimento acquisito
+    milestones.append({
+        "key": "reference_acquired",
+        "label": "Riferimento acquisito",
+        "status": "done" if has_ref else "current" if is_submitted else "pending",
+    })
+
+    # 3. In lavorazione
+    in_processing = tracked_state in ("verified", "entity_processing", "entity_reviewing", "completed", "rejected", "integration_requested")
+    milestones.append({
+        "key": "processing",
+        "label": "In lavorazione",
+        "status": "done" if tracked_state in ("completed",) else "current" if in_processing else "pending",
+    })
+
+    # 4. Final state
+    final_state = tracked_state in ("completed",)
+    is_blocked = tracked_state in ("rejected", "integration_requested")
+    milestones.append({
+        "key": "completed",
+        "label": "Completata" if not is_blocked else ("Integrazione" if tracked_state == "integration_requested" else "Respinta"),
+        "status": "done" if final_state else "blocked" if is_blocked else "pending",
+    })
+
+    return milestones
 
 AGENT_LABELS = {
     "intake": {"name": "Herion Intake", "role": "Raccolta e classificazione"},
@@ -2480,41 +2915,41 @@ def determine_current_activity(status: str, missing_docs: list, channel: dict, h
 
 
 def build_ui_guidance(status: str, missing_docs: list, channel: dict, is_approval: bool, father_review: dict) -> dict:
-    """Build concise UI guidance for the frontend."""
+    """Build concise UI guidance for the frontend — digital accountant tone."""
     is_external = channel and not channel.get("auto_submission", True)
     entity_name = channel.get("name", "ente competente") if channel else "ente competente"
 
     if status == "draft":
-        return {"headline": "Pratica non ancora avviata", "subheadline": "Leggi le informazioni sulla pratica e avvia il percorso.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Inizia la pratica' per cominciare."}
+        return {"headline": "Iniziamo insieme", "subheadline": "Leggi cosa serve per questa pratica. Herion ti accompagna passo dopo passo.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Inizia la pratica' per cominciare il percorso."}
     elif status == "waiting_user_documents":
         if missing_docs:
-            return {"headline": "In attesa dei tuoi documenti", "subheadline": f"Mancano ancora {len(missing_docs)} documenti per procedere.", "next_step_label": "Cosa fare", "next_step_detail": f"Carica: {', '.join(missing_docs[:3])}."}
-        return {"headline": "Documenti ricevuti", "subheadline": "Puoi avviare l'analisi di Herion.", "next_step_label": "Prossimo passo", "next_step_detail": "Clicca 'Avvia Analisi Herion'."}
+            return {"headline": "Servono ancora alcuni documenti", "subheadline": f"Mancano {len(missing_docs)} documenti per procedere. Herion ti indica esattamente cosa serve.", "next_step_label": "Cosa fare", "next_step_detail": f"Carica: {', '.join(missing_docs[:3])}."}
+        return {"headline": "Documenti ricevuti — ottimo lavoro", "subheadline": "Herion puo analizzare tutto e preparare la pratica per te.", "next_step_label": "Prossimo passo", "next_step_detail": "Clicca 'Avvia Analisi Herion' per procedere."}
     elif status in ("internal_processing", "in_progress", "processing"):
-        return {"headline": "Herion sta analizzando la pratica", "subheadline": "Stiamo verificando documenti, conformita e requisiti.", "next_step_label": "Cosa succede dopo", "next_step_detail": "Ti chiederemo di verificare il risultato prima di procedere."}
+        return {"headline": "Herion sta lavorando per te", "subheadline": "Stiamo verificando documenti, conformita e requisiti. Ti avviseremo appena pronto.", "next_step_label": "Cosa succede dopo", "next_step_detail": "Ti chiederemo di verificare il risultato prima di procedere. Nessuna azione richiesta ora."}
     elif status in ("waiting_user_review", "waiting_approval"):
         if is_approval and father_review.get("active"):
-            return {"headline": "La pratica e pronta per la tua approvazione", "subheadline": father_review.get("summary_for_user", "Abbiamo verificato documenti e requisiti."), "next_step_label": "Cosa succede dopo", "next_step_detail": father_review.get("timing_summary", "Dopo l'approvazione la pratica proseguira.")}
-        return {"headline": "Serve la tua approvazione", "subheadline": "L'analisi e completa. Verifica il riepilogo e approva.", "next_step_label": "Prossimo passo", "next_step_detail": "Leggi il riepilogo e clicca Approva."}
+            return {"headline": "La pratica e pronta per la tua approvazione", "subheadline": father_review.get("summary_for_user", "Abbiamo verificato documenti e requisiti. Leggi il riepilogo con calma."), "next_step_label": "Cosa succede dopo", "next_step_detail": father_review.get("timing_summary", "Dopo l'approvazione la pratica proseguira verso l'invio ufficiale.")}
+        return {"headline": "Serve la tua approvazione", "subheadline": "L'analisi e completa. Herion ha preparato tutto — ora tocca a te verificare e confermare.", "next_step_label": "Prossimo passo", "next_step_detail": "Leggi il riepilogo e clicca Approva per procedere."}
     elif status == "waiting_signature":
-        return {"headline": "In attesa della tua firma", "subheadline": "Alcuni documenti richiedono la tua firma digitale.", "next_step_label": "Cosa fare", "next_step_detail": "Firma i documenti richiesti per procedere."}
+        return {"headline": "In attesa della tua firma", "subheadline": "Alcuni documenti richiedono la tua firma digitale. Herion resta al tuo fianco.", "next_step_label": "Cosa fare", "next_step_detail": "Firma i documenti richiesti per procedere."}
     elif status == "ready_for_submission":
         if is_external:
-            return {"headline": f"Pronta per l'invio a {entity_name}", "subheadline": "Herion ha preparato tutto. L'invio ufficiale va fatto da te.", "next_step_label": "Cosa fare", "next_step_detail": f"Accedi a {entity_name} con le tue credenziali e completa l'invio."}
-        return {"headline": "Pronta per il completamento", "subheadline": "La pratica e pronta per essere chiusa.", "next_step_label": "Prossimo passo", "next_step_detail": "Conferma il completamento."}
+            return {"headline": f"Pronta per l'invio a {entity_name}", "subheadline": "Herion ha preparato tutto. L'invio ufficiale va fatto da te — ti guidiamo noi.", "next_step_label": "Cosa fare", "next_step_detail": f"Accedi a {entity_name} con le tue credenziali e completa l'invio. Poi torna qui."}
+        return {"headline": "Pronta per il completamento", "subheadline": "La pratica e pronta per essere chiusa. Herion ha verificato tutto.", "next_step_label": "Prossimo passo", "next_step_detail": "Conferma il completamento."}
     elif status == "awaiting_authentication":
-        return {"headline": f"Accedi a {entity_name}", "subheadline": "Per completare l'invio, accedi al portale ufficiale con le tue credenziali SPID o CIE.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Accedi e continua' per avviare l'accesso."}
+        return {"headline": f"Accedi a {entity_name}", "subheadline": "Per completare l'invio, accedi al portale ufficiale con le tue credenziali. Herion ti aspetta.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Accedi e continua' per avviare l'accesso al portale."}
     elif status == "submission_in_progress":
-        return {"headline": "Invio in corso", "subheadline": f"L'invio a {entity_name} e in corso. Attendi il completamento.", "next_step_label": "Cosa succede", "next_step_detail": "Al termine, la pratica passera in attesa di risposta."}
+        return {"headline": "Invio in corso", "subheadline": f"L'invio a {entity_name} e in corso. Appena completato, Herion continuera a seguire lo stato.", "next_step_label": "Cosa succede", "next_step_detail": "Al termine, la pratica passera in fase di monitoraggio."}
     elif status in ("submitted_manually", "submitted_via_channel"):
-        return {"headline": "Pratica inviata", "subheadline": f"L'invio a {entity_name} e stato registrato.", "next_step_label": "Cosa succede ora", "next_step_detail": "La risposta arrivera tramite il canale ufficiale dell'ente."}
+        return {"headline": "Pratica inviata — Herion continua a seguirla", "subheadline": f"L'invio a {entity_name} e stato registrato. Ora monitoriamo lo stato per te.", "next_step_label": "Cosa succede ora", "next_step_detail": "Inserisci il riferimento ufficiale (protocollo, DOMUS, ricevuta) per permettere a Herion di seguire l'avanzamento."}
     elif status == "waiting_external_response":
-        return {"headline": f"In attesa di risposta da {entity_name}", "subheadline": "La pratica e stata inviata correttamente.", "next_step_label": "Cosa fare", "next_step_detail": "Quando ricevi la risposta, aggiorna lo stato della pratica."}
+        return {"headline": f"In attesa di risposta da {entity_name}", "subheadline": "La pratica e stata inviata. Herion monitora lo stato e ti avvisera appena ci sono novita.", "next_step_label": "Cosa fare", "next_step_detail": "Non e richiesta alcuna azione da parte tua. Herion ti avvisera al prossimo aggiornamento."}
     elif status in ("completed", "accepted_by_entity"):
-        return {"headline": "Pratica completata", "subheadline": "Tutto e stato concluso con successo.", "next_step_label": "", "next_step_detail": ""}
+        return {"headline": "Pratica completata con successo", "subheadline": "Tutto e stato portato a termine. Herion ha seguito il percorso fino alla fine.", "next_step_label": "", "next_step_detail": ""}
     elif status in ("blocked", "escalated", "internal_validation_failed"):
-        return {"headline": "Pratica bloccata", "subheadline": "Serve un tuo intervento per procedere.", "next_step_label": "Cosa fare", "next_step_detail": "Controlla i dettagli del blocco o chiedi a Herion."}
-    return {"headline": "Stato pratica", "subheadline": "", "next_step_label": "", "next_step_detail": ""}
+        return {"headline": "Pratica bloccata — serve il tuo intervento", "subheadline": "C'e un problema che richiede la tua attenzione. Herion ti spiega cosa fare.", "next_step_label": "Cosa fare", "next_step_detail": "Controlla i dettagli del blocco e segui le indicazioni di Herion."}
+    return {"headline": "Stato pratica", "subheadline": "Herion sta seguendo la tua pratica.", "next_step_label": "", "next_step_detail": ""}
 
 
 @api_router.get("/practices/{practice_id}/workspace")
@@ -2698,6 +3133,11 @@ async def get_practice_workspace(practice_id: str, user: dict = Depends(get_curr
             "received_at": proof.get("received_at"),
             "verified_by_herion": proof.get("verified_by_herion", False),
         },
+        "tracking": build_tracking_intelligence(
+            practice.get("tracking") or {},
+            catalog,
+            status,
+        ),
         "approval": approval,
         "timeline_summary": timeline_summary,
         "ui_guidance": ui_guidance,

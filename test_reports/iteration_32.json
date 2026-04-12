@@ -1,0 +1,64 @@
+{
+  "summary": "Iteration 32 - Tracking & Status Intelligence Layer testing. All 14 backend tests passed. Frontend TrackingCard component verified with all data-testid attributes working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_tracking_intelligence.py",
+    "/app/test_reports/pytest/pytest_results_v32.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Tracking endpoints (POST /tracking, GET /tracking, POST /tracking/verify) all working correctly",
+    "Workspace endpoint returns complete tracking intelligence block with all required fields",
+    "Proof upload auto-populates tracking when reference_code is provided",
+    "TrackingCard component renders correctly with all data-testid attributes",
+    "Mini timeline shows correct milestone progression",
+    "Verification history is properly tracked and displayed"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_tracking_intelligence.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (all tracking UI elements verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "First practice (d9c4fca6-a27d-4f97-a006-d191505549f9) has tracking data with protocol_number 2026-PROT-00451 and verified state",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 32 tested Tracking & Status Intelligence Layer. All tests passed. Key verified: (1) GET /api/practices/{id}/workspace returns tracking block with has_reference, tracked_state, tracked_state_label, entity_name, status_explanation, next_expected_step, mini_timeline. (2) POST /api/practices/{id}/tracking adds tracking reference with identifier_type and identifier_value. (3) POST /api/practices/{id}/tracking/verify verifies tracking with verification_outcome and entity_state. (4) GET /api/practices/{id}/tracking returns full tracking intelligence. (5) POST /api/practices/{id}/proof auto-populates tracking when reference_code provided. (6) TrackingCard renders with data-testid='tracking-card'. (7) All tracking UI elements have correct data-testid: tracking-state-label, tracking-explanation, tracking-reference-value, copy-reference-btn, tracking-verification-block, tracking-entity-block, tracking-next-step, tracking-mini-timeline. (8) tracking-prompt-block and add-tracking-reference-btn only appear for post-submission practices without reference. (9) Tracking dialog has tracking-type-select, tracking-value-input, confirm-tracking-btn.",
+  "features_tested": {
+    "workspace_tracking_block": {"status": "PASS", "details": ["GET /api/practices/{id}/workspace returns tracking intelligence block with all required fields"]},
+    "workspace_tracking_with_reference": {"status": "PASS", "details": ["Practice d9c4fca6 has protocol_number 2026-PROT-00451 with verified state"]},
+    "workspace_tracking_without_reference": {"status": "PASS", "details": ["Practices without reference show not_available state"]},
+    "workspace_tracking_mini_timeline": {"status": "PASS", "details": ["Mini timeline has milestones with key, label, status (done/current/pending)"]},
+    "workspace_tracking_entity_info": {"status": "PASS", "details": ["Entity name and state from catalog displayed correctly"]},
+    "get_tracking_status": {"status": "PASS", "details": ["GET /api/practices/{id}/tracking returns full tracking intelligence"]},
+    "add_tracking_reference": {"status": "PASS", "details": ["POST /api/practices/{id}/tracking adds reference with identifier_type and identifier_value"]},
+    "add_tracking_reference_invalid_type": {"status": "PASS", "details": ["Invalid identifier type returns 400 error"]},
+    "verify_tracking": {"status": "PASS", "details": ["POST /api/practices/{id}/tracking/verify updates tracked_state to verified"]},
+    "verify_tracking_integration_requested": {"status": "PASS", "details": ["integration_requested outcome sets user_action_required=true"]},
+    "proof_auto_populates_tracking": {"status": "PASS", "details": ["POST /api/practices/{id}/proof with reference_code auto-populates tracking"]},
+    "proof_types_mapping": {"status": "PASS", "details": ["pec_delivery proof maps to pec_reference tracking type"]},
+    "all_tracking_identifier_types": {"status": "PASS", "details": ["All 7 identifier types work: domus_number, protocol_number, practice_number, pec_reference, receipt_code, submission_reference, payment_reference"]},
+    "verification_history_tracked": {"status": "PASS", "details": ["Multiple verifications tracked with verification_count"]},
+    "frontend_tracking_card": {"status": "PASS", "details": ["TrackingCard renders with data-testid='tracking-card'"]},
+    "frontend_tracking_state_label": {"status": "PASS", "details": ["data-testid='tracking-state-label' shows 'Verificato da Herion'"]},
+    "frontend_tracking_explanation": {"status": "PASS", "details": ["data-testid='tracking-explanation' shows status explanation"]},
+    "frontend_tracking_reference_value": {"status": "PASS", "details": ["data-testid='tracking-reference-value' shows '2026-PROT-00451'"]},
+    "frontend_copy_reference_btn": {"status": "PASS", "details": ["data-testid='copy-reference-btn' present"]},
+    "frontend_verification_block": {"status": "PASS", "details": ["data-testid='tracking-verification-block' shows Herion verification"]},
+    "frontend_entity_block": {"status": "PASS", "details": ["data-testid='tracking-entity-block' shows Agenzia delle Entrate"]},
+    "frontend_next_step": {"status": "PASS", "details": ["data-testid='tracking-next-step' shows next expected step"]},
+    "frontend_mini_timeline": {"status": "PASS", "details": ["data-testid='tracking-mini-timeline' shows milestone progression"]}
+  }
+}

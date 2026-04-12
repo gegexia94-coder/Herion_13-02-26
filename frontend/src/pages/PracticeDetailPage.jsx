@@ -6,7 +6,8 @@ import {
   orchestrateAgents, sendPracticeChat, getPracticeChatHistory,
   approvePractice, startPractice, markPracticeSubmitted, markPracticeCompleted,
   downloadPracticePdf, getPracticeWorkspace, delegatePractice,
-  revokeDelegation, uploadProof, completeOfficialStep
+  revokeDelegation, uploadProof, completeOfficialStep,
+  updateTracking, verifyTracking
 } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,8 @@ import {
   FileDown, Send, Bot, ChevronDown, ChevronUp, Shield, RefreshCw,
   ExternalLink, FileText, BookOpen, FolderUp, Cog, ClipboardCheck,
   PenTool, Flag, Circle, XCircle, Info, Lock, Eye, AlertTriangle,
-  UserCheck, Key, Receipt, ArrowRight
+  UserCheck, Key, Receipt, ArrowRight, Copy, Search, Building2,
+  Clock, ShieldCheck, Hourglass, MapPin
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -87,6 +89,9 @@ export default function PracticeDetailPage() {
   const [delegateLevel, setDelegateLevel] = useState('assist');
   const [proofType, setProofType] = useState('protocol_number');
   const [proofCode, setProofCode] = useState('');
+  const [showTrackingDialog, setShowTrackingDialog] = useState(false);
+  const [trackingIdType, setTrackingIdType] = useState('protocol_number');
+  const [trackingIdValue, setTrackingIdValue] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -164,6 +169,20 @@ export default function PracticeDetailPage() {
     try { await completeOfficialStep(id, { step_outcome: 'success' }); toast.success('Passaggio completato'); loadData(); }
     catch (e) { toast.error(e.response?.data?.detail || 'Errore'); }
   };
+  const handleAddTrackingReference = async () => {
+    if (!trackingIdValue.trim()) return;
+    setShowTrackingDialog(false);
+    try {
+      await updateTracking(id, { identifier_type: trackingIdType, identifier_value: trackingIdValue.trim() });
+      toast.success('Riferimento acquisito');
+      setTrackingIdValue('');
+      loadData();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Errore nel salvataggio del riferimento'); }
+  };
+  const handleCopyReference = (value) => {
+    navigator.clipboard.writeText(value);
+    toast.success('Riferimento copiato');
+  };
   const handlePdfDownload = async () => {
     setPdfLoading(true);
     try {
@@ -207,6 +226,7 @@ export default function PracticeDetailPage() {
   const delegation = ws.delegation || {};
   const officialAction = ws.official_action;
   const proofLayer = ws.proof_layer || {};
+  const trackingIntel = ws.tracking || {};
   const docsSummary = ws.documents_summary || {};
   const blockers = ws.blockers || [];
   const completedActivities = ws.completed_activities || [];
@@ -370,6 +390,9 @@ export default function PracticeDetailPage() {
 
           {/* ── OFFICIAL STEP CARD ── */}
           {officialAction && !canStart && <OfficialStepCard action={officialAction} proof={proofLayer} status={status} delegation={delegation} onOfficialStepComplete={handleOfficialStepComplete} onShowProofDialog={() => setShowProofDialog(true)} />}
+
+          {/* ── TRACKING & STATUS INTELLIGENCE CARD ── */}
+          {!canStart && <TrackingCard tracking={trackingIntel} status={status} onAddReference={() => setShowTrackingDialog(true)} onCopyReference={handleCopyReference} />}
 
           {/* ── FATHER REVIEW / APPROVAL GATE ── */}
           {canApprove && father.active && (
@@ -674,6 +697,41 @@ export default function PracticeDetailPage() {
           <AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleUploadProof} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]" data-testid="confirm-proof-btn">Registra</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── TRACKING REFERENCE DIALOG ── */}
+      <AlertDialog open={showTrackingDialog} onOpenChange={setShowTrackingDialog}>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-center">Inserisci riferimento ufficiale</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[12px]">Inserisci il riferimento ricevuto dall'ente (protocollo, DOMUS, ricevuta, PEC).</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-3">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Tipo riferimento</label>
+              <Select value={trackingIdType} onValueChange={setTrackingIdType}>
+                <SelectTrigger className="rounded-lg h-9 text-[12px] mt-1" style={{ borderColor: 'var(--border-soft)' }} data-testid="tracking-type-select"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  <SelectItem value="protocol_number">Numero di protocollo</SelectItem>
+                  <SelectItem value="domus_number">Numero DOMUS</SelectItem>
+                  <SelectItem value="practice_number">Numero pratica</SelectItem>
+                  <SelectItem value="pec_reference">Riferimento PEC</SelectItem>
+                  <SelectItem value="receipt_code">Codice ricevuta</SelectItem>
+                  <SelectItem value="submission_reference">Riferimento invio ufficiale</SelectItem>
+                  <SelectItem value="payment_reference">Riferimento pagamento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Valore</label>
+              <Input value={trackingIdValue} onChange={e => setTrackingIdValue(e.target.value)} placeholder="Es. 2026-PROT-00451" className="rounded-lg h-9 text-[12px] mt-1" style={{ borderColor: 'var(--border-soft)' }} data-testid="tracking-value-input" />
+            </div>
+          </div>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAddTrackingReference} disabled={!trackingIdValue.trim()} className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg flex-1 text-[12px] text-white" data-testid="confirm-tracking-btn">Acquisisci riferimento</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -932,6 +990,188 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
           <p className="text-[10px] text-[var(--text-secondary)]">I file <strong>.p7m</strong> sono firmati digitalmente. La firma garantisce autenticita e integrita.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+
+
+// ═══════════════════════════════════════
+// TRACKING CARD — STATUS INTELLIGENCE
+// ═══════════════════════════════════════
+
+const TRACKING_STATE_STYLES = {
+  waiting: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-600', dot: 'bg-slate-400' },
+  active: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500' },
+  confirmed: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  external: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', dot: 'bg-purple-500' },
+  action_required: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-500' },
+  completed: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  blocked: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500' },
+};
+
+const MILESTONE_STYLES = {
+  done: { bg: 'bg-emerald-500', text: 'text-emerald-600', line: 'bg-emerald-300' },
+  current: { bg: 'bg-blue-500', text: 'text-blue-600', line: 'bg-blue-200' },
+  pending: { bg: 'bg-slate-200', text: 'text-slate-400', line: 'bg-slate-200' },
+  blocked: { bg: 'bg-red-500', text: 'text-red-600', line: 'bg-red-200' },
+};
+
+function TrackingCard({ tracking, status, onAddReference, onCopyReference }) {
+  if (!tracking) return null;
+
+  const t = tracking;
+  const stateStyle = TRACKING_STATE_STYLES[t.tracked_state_category] || TRACKING_STATE_STYLES.waiting;
+  const hasRef = t.has_reference;
+  const isPostSubmission = ['submitted_manually', 'submitted_via_channel', 'waiting_external_response', 'completed', 'accepted_by_entity'].includes(status);
+  const showTrackingPrompt = isPostSubmission && !hasRef;
+
+  return (
+    <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="tracking-card">
+
+      {/* ── TOP BLOCK: Current Tracked State ── */}
+      <div className={`px-5 py-4 ${stateStyle.bg} border-b ${stateStyle.border}`}>
+        <div className="flex items-center gap-2 mb-1.5">
+          <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.5} />
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Stato monitoraggio</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className={`w-2.5 h-2.5 rounded-full ${stateStyle.dot} flex-shrink-0`} />
+          <p className={`text-[15px] font-bold ${stateStyle.text}`} data-testid="tracking-state-label">{t.tracked_state_label}</p>
+        </div>
+        <p className="text-[11px] text-[var(--text-secondary)] mt-1.5 leading-relaxed" data-testid="tracking-explanation">{t.status_explanation}</p>
+      </div>
+
+      <div className="px-5 py-4 space-y-4">
+
+        {/* ── TRACKING REFERENCE BLOCK ── */}
+        {hasRef ? (
+          <div className="space-y-2" data-testid="tracking-reference-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Riferimento ufficiale</p>
+            <div className="flex items-center gap-3 p-3 bg-[var(--bg-soft)] rounded-lg">
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{t.identifier_type_label}</p>
+                <p className="text-[14px] font-bold text-[var(--text-primary)] mt-0.5 font-mono tracking-wide" data-testid="tracking-reference-value">{t.identifier_value}</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${stateStyle.bg} ${stateStyle.text}`}>{t.tracked_state_label}</span>
+                <button onClick={() => onCopyReference(t.identifier_value)} className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border hover:bg-[var(--hover-soft)] transition-colors" style={{ borderColor: 'var(--border-soft)' }} data-testid="copy-reference-btn" title="Copia riferimento">
+                  <Copy className="w-3 h-3 text-[var(--text-muted)]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : showTrackingPrompt ? (
+          <div className="space-y-2" data-testid="tracking-prompt-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Riferimento ufficiale</p>
+            <div className="p-4 border border-dashed rounded-lg text-center" style={{ borderColor: 'var(--border-soft)' }}>
+              <Clock className="w-5 h-5 text-[var(--text-muted)] mx-auto mb-2 opacity-50" strokeWidth={1.5} />
+              <p className="text-[11px] text-[var(--text-secondary)] font-medium">Riferimento ufficiale non ancora disponibile</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">Appena disponibile, lo useremo per seguire lo stato del procedimento.</p>
+              {t.expected_identifier?.type_label && (
+                <p className="text-[9px] text-[var(--text-muted)] mt-2">Riferimento atteso: <span className="font-semibold">{t.expected_identifier.type_label}</span>{t.expected_timing?.is_immediate ? ' (rilascio immediato)' : ' (rilascio differito)'}</p>
+              )}
+              <Button variant="outline" className="mt-3 rounded-lg h-8 text-[10px] px-4" onClick={onAddReference} data-testid="add-tracking-reference-btn">
+                <ArrowRight className="w-3 h-3 mr-1.5" />Inserisci riferimento
+              </Button>
+            </div>
+          </div>
+        ) : t.expected_identifier?.type_label ? (
+          <div className="space-y-1" data-testid="tracking-expected-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Riferimento atteso</p>
+            <p className="text-[11px] text-[var(--text-secondary)]">{t.expected_identifier.type_label}{t.expected_timing?.is_immediate ? ' — rilascio immediato dopo l\'invio' : ' — rilascio differito'}</p>
+          </div>
+        ) : null}
+
+        {/* ── HERION VERIFICATION BLOCK ── */}
+        {t.verification_summary && (
+          <div className="space-y-1.5" data-testid="tracking-verification-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Verifica Herion</p>
+            <div className="flex items-start gap-2.5 p-3 bg-[var(--bg-soft)] rounded-lg">
+              <ShieldCheck className="w-4 h-4 text-[#0ABFCF] flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-medium text-[var(--text-primary)]">{t.verification_summary.label}</p>
+                {t.verification_summary.notes && (
+                  <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{t.verification_summary.notes}</p>
+                )}
+                {t.last_verified_at && (
+                  <p className="text-[9px] text-[var(--text-muted)] mt-1">Ultimo controllo: {format(new Date(t.last_verified_at), 'dd MMM yyyy, HH:mm', { locale: it })}</p>
+                )}
+              </div>
+              {t.verification_count > 0 && (
+                <span className="text-[8px] font-bold bg-[#0ABFCF]/10 text-[#0ABFCF] px-2 py-0.5 rounded-full flex-shrink-0">{t.verification_count} {t.verification_count === 1 ? 'verifica' : 'verifiche'}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── EXTERNAL ENTITY STATE BLOCK ── */}
+        {t.entity_name && t.entity_state !== 'unknown' && (
+          <div className="space-y-1.5" data-testid="tracking-entity-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Stato ente</p>
+            <div className="flex items-center gap-3 p-3 bg-purple-50/40 rounded-lg">
+              <Building2 className="w-4 h-4 text-purple-500 flex-shrink-0" strokeWidth={1.5} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-[var(--text-primary)]">{t.entity_name}</p>
+                <p className="text-[10px] text-purple-600 mt-0.5">{t.entity_state_label}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {t.entity_name && t.entity_state === 'unknown' && hasRef && (
+          <div className="space-y-1.5" data-testid="tracking-entity-unknown-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Stato ente</p>
+            <div className="flex items-center gap-3 p-2.5 rounded-lg">
+              <Building2 className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" strokeWidth={1.5} />
+              <p className="text-[10px] text-[var(--text-muted)]">{t.entity_name} — lo stato dettagliato non e ancora disponibile</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── NEXT STEP BLOCK ── */}
+        {t.next_expected_step && (
+          <div className={`p-3.5 rounded-lg ${t.user_action_required ? 'bg-amber-50/60 border border-amber-200' : 'bg-blue-50/40'}`} data-testid="tracking-next-step">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] mb-1 text-[var(--text-muted)]">{t.user_action_required ? 'Serve il tuo intervento' : 'Cosa succede adesso'}</p>
+            <p className={`text-[12px] font-medium leading-relaxed ${t.user_action_required ? 'text-amber-800' : 'text-[var(--text-primary)]'}`}>{t.next_expected_step}</p>
+            {t.user_action_required && !hasRef && isPostSubmission && (
+              <Button className="mt-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg h-8 text-[10px] px-4" onClick={onAddReference} data-testid="tracking-action-btn">
+                <ArrowRight className="w-3 h-3 mr-1.5" />Inserisci riferimento
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* ── MINI TIMELINE ── */}
+        {t.mini_timeline?.length > 0 && (
+          <div className="pt-1" data-testid="tracking-mini-timeline">
+            <div className="flex items-center justify-between">
+              {t.mini_timeline.map((m, i) => {
+                const ms = MILESTONE_STYLES[m.status] || MILESTONE_STYLES.pending;
+                return (
+                  <div key={m.key} className="flex items-center flex-1">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-3 h-3 rounded-full ${ms.bg} flex-shrink-0`} />
+                      <p className={`text-[8px] font-semibold mt-1 text-center max-w-[65px] leading-tight ${ms.text}`}>{m.label}</p>
+                    </div>
+                    {i < t.mini_timeline.length - 1 && (
+                      <div className={`h-px flex-1 mx-1 ${ms.line}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── TRACKING ROUTE LINK ── */}
+        {t.tracking_route && hasRef && (
+          <a href={t.tracking_route} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-[var(--bg-soft)] rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid="tracking-route-link">
+            <Search className="w-3 h-3 text-[#0ABFCF] flex-shrink-0" />
+            <span className="text-[10px] text-[#0ABFCF] font-medium truncate">Verifica stato sul portale ufficiale</span>
+          </a>
+        )}
+      </div>
     </div>
   );
 }

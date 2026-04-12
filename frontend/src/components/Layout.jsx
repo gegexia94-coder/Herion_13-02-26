@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen } from 'lucide-react';
+import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen, BookOpen } from 'lucide-react';
 import { HerionBrand } from '@/components/HerionLogo';
 import { NotificationBell, NotificationPanel } from '@/components/NotificationPanel';
 import { getDashboardStats } from '@/services/api';
@@ -12,6 +12,7 @@ import { getDashboardStats } from '@/services/api';
 const sideNav = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hint: 'Panoramica e azioni rapide' },
   { path: '/practices', label: 'Pratiche', icon: FileText, hint: 'Gestisci le tue pratiche' },
+  { path: '/catalog', label: 'Catalogo', icon: BookOpen, hint: 'Procedure disponibili' },
   { path: '/vault', label: 'Documenti', icon: FolderOpen, hint: 'Tutti i tuoi documenti' },
   { path: '/agents', label: 'Agenti', icon: Bot, hint: 'Attivita degli agenti' },
   { path: '/email-center', label: 'Comunicazione', icon: Mail, hint: 'Email e messaggi' },

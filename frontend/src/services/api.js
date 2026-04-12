@@ -96,6 +96,7 @@ export const getDocumentCategories = () => api.get('/document-categories');
 
 // Practice Catalog & Authority Registry
 export const getCatalog = () => api.get('/catalog');
+export const getCatalogCategories = () => api.get('/catalog/categories');
 export const getCatalogEntry = (practiceId) => api.get(`/catalog/${practiceId}`);
 export const getRegistry = () => api.get('/registry');
 export const getRegistryEntry = (registryId) => api.get(`/registry/${registryId}`);

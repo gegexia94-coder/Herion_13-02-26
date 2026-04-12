@@ -1329,6 +1329,8 @@ STATUS_LABELS = {
     "waiting_user_review": "In Attesa della Tua Verifica",
     "waiting_signature": "In Attesa di Firma",
     "ready_for_submission": "Pronta per l'Invio",
+    "awaiting_authentication": "In Attesa Autenticazione",
+    "submission_in_progress": "Invio in Corso",
     "submitted_manually": "Inviata Manualmente",
     "submitted_via_channel": "Inviata via Canale Ufficiale",
     "waiting_external_response": "In Attesa Risposta Ente",
@@ -1359,6 +1361,8 @@ PRACTICE_STEP_MAP = {
     "waiting_user_review": 3,
     "waiting_signature": 4,
     "ready_for_submission": 5,
+    "awaiting_authentication": 5,
+    "submission_in_progress": 5,
     "submitted_manually": 5,
     "submitted_via_channel": 5,
     "waiting_external_response": 5,
@@ -1388,6 +1392,8 @@ USER_STATUS_DISPLAY = {
     "waiting_user_review": {"label": "In attesa della tua verifica", "color": "#F59E0B", "category": "waiting_user"},
     "waiting_signature": {"label": "In attesa della tua firma", "color": "#F59E0B", "category": "waiting_user"},
     "ready_for_submission": {"label": "Pronta per l'invio", "color": "#06B6D4", "category": "ready"},
+    "awaiting_authentication": {"label": "In attesa di accesso al portale", "color": "#8B5CF6", "category": "waiting_user"},
+    "submission_in_progress": {"label": "Invio in corso", "color": "#3B82F6", "category": "under_review"},
     "submitted_manually": {"label": "Inviata", "color": "#06B6D4", "category": "submitted"},
     "submitted_via_channel": {"label": "Inviata", "color": "#06B6D4", "category": "submitted"},
     "waiting_external_response": {"label": "In attesa risposta ente", "color": "#8B5CF6", "category": "waiting_external"},
@@ -2407,6 +2413,10 @@ def determine_current_activity(status: str, missing_docs: list, channel: dict, h
         if is_external:
             return {"code": "official_step", **ACTIVITY_LABELS["official_step"], "why_it_matters": "L'invio ufficiale deve essere fatto da te sul portale dell'ente.", "user_action_required": True, "required_action_label": "Accedi e invia", "required_action_detail": f"Vai su {channel.get('name', 'portale ente')} e completa l'invio."}
         return {"code": "complete_practice", "label": "Conferma completamento", "description": "La pratica e pronta per essere chiusa.", "why_it_matters": "Conferma per registrare il completamento.", "user_action_required": True, "required_action_label": "Completa", "required_action_detail": "Clicca per confermare."}
+    elif status == "awaiting_authentication":
+        return {"code": "authenticate", "label": "Accedi al portale ufficiale", "description": f"Per completare l'invio, accedi a {channel.get('name', 'portale ente')} con le tue credenziali.", "why_it_matters": "L'accesso e necessario per completare l'invio ufficiale.", "user_action_required": True, "required_action_label": "Accedi e continua", "required_action_detail": "Usa le tue credenziali SPID/CIE per accedere."}
+    elif status == "submission_in_progress":
+        return {"code": "submitting", "label": "Invio in corso", "description": "L'invio al portale ufficiale e in corso.", "why_it_matters": "Attendi il completamento dell'invio.", "user_action_required": False, "required_action_label": "", "required_action_detail": ""}
     elif status in ("submitted_manually", "submitted_via_channel"):
         if not has_proof:
             return {"code": "upload_proof", **ACTIVITY_LABELS["upload_proof"], "why_it_matters": "La ricevuta conferma l'avvenuto invio.", "user_action_required": True, "required_action_label": "Carica ricevuta", "required_action_detail": "Carica il numero di protocollo o la ricevuta."}
@@ -2443,6 +2453,10 @@ def build_ui_guidance(status: str, missing_docs: list, channel: dict, is_approva
         if is_external:
             return {"headline": f"Pronta per l'invio a {entity_name}", "subheadline": "Herion ha preparato tutto. L'invio ufficiale va fatto da te.", "next_step_label": "Cosa fare", "next_step_detail": f"Accedi a {entity_name} con le tue credenziali e completa l'invio."}
         return {"headline": "Pronta per il completamento", "subheadline": "La pratica e pronta per essere chiusa.", "next_step_label": "Prossimo passo", "next_step_detail": "Conferma il completamento."}
+    elif status == "awaiting_authentication":
+        return {"headline": f"Accedi a {entity_name}", "subheadline": "Per completare l'invio, accedi al portale ufficiale con le tue credenziali SPID o CIE.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Accedi e continua' per avviare l'accesso."}
+    elif status == "submission_in_progress":
+        return {"headline": "Invio in corso", "subheadline": f"L'invio a {entity_name} e in corso. Attendi il completamento.", "next_step_label": "Cosa succede", "next_step_detail": "Al termine, la pratica passera in attesa di risposta."}
     elif status in ("submitted_manually", "submitted_via_channel"):
         return {"headline": "Pratica inviata", "subheadline": f"L'invio a {entity_name} e stato registrato.", "next_step_label": "Cosa succede ora", "next_step_detail": "La risposta arrivera tramite il canale ufficiale dell'ente."}
     elif status == "waiting_external_response":

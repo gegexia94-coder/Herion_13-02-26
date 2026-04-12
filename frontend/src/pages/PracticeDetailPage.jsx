@@ -803,12 +803,23 @@ function OfficialStepCard({ action, proof, status, delegation, onOfficialStepCom
           )}
         </div>
 
-        {/* Portal link */}
+        {/* Portal link + Auth CTA */}
         {action.portal_url && (
           <a href={action.portal_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2.5 bg-[var(--bg-soft)] rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid="portal-link">
             <ExternalLink className="w-3 h-3 text-[#0ABFCF] flex-shrink-0" />
             <span className="text-[10px] text-[#0ABFCF] font-medium truncate">Vai al portale ufficiale</span>
           </a>
+        )}
+
+        {/* Auth-ready CTA for ready_for_submission */}
+        {isReady && action.requires_user_direct_step && action.credentials_required && (
+          <Button
+            onClick={onOfficialStepComplete}
+            className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-lg h-10 w-full text-[11px] font-semibold"
+            data-testid="auth-step-btn"
+          >
+            <Key className="w-3.5 h-3.5 mr-2" />Accedi e continua
+          </Button>
         )}
 
         {/* Proof / Receipt status */}

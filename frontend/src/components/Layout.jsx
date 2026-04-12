@@ -6,6 +6,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen } from 'lucide-react';
 import { HerionBrand } from '@/components/HerionLogo';
+import { NotificationBell, NotificationPanel } from '@/components/NotificationPanel';
+import { getDashboardStats } from '@/services/api';
 
 const sideNav = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hint: 'Panoramica e azioni rapide' },
@@ -22,8 +24,23 @@ export default function Layout() {
   const navigate = useNavigate();
   const [showLogout, setShowLogout] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
+
+  // Fetch unread count
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await getDashboardStats();
+        setUnreadCount(res.data?.unread_notifications || 0);
+      } catch { /* silent */ }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const onResize = () => { if (window.innerWidth < 768) setMobileOpen(false); };
@@ -45,10 +62,11 @@ export default function Layout() {
         data-testid="sidebar"
       >
         {/* Logo area */}
-        <div className="flex items-center h-16 border-b px-4 flex-shrink-0" style={{ borderColor: 'var(--border-soft)' }}>
+        <div className="flex items-center justify-between h-16 border-b px-4 flex-shrink-0" style={{ borderColor: 'var(--border-soft)' }}>
           <NavLink to="/dashboard" className="flex-shrink-0" data-testid="logo-link">
             <HerionBrand size={36} showText />
           </NavLink>
+          <NotificationBell unreadCount={unreadCount} onClick={() => setNotifOpen(!notifOpen)} />
         </div>
 
         {/* Nav items — always show labels */}
@@ -129,6 +147,9 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* ─── NOTIFICATION PANEL ─── */}
+      <NotificationPanel open={notifOpen} onClose={() => { setNotifOpen(false); /* refresh count */ getDashboardStats().then(r => setUnreadCount(r.data?.unread_notifications || 0)).catch(() => {}); }} />
 
       {/* ─── LOGOUT DIALOG ─── */}
       <AlertDialog open={showLogout} onOpenChange={setShowLogout}>

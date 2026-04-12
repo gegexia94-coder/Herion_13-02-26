@@ -1,0 +1,141 @@
+{
+  "summary": "Iteration 27 - Three-phase frontend implementation testing complete. All features verified: (1) Notification system with bell icon, badge count, panel overlay, type-based colors, source labels (Herion), and 'Segna tutte lette' button. (2) Communication page with workspace context panel showing practice name, client, status, step, guidance, official action, and agent when email selected. (3) Auth flow state preparation with awaiting_authentication and submission_in_progress statuses in backend. 11/11 backend tests passed, all UI features verified via Playwright.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Create Draft Form",
+        "issues": ["Console warning: '<span> cannot be a child of <option>' - minor React hydration warning in practice selector dropdown"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_27.py",
+    "/app/test_reports/iteration_27.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Notification system properly implements type-based color config (amber=action, red=urgent, blue=Herion, green=success, purple=entity)",
+    "NotificationPanel correctly shows source labels (Herion, Sistema, Ente) based on notification type",
+    "Communication page workspace context panel correctly loads via getPracticeWorkspace API when email with practice_id is clicked",
+    "Context panel shows all required sections: practice context, guidance, official action, agent",
+    "Backend STATUS_LABELS, PRACTICE_STEP_MAP, and USER_STATUS_DISPLAY all include awaiting_authentication and submission_in_progress",
+    "OfficialStepCard shows 'Accedi e continua' CTA when ready_for_submission + requires_user_direct_step + credentials_required"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_27.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (all features verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Used existing practices and email drafts from previous iterations",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 27 tested three new features: (1) Notification system - bell icon in sidebar header with unread badge, notification panel overlay with type-based colors and source labels, 'Segna tutte lette' button. (2) Communication page workspace integration - context panel on right side shows practice context, guidance, official action, and agent when email with practice_id is clicked. (3) Auth flow state preparation - backend has awaiting_authentication and submission_in_progress statuses with proper labels and colors. All features working correctly. Minor console warning in create draft form about span in option element.",
+  "features_tested": {
+    "notification_bell": {
+      "status": "PASS",
+      "details": [
+        "Bell icon visible in sidebar header with data-testid='notification-bell'",
+        "Badge shows unread count (9+) with data-testid='notification-badge'",
+        "Click opens notification panel overlay"
+      ]
+    },
+    "notification_panel": {
+      "status": "PASS",
+      "details": [
+        "Panel opens with data-testid='notification-panel'",
+        "Shows 'Notifiche' header with unread count",
+        "'Segna tutte lette' button present with data-testid='mark-all-read-btn'",
+        "Notifications show title, message, source label (Herion), timestamp",
+        "Type-based colors working (success=green, info=blue, etc.)"
+      ]
+    },
+    "communication_page_header": {
+      "status": "PASS",
+      "details": [
+        "Header shows 'Comunicazione' title",
+        "Stats show: RICHIEDONO AZIONE (18), INVIATE (2), BLOCCATE (5), TOTALI (33)"
+      ]
+    },
+    "communication_page_filters": {
+      "status": "PASS",
+      "details": [
+        "Filter tabs present: Tutte, Bozze, Revisione, Approvate, Inviate, Problemi",
+        "Filters work correctly with backend API"
+      ]
+    },
+    "email_list": {
+      "status": "PASS",
+      "details": [
+        "Email items show with status badges (Bozza, Approvata, Fallita, etc.)",
+        "Practice links shown in teal color, clickable",
+        "33 email items displayed"
+      ]
+    },
+    "context_panel_empty": {
+      "status": "PASS",
+      "details": [
+        "Shows 'Seleziona una comunicazione' when no email selected",
+        "Shows 'Vedrai il contesto della pratica collegata' guidance"
+      ]
+    },
+    "context_panel_with_email": {
+      "status": "PASS",
+      "details": [
+        "PRATICA COLLEGATA section shows practice name and client",
+        "SITUAZIONE ATTUALE section shows headline and guidance",
+        "COSA FARE box shows next action",
+        "ENTE section shows entity name, who acts, SPID indicator",
+        "Agent section shows Herion Guard with status"
+      ]
+    },
+    "create_draft_form": {
+      "status": "PASS",
+      "details": [
+        "Practice selector dropdown present with data-testid='draft-practice'",
+        "Subject input with data-testid='draft-subject'",
+        "Recipient email input with data-testid='draft-email'",
+        "'Crea bozza' button with data-testid='draft-create-btn'"
+      ]
+    },
+    "practice_detail_official_step": {
+      "status": "PASS",
+      "details": [
+        "Official Step card shows 'PASSAGGIO UFFICIALE' header",
+        "'CHI AGISCE ORA: Tu' prominent badge displayed",
+        "'Credenziali personali richieste (es. SPID)' message shown",
+        "'Vai al portale ufficiale' link present"
+      ]
+    },
+    "auth_flow_states_backend": {
+      "status": "PASS",
+      "details": [
+        "awaiting_authentication status in STATUS_LABELS, PRACTICE_STEP_MAP, USER_STATUS_DISPLAY",
+        "submission_in_progress status in STATUS_LABELS, PRACTICE_STEP_MAP, USER_STATUS_DISPLAY",
+        "Proper Italian labels and colors configured"
+      ]
+    },
+    "backend_api_tests": {
+      "status": "PASS",
+      "details": [
+        "GET /api/notifications - returns list with proper structure",
+        "PUT /api/notifications/{id}/read - marks notification as read",
+        "PUT /api/notifications/read-all - marks all as read",
+        "GET /api/dashboard/stats - includes unread_notifications count",
+        "GET /api/emails/drafts - returns list with practice_id field",
+        "GET /api/emails/summary - returns counts for all statuses",
+        "GET /api/practices/{id}/workspace - returns full workspace data"
+      ]
+    }
+  }
+}

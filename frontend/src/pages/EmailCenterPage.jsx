@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getEmailDrafts, getEmailSummary, submitEmailForReview, approveEmailDraft,
-  sendEmailDraft, createEmailDraft, getPractices,
+  sendEmailDraft, createEmailDraft, getPractices, getPracticeWorkspace,
   getEmailTemplates, getEmailTemplateGroups, resolveEmailTemplate, createDraftFromTemplate,
 } from '@/services/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Mail, Send, Clock, CheckCircle, XCircle, AlertTriangle, Shield, RefreshCw,
-  Plus, Eye, ArrowRight, FileText, Lock, LayoutTemplate, PenLine, ChevronRight,
-  Users, Building2, Briefcase, ShieldAlert, ClipboardCheck, FileSignature, Package, Bell, KeyRound,
+  Plus, Eye, ArrowRight, FileText, Lock, PenLine, ChevronRight, ChevronDown,
+  Bot, ExternalLink, Flag, UserCheck, Cog, Key, Info
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -25,19 +28,18 @@ const STATUS_CONFIG = {
   blocked: { label: 'Bloccata', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: Lock },
 };
 
-const GROUP_ICONS = {
-  private: Users, freelancer: Briefcase, company: Building2, blocked: ShieldAlert,
-  approval: ClipboardCheck, delegation: FileSignature, delivery: Package, reminder: Bell, account: KeyRound,
-};
-
 export default function EmailCenterPage() {
   const { user } = useAuth();
   const [drafts, setDrafts] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [practices, setPractices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [selectedDraft, setSelectedDraft] = useState(null);
+  const [contextData, setContextData] = useState(null);
+  const [contextLoading, setContextLoading] = useState(false);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'creator';
 
@@ -45,20 +47,29 @@ export default function EmailCenterPage() {
     try {
       setLoading(true);
       const params = filter !== 'all' ? { status: filter } : {};
-      const [draftsRes, summaryRes] = await Promise.all([
-        getEmailDrafts(params),
-        getEmailSummary(),
+      const [draftsRes, summaryRes, practicesRes] = await Promise.all([
+        getEmailDrafts(params), getEmailSummary(), getPractices(),
       ]);
       setDrafts(draftsRes.data);
       setSummary(summaryRes.data);
-    } catch (e) {
-      console.warn('Email fetch failed:', e?.message);
-    } finally {
-      setLoading(false);
-    }
+      setPractices(practicesRes.data);
+    } catch (e) { console.warn('Fetch failed:', e?.message); }
+    finally { setLoading(false); }
   }, [filter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Load workspace context when a draft is selected
+  const loadContext = async (draft) => {
+    setSelectedDraft(draft);
+    if (!draft?.practice_id) { setContextData(null); return; }
+    setContextLoading(true);
+    try {
+      const ws = await getPracticeWorkspace(draft.practice_id);
+      setContextData(ws.data);
+    } catch { setContextData(null); }
+    finally { setContextLoading(false); }
+  };
 
   const handleAction = async (draftId, action) => {
     try {
@@ -68,476 +79,185 @@ export default function EmailCenterPage() {
       else if (action === 'send') await sendEmailDraft(draftId);
       toast.success(action === 'send' ? 'Email inviata' : action === 'approve' ? 'Email approvata' : 'Inviata in revisione');
       fetchData();
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || "Errore nell'operazione");
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Errore nell'operazione"); }
+    finally { setActionLoading(null); }
   };
 
+  // Count emails needing action
+  const needsAction = (summary?.draft || 0) + (summary?.review || 0);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6" data-testid="email-center-page">
+    <div className="space-y-5" data-testid="email-center-page">
+
+      {/* ── HEADER ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight" data-testid="email-center-title">Centro Email</h1>
-          <p className="text-sm text-[#64748B] mt-1">Bozze, revisione, approvazione e invio controllato</p>
+          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight" data-testid="email-center-title">Comunicazione</h1>
+          <p className="text-[12px] text-[var(--text-secondary)]">Email, messaggi e notifiche legate alle tue pratiche</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData} className="gap-2" data-testid="email-refresh">
-            <RefreshCw className="w-4 h-4" /> Aggiorna
+          <Button variant="outline" size="sm" onClick={fetchData} className="rounded-lg h-8 text-[11px] gap-1.5" style={{ borderColor: 'var(--border-soft)' }} data-testid="email-refresh">
+            <RefreshCw className="w-3 h-3" />Aggiorna
           </Button>
-          <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="gap-2 bg-[#0A192F]" data-testid="email-new-btn">
-            <Plus className="w-4 h-4" /> Nuova Bozza
+          <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="rounded-lg h-8 text-[11px] gap-1.5 bg-[var(--text-primary)] hover:bg-[#2a3040]" data-testid="email-new-btn">
+            <Plus className="w-3 h-3" />Nuova
           </Button>
         </div>
       </div>
 
+      {/* ── QUICK STATS ── */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-2" data-testid="email-summary">
+        <div className="grid grid-cols-4 gap-2" data-testid="email-summary">
           {[
-            { label: 'Totali', value: summary.total, color: 'text-[#0A192F]' },
-            { label: 'Bozze', value: summary.draft, color: 'text-sky-600' },
-            { label: 'Revisione', value: summary.review, color: 'text-amber-600' },
-            { label: 'Approvate', value: summary.approved, color: 'text-emerald-600' },
-            { label: 'Inviate', value: summary.sent, color: 'text-emerald-700' },
-            { label: 'Fallite', value: summary.failed, color: 'text-red-600' },
-            { label: 'Bloccate', value: summary.blocked, color: 'text-red-500' },
+            { label: 'Richiedono azione', value: needsAction, color: needsAction > 0 ? 'text-amber-600' : 'text-[var(--text-muted)]', bg: needsAction > 0 ? 'bg-amber-50/50' : '' },
+            { label: 'Inviate', value: summary.sent || 0, color: 'text-emerald-600', bg: '' },
+            { label: 'Bloccate', value: (summary.failed || 0) + (summary.blocked || 0), color: (summary.failed || 0) + (summary.blocked || 0) > 0 ? 'text-red-500' : 'text-[var(--text-muted)]', bg: '' },
+            { label: 'Totali', value: summary.total || 0, color: 'text-[var(--text-primary)]', bg: '' },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl p-3 border border-[#E2E8F0]/50">
-              <p className="text-[10px] text-[#64748B] font-medium">{s.label}</p>
+            <div key={s.label} className={`bg-white rounded-xl p-3 border ${s.bg}`} style={{ borderColor: 'var(--border-soft)' }}>
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{s.label}</p>
               <p className={`text-xl font-bold ${s.color} mt-0.5`}>{s.value}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap" data-testid="email-filters">
-        {['all', 'draft', 'review', 'approved', 'sent', 'failed', 'blocked'].map((f) => (
-          <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm"
-            onClick={() => setFilter(f)}
-            className={filter === f ? 'bg-[#0A192F] text-white' : ''} data-testid={`email-filter-${f}`}>
-            {f === 'all' ? 'Tutte' : (STATUS_CONFIG[f]?.label || f)}
+      {/* ── FILTERS ── */}
+      <div className="flex gap-1.5 flex-wrap" data-testid="email-filters">
+        {[
+          { key: 'all', label: 'Tutte' },
+          { key: 'draft', label: 'Bozze' },
+          { key: 'review', label: 'Revisione' },
+          { key: 'approved', label: 'Approvate' },
+          { key: 'sent', label: 'Inviate' },
+          { key: 'failed', label: 'Problemi' },
+        ].map((f) => (
+          <Button key={f.key} variant={filter === f.key ? 'default' : 'outline'} size="sm"
+            onClick={() => setFilter(f.key)}
+            className={`rounded-lg h-7 text-[10px] px-3 ${filter === f.key ? 'bg-[var(--text-primary)] text-white' : ''}`}
+            style={filter !== f.key ? { borderColor: 'var(--border-soft)' } : {}}
+            data-testid={`email-filter-${f.key}`}>
+            {f.label}
           </Button>
         ))}
       </div>
 
-      {showCreate && <CreateDraftForm onCreated={() => { setShowCreate(false); fetchData(); }} />}
+      {showCreate && <CreateDraftForm practices={practices} onCreated={() => { setShowCreate(false); fetchData(); }} />}
 
+      {/* ── MAIN CONTENT ── */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <RefreshCw className="w-5 h-5 animate-spin text-[#0A192F]" />
-          <span className="ml-2 text-sm text-[#64748B]">Caricamento...</span>
-        </div>
+        <div className="flex items-center justify-center py-16"><RefreshCw className="w-5 h-5 animate-spin text-[var(--text-muted)]" /></div>
       ) : drafts.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-[#E2E8F0]" data-testid="email-empty">
-          <Mail className="w-10 h-10 text-[#3B82F6] mx-auto mb-3" />
-          <p className="text-[#0F172A] font-medium">Nessuna email {filter !== 'all' ? STATUS_CONFIG[filter]?.label.toLowerCase() : ''}</p>
-          <p className="text-sm text-[#64748B] mt-1">Crea una bozza per iniziare</p>
+        <div className="bg-white rounded-xl border py-14 px-6 text-center" style={{ borderColor: 'var(--border-soft)' }} data-testid="email-empty">
+          <Mail className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2.5 opacity-30" strokeWidth={1.5} />
+          <p className="text-[13px] font-semibold text-[var(--text-primary)]">Nessuna comunicazione {filter !== 'all' ? STATUS_CONFIG[filter]?.label.toLowerCase() : ''}</p>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-sm mx-auto">
+            Le comunicazioni vengono create automaticamente durante le pratiche, oppure puoi crearne una manualmente.
+          </p>
         </div>
       ) : (
-        <div className="space-y-3" data-testid="email-list">
-          {drafts.map((draft) => {
-            const cfg = STATUS_CONFIG[draft.status] || STATUS_CONFIG.draft;
-            const Icon = cfg.icon;
-            return (
-              <div key={draft.id} className={`bg-white rounded-xl border ${cfg.border} p-4 transition-all hover:shadow-md`} data-testid={`email-item-${draft.id}`}>
-                <div className="flex items-start gap-4">
-                  <div className={`w-10 h-10 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0`}>
-                    <Icon className={`w-5 h-5 ${cfg.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-semibold text-[#0F172A] text-sm truncate">{draft.subject}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
-                      {draft.template_name && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0A192F]/5 text-[#0A192F] font-medium">
-                          {draft.template_name}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#64748B]">
-                      A: {draft.recipient_email} {draft.client_name ? `| ${draft.client_name}` : ''}
-                    </p>
-                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[#94A3B8]">
-                      <span>{format(new Date(draft.created_at), 'dd MMM yyyy HH:mm', { locale: it })}</span>
-                      {draft.attachment_doc_keys?.length > 0 && (
-                        <span className="flex items-center gap-0.5"><FileText className="w-3 h-3" />{draft.attachment_doc_keys.length} allegati</span>
-                      )}
-                      {draft.sent_at && <span className="text-emerald-600">Inviata: {format(new Date(draft.sent_at), 'dd MMM HH:mm', { locale: it })}</span>}
-                      {draft.send_error && <span className="text-red-500 truncate max-w-[200px]">{draft.send_error}</span>}
-                    </div>
-                    {draft.compliance?.issues?.length > 0 && (
-                      <div className="mt-2 space-y-0.5">
-                        {draft.compliance.issues.map((issue, i) => (
-                          <p key={i} className="text-[10px] text-red-600 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />{issue.label}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {draft.status === 'draft' && (
-                      <Button variant="outline" size="sm" className="text-[10px] gap-1 border-amber-200 text-amber-700 hover:bg-amber-50 h-7 px-2"
-                        onClick={() => handleAction(draft.id, 'review')} disabled={!!actionLoading} data-testid={`email-review-${draft.id}`}>
-                        {actionLoading === draft.id + 'review' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} Revisione
-                      </Button>
-                    )}
-                    {isAdmin && draft.status === 'review' && (
-                      <Button variant="outline" size="sm" className="text-[10px] gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-7 px-2"
-                        onClick={() => handleAction(draft.id, 'approve')} disabled={!!actionLoading} data-testid={`email-approve-${draft.id}`}>
-                        {actionLoading === draft.id + 'approve' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Approva
-                      </Button>
-                    )}
-                    {isAdmin && draft.status === 'approved' && (
-                      <Button size="sm" className="text-[10px] gap-1 bg-[#0A192F] h-7 px-2"
-                        onClick={() => handleAction(draft.id, 'send')} disabled={!!actionLoading} data-testid={`email-send-${draft.id}`}>
-                        {actionLoading === draft.id + 'send' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Invia
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-/* ─────────────── CREATE DRAFT FORM (TEMPLATE + MANUAL) ─────────────── */
-
-function CreateDraftForm({ onCreated }) {
-  const [mode, setMode] = useState('template'); // 'template' | 'manual'
-
-  return (
-    <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden" data-testid="email-create-form">
-      <div className="flex items-center gap-2 px-5 pt-5 pb-3">
-        <Shield className="w-5 h-5 text-[#0A192F]" />
-        <h3 className="text-sm font-bold text-[#0F172A]">Nuova Bozza Email</h3>
-      </div>
-      {/* Tab switcher */}
-      <div className="flex border-b border-[#E2E8F0] px-5" data-testid="email-mode-tabs">
-        <button
-          onClick={() => setMode('template')}
-          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-            mode === 'template'
-              ? 'border-[#0A192F] text-[#0A192F]'
-              : 'border-transparent text-[#94A3B8] hover:text-[#64748B]'
-          }`}
-          data-testid="email-mode-template"
-        >
-          <LayoutTemplate className="w-3.5 h-3.5" /> Da Template
-        </button>
-        <button
-          onClick={() => setMode('manual')}
-          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-            mode === 'manual'
-              ? 'border-[#0A192F] text-[#0A192F]'
-              : 'border-transparent text-[#94A3B8] hover:text-[#64748B]'
-          }`}
-          data-testid="email-mode-manual"
-        >
-          <PenLine className="w-3.5 h-3.5" /> Manuale
-        </button>
-      </div>
-
-      <div className="p-5">
-        {mode === 'template' ? <TemplateDraftFlow onCreated={onCreated} /> : <ManualDraftForm onCreated={onCreated} />}
-      </div>
-    </div>
-  );
-}
-
-
-/* ─────────────── TEMPLATE DRAFT FLOW ─────────────── */
-
-function TemplateDraftFlow({ onCreated }) {
-  const [groups, setGroups] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [practices, setPractices] = useState([]);
-  const [loadingInit, setLoadingInit] = useState(true);
-
-  // Selection state
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [selectedPractice, setSelectedPractice] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-
-  // Resolve state
-  const [resolved, setResolved] = useState(null);
-  const [resolving, setResolving] = useState(false);
-  const [overrides, setOverrides] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    Promise.all([
-      getEmailTemplateGroups(),
-      getEmailTemplates(),
-      getPractices(),
-    ]).then(([gRes, tRes, pRes]) => {
-      setGroups(gRes.data || []);
-      setTemplates(tRes.data || []);
-      setPractices(pRes.data || []);
-    }).catch((e) => console.warn('Template fetch failed:', e?.message))
-      .finally(() => setLoadingInit(false));
-  }, []);
-
-  // Auto-resolve when template + practice change
-  useEffect(() => {
-    if (!selectedTemplate || !selectedPractice) {
-      setResolved(null);
-      return;
-    }
-    let cancelled = false;
-    const doResolve = async () => {
-      setResolving(true);
-      try {
-        const res = await resolveEmailTemplate(selectedTemplate.id, {
-          practice_id: selectedPractice,
-          extra: Object.keys(overrides).length > 0 ? overrides : null,
-        });
-        if (!cancelled) setResolved(res.data);
-      } catch {
-        if (!cancelled) console.warn('Template resolve failed');
-      } finally {
-        if (!cancelled) setResolving(false);
-      }
-    };
-    doResolve();
-    return () => { cancelled = true; };
-  }, [selectedTemplate, selectedPractice]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Re-resolve with overrides (debounced via button)
-  const handleReResolve = async () => {
-    if (!selectedTemplate || !selectedPractice) return;
-    setResolving(true);
-    try {
-      const res = await resolveEmailTemplate(selectedTemplate.id, {
-        practice_id: selectedPractice,
-        extra: Object.keys(overrides).length > 0 ? overrides : null,
-      });
-      setResolved(res.data);
-    } catch {
-      toast.error('Errore nella risoluzione');
-    } finally {
-      setResolving(false);
-    }
-  };
-
-  const handleCreateDraft = async () => {
-    if (!selectedTemplate || !selectedPractice || !recipientEmail) {
-      toast.error('Seleziona template, pratica e destinatario');
-      return;
-    }
-    try {
-      setSubmitting(true);
-      await createDraftFromTemplate({
-        template_id: selectedTemplate.id,
-        practice_id: selectedPractice,
-        recipient_email: recipientEmail,
-        recipient_name: recipientName || undefined,
-        extra_values: Object.keys(overrides).length > 0 ? overrides : undefined,
-      });
-      toast.success('Bozza creata dal template');
-      onCreated();
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Errore nella creazione');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const filteredTemplates = selectedGroup
-    ? templates.filter(t => t.group === selectedGroup)
-    : templates;
-
-  if (loadingInit) {
-    return (
-      <div className="flex items-center justify-center py-10">
-        <RefreshCw className="w-4 h-4 animate-spin text-[#0A192F]" />
-        <span className="ml-2 text-xs text-[#64748B]">Caricamento template...</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-5" data-testid="template-draft-flow">
-      {/* ── Step 1: Group browser ── */}
-      <div>
-        <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">1. Categoria template</p>
-        <div className="flex flex-wrap gap-1.5" data-testid="template-group-selector">
-          <button
-            onClick={() => { setSelectedGroup(null); setSelectedTemplate(null); setResolved(null); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              !selectedGroup
-                ? 'bg-[#0A192F] text-white shadow-sm'
-                : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
-            }`}
-            data-testid="template-group-all"
-          >
-            Tutti ({templates.length})
-          </button>
-          {groups.map(g => {
-            const GIcon = GROUP_ICONS[g.id] || FileText;
-            return (
-              <button key={g.id}
-                onClick={() => { setSelectedGroup(g.id); setSelectedTemplate(null); setResolved(null); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  selectedGroup === g.id
-                    ? 'bg-[#0A192F] text-white shadow-sm'
-                    : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
-                }`}
-                data-testid={`template-group-${g.id}`}
-              >
-                <GIcon className="w-3 h-3" /> {g.label} ({g.count})
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Step 2: Template picker ── */}
-      <div>
-        <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-2">2. Seleziona template</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1" data-testid="template-picker">
-          {filteredTemplates.map(t => {
-            const isSelected = selectedTemplate?.id === t.id;
-            const GIcon = GROUP_ICONS[t.group] || FileText;
-            return (
-              <button key={t.id}
-                onClick={() => { setSelectedTemplate(t); setOverrides({}); }}
-                className={`text-left p-3 rounded-xl border transition-all ${
-                  isSelected
-                    ? 'border-[#0A192F] bg-[#0A192F]/5 ring-1 ring-[#0A192F]/20'
-                    : 'border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-[#F8FAFC]'
-                }`}
-                data-testid={`template-item-${t.id}`}
-              >
-                <div className="flex items-start gap-2">
-                  <GIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${isSelected ? 'text-[#0A192F]' : 'text-[#94A3B8]'}`} />
-                  <div className="min-w-0">
-                    <p className={`text-xs font-semibold truncate ${isSelected ? 'text-[#0A192F]' : 'text-[#0F172A]'}`}>{t.name}</p>
-                    <p className="text-[10px] text-[#94A3B8] mt-0.5 truncate">{t.group_label}</p>
-                  </div>
-                  {isSelected && <CheckCircle className="w-3.5 h-3.5 text-[#0A192F] ml-auto flex-shrink-0 mt-0.5" />}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Step 3: Practice + Recipient ── */}
-      {selectedTemplate && (
-        <div className="space-y-3">
-          <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">3. Pratica e destinatario</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-[10px] text-[#64748B] font-medium">Pratica</label>
-              <select value={selectedPractice} onChange={(e) => setSelectedPractice(e.target.value)}
-                className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-xs text-[#0F172A] bg-white"
-                data-testid="template-practice-select">
-                <option value="">Seleziona pratica...</option>
-                {practices.map(p => {
-                  const label = `${p.client_name || ''} - ${p.practice_type_label || ''}`;
-                  return <option key={p.id} value={p.id}>{label}</option>;
-                })}
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] text-[#64748B] font-medium">Email destinatario</label>
-              <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)}
-                placeholder="email@esempio.it"
-                className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-xs text-[#0F172A]"
-                data-testid="template-recipient-email" />
-            </div>
-            <div>
-              <label className="text-[10px] text-[#64748B] font-medium">Nome destinatario <span className="text-[#94A3B8]">(opzionale)</span></label>
-              <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)}
-                placeholder="Nome Cognome"
-                className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-xs text-[#0F172A]"
-                data-testid="template-recipient-name" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 4: Live Preview ── */}
-      {selectedTemplate && selectedPractice && (
-        <div data-testid="template-preview-section">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">4. Anteprima email</p>
-            {resolving && <span className="text-[10px] text-[#94A3B8] flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Risoluzione...</span>}
-          </div>
-
-          {resolved ? (
-            <div className="rounded-xl border border-[#E2E8F0] overflow-hidden">
-              {/* Subject bar */}
-              <div className="bg-[#F8FAFC] px-4 py-2.5 border-b border-[#E2E8F0]">
-                <p className="text-[10px] text-[#94A3B8] font-medium">OGGETTO</p>
-                <p className="text-sm font-semibold text-[#0F172A] mt-0.5" data-testid="template-preview-subject">{resolved.subject}</p>
-              </div>
-              {/* HTML body */}
-              <div className="px-4 py-4 bg-white" data-testid="template-preview-body">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+          {/* ── EMAIL LIST ── */}
+          <div className="space-y-2" data-testid="email-list">
+            {drafts.map((draft) => {
+              const cfg = STATUS_CONFIG[draft.status] || STATUS_CONFIG.draft;
+              const Icon = cfg.icon;
+              const isSelected = selectedDraft?.id === draft.id;
+              const practice = practices.find(p => p.id === draft.practice_id);
+              return (
                 <div
-                  className="prose prose-sm max-w-none text-[#0F172A]"
-                  style={{ fontSize: '14px', lineHeight: '1.6' }}
-                  dangerouslySetInnerHTML={{ __html: resolved.body_html }}
-                />
-              </div>
-              {/* Unresolved placeholders */}
-              {resolved.unresolved_placeholders?.length > 0 && (
-                <div className="bg-amber-50/60 border-t border-amber-200 px-4 py-3" data-testid="template-unresolved-section">
-                  <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Campi da completare manualmente
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {resolved.unresolved_placeholders.map(ph => (
-                      <div key={ph}>
-                        <label className="text-[10px] text-amber-800 font-medium">[{ph}]</label>
-                        <input
-                          type="text"
-                          value={overrides[ph] || ''}
-                          onChange={(e) => setOverrides(prev => ({ ...prev, [ph]: e.target.value }))}
-                          placeholder={`Inserisci ${ph}...`}
-                          className="w-full mt-0.5 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs text-[#0F172A] bg-white focus:ring-1 focus:ring-amber-300 focus:border-amber-300"
-                          data-testid={`template-override-${ph}`}
-                        />
+                  key={draft.id}
+                  onClick={() => loadContext(draft)}
+                  className={`bg-white rounded-xl border p-4 transition-all cursor-pointer hover:shadow-sm ${isSelected ? 'ring-2 ring-[#0ABFCF]/30 border-[#0ABFCF]/20' : ''}`}
+                  style={{ borderColor: isSelected ? undefined : 'var(--border-soft)' }}
+                  data-testid={`email-item-${draft.id}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0`}>
+                      <Icon className={`w-4 h-4 ${cfg.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="font-semibold text-[var(--text-primary)] text-[12px] truncate">{draft.subject}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
                       </div>
-                    ))}
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        A: {draft.recipient_email}{draft.client_name ? ` | ${draft.client_name}` : ''}
+                      </p>
+                      {/* Practice link */}
+                      {practice && (
+                        <Link to={`/practices/${practice.id}`} className="inline-flex items-center gap-1 text-[9px] text-[#0ABFCF] font-medium mt-1 hover:underline" onClick={e => e.stopPropagation()}>
+                          <FileText className="w-2.5 h-2.5" />{practice.practice_type_label} — {practice.client_name}
+                        </Link>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 text-[9px] text-[var(--text-muted)]">
+                        <span>{format(new Date(draft.created_at), 'dd MMM HH:mm', { locale: it })}</span>
+                        {draft.attachment_doc_keys?.length > 0 && <span className="flex items-center gap-0.5"><FileText className="w-2.5 h-2.5" />{draft.attachment_doc_keys.length} allegati</span>}
+                      </div>
+                      {draft.compliance?.issues?.length > 0 && (
+                        <div className="mt-1.5">
+                          {draft.compliance.issues.slice(0, 2).map((issue, i) => (
+                            <p key={i} className="text-[9px] text-red-600 flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5" />{issue.label}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {draft.status === 'draft' && (
+                        <Button variant="outline" size="sm" className="text-[9px] gap-1 border-amber-200 text-amber-700 hover:bg-amber-50 h-6 px-2 rounded-lg"
+                          onClick={(e) => { e.stopPropagation(); handleAction(draft.id, 'review'); }} disabled={!!actionLoading} data-testid={`email-review-${draft.id}`}>
+                          {actionLoading === draft.id + 'review' ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <Eye className="w-2.5 h-2.5" />}Revisione
+                        </Button>
+                      )}
+                      {isAdmin && draft.status === 'review' && (
+                        <Button variant="outline" size="sm" className="text-[9px] gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-6 px-2 rounded-lg"
+                          onClick={(e) => { e.stopPropagation(); handleAction(draft.id, 'approve'); }} disabled={!!actionLoading} data-testid={`email-approve-${draft.id}`}>
+                          {actionLoading === draft.id + 'approve' ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle className="w-2.5 h-2.5" />}Approva
+                        </Button>
+                      )}
+                      {isAdmin && draft.status === 'approved' && (
+                        <Button size="sm" className="text-[9px] gap-1 bg-[var(--text-primary)] h-6 px-2 rounded-lg"
+                          onClick={(e) => { e.stopPropagation(); handleAction(draft.id, 'send'); }} disabled={!!actionLoading} data-testid={`email-send-${draft.id}`}>
+                          {actionLoading === draft.id + 'send' ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <Send className="w-2.5 h-2.5" />}Invia
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleReResolve}
-                    className="mt-2 text-[10px] gap-1 border-amber-300 text-amber-700 hover:bg-amber-100 h-7"
-                    disabled={resolving}
-                    data-testid="template-re-resolve">
-                    <RefreshCw className={`w-3 h-3 ${resolving ? 'animate-spin' : ''}`} /> Aggiorna anteprima
-                  </Button>
                 </div>
-              )}
-            </div>
-          ) : resolving ? (
-            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-center py-8">
-              <RefreshCw className="w-4 h-4 animate-spin text-[#0A192F]" />
-              <span className="ml-2 text-xs text-[#64748B]">Generazione anteprima...</span>
-            </div>
-          ) : null}
-        </div>
-      )}
+              );
+            })}
+          </div>
 
-      {/* ── Step 5: Create button ── */}
-      {selectedTemplate && selectedPractice && resolved && (
-        <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
-          <p className="text-[10px] text-[#94A3B8]">La bozza seguira il flusso: bozza → revisione → approvazione → invio</p>
-          <Button onClick={handleCreateDraft} size="sm" className="gap-2 bg-[#0A192F]"
-            disabled={submitting || !recipientEmail}
-            data-testid="template-create-draft-btn">
-            {submitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            Crea Bozza da Template
-          </Button>
+          {/* ── CONTEXT PANEL (right) ── */}
+          <div className="space-y-4" data-testid="context-panel">
+            {selectedDraft ? (
+              contextLoading ? (
+                <div className="bg-white rounded-xl border p-6 text-center" style={{ borderColor: 'var(--border-soft)' }}>
+                  <RefreshCw className="w-4 h-4 animate-spin text-[var(--text-muted)] mx-auto" />
+                </div>
+              ) : contextData ? (
+                <ContextPanel data={contextData} draft={selectedDraft} />
+              ) : (
+                <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Mail className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Dettaglio</p>
+                  </div>
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)]">{selectedDraft.subject}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">A: {selectedDraft.recipient_email}</p>
+                  {selectedDraft.body_preview && (
+                    <p className="text-[10px] text-[var(--text-secondary)] mt-2 whitespace-pre-wrap leading-relaxed">{selectedDraft.body_preview?.substring(0, 200)}...</p>
+                  )}
+                </div>
+              )
+            ) : (
+              <div className="bg-white rounded-xl border p-6 text-center" style={{ borderColor: 'var(--border-soft)' }}>
+                <Mail className="w-5 h-5 text-[var(--text-muted)] mx-auto mb-1.5 opacity-30" strokeWidth={1.5} />
+                <p className="text-[11px] font-medium text-[var(--text-primary)]">Seleziona una comunicazione</p>
+                <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Vedrai il contesto della pratica collegata</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -545,87 +265,155 @@ function TemplateDraftFlow({ onCreated }) {
 }
 
 
-/* ─────────────── MANUAL DRAFT FORM (FALLBACK) ─────────────── */
+// ═══════════════════════════════════════
+// CONTEXT PANEL — Workspace-driven
+// ═══════════════════════════════════════
 
-function ManualDraftForm({ onCreated }) {
-  const [practices, setPractices] = useState([]);
-  const [practiceId, setPracticeId] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
+function ContextPanel({ data, draft }) {
+  const ws = data;
+  const guidance = ws.ui_guidance || {};
+  const activity = ws.current_activity || {};
+  const oa = ws.official_action;
+  const delegation = ws.delegation || {};
+  const proof = ws.proof_layer || {};
+  const approval = ws.approval || {};
+  const agent = ws.current_agent;
+  const statusCfg = ws.user_status || { label: '', color: '#5B6475' };
+
+  return (
+    <div className="space-y-3">
+      {/* Practice context */}
+      <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-practice">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText className="w-3.5 h-3.5 text-[#0ABFCF]" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Pratica collegata</p>
+        </div>
+        <Link to={`/practices/${ws.practice_id}`} className="text-[12px] font-semibold text-[var(--text-primary)] hover:text-[#0ABFCF] transition-colors">
+          {ws.practice_name}
+        </Link>
+        <p className="text-[10px] text-[var(--text-muted)]">{ws.client_name}</p>
+
+        {/* Current step + status */}
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: statusCfg.color + '15', color: statusCfg.color }}>{statusCfg.label}</span>
+          <span className="text-[9px] text-[var(--text-muted)]">Passo {(ws.current_step ?? 0) + 1} di 6</span>
+        </div>
+
+        {/* Who acts now */}
+        {activity.user_action_required !== undefined && (
+          <div className={`mt-2 p-2 rounded-lg text-[10px] ${activity.user_action_required ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-600'}`}>
+            <span className="font-bold">{activity.user_action_required ? 'Richiede la tua azione' : 'Herion sta lavorando'}</span>
+            {activity.required_action_label && <span className="ml-1">— {activity.required_action_label}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* What's happening */}
+      {guidance.headline && (
+        <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-guidance">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-1.5">Situazione attuale</p>
+          <p className="text-[11px] font-semibold text-[var(--text-primary)]">{guidance.headline}</p>
+          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{guidance.subheadline}</p>
+          {guidance.next_step_detail && (
+            <div className="mt-2 p-2 bg-[var(--bg-soft)] rounded-lg">
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{guidance.next_step_label}</p>
+              <p className="text-[10px] font-semibold text-[var(--text-primary)]">{guidance.next_step_detail}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Official action summary */}
+      {oa && (
+        <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-official">
+          <div className="flex items-center gap-2 mb-2">
+            <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Ente</p>
+          </div>
+          <p className="text-[11px] font-semibold text-[var(--text-primary)]">{oa.entity_name}</p>
+          <div className="flex items-center gap-3 mt-1.5 text-[9px]">
+            <span className="text-[var(--text-muted)]">Chi agisce: <span className={`font-bold ${oa.requires_user_direct_step ? 'text-amber-600' : 'text-emerald-600'}`}>{oa.requires_user_direct_step ? 'Tu' : 'Herion'}</span></span>
+            {oa.credentials_required && <span className="flex items-center gap-0.5 text-amber-600"><Key className="w-2.5 h-2.5" />SPID</span>}
+          </div>
+          {proof.expected && (
+            <div className={`mt-2 p-1.5 rounded text-[9px] ${proof.status === 'received' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
+              {proof.status === 'received' ? 'Ricevuta registrata' : 'Ricevuta attesa'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active agent */}
+      {agent && (
+        <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-agent">
+          <div className="flex items-center gap-2">
+            <div className={`w-5 h-5 rounded flex items-center justify-center ${agent.status === 'completed' ? 'bg-emerald-50' : 'bg-blue-50'}`}>
+              <Bot className={`w-3 h-3 ${agent.status === 'completed' ? 'text-emerald-500' : 'text-blue-500'}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold text-[var(--text-primary)]">{agent.name}</p>
+              <p className="text-[9px] text-[var(--text-muted)]">{agent.title}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════
+// CREATE DRAFT FORM (simplified)
+// ═══════════════════════════════════════
+
+function CreateDraftForm({ practices, onCreated }) {
   const [subject, setSubject] = useState('');
-  const [bodyHtml, setBodyHtml] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [practiceId, setPracticeId] = useState('');
+  const [body, setBody] = useState('');
+  const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    getPractices().then(r => setPractices(r.data || [])).catch(() => {});
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!practiceId || !recipientEmail || !subject || !bodyHtml) {
-      toast.error('Compila tutti i campi obbligatori');
-      return;
-    }
+  const handleCreate = async () => {
+    if (!subject || !recipientEmail) { toast.error('Compila oggetto e destinatario'); return; }
+    setCreating(true);
     try {
-      setSubmitting(true);
-      await createEmailDraft({
-        practice_id: practiceId,
-        recipient_email: recipientEmail,
-        subject,
-        body_html: `<p>${bodyHtml.replace(/\n/g, '</p><p>')}</p>`,
-      });
+      await createEmailDraft({ subject, recipient_email: recipientEmail, body_html: `<p>${body}</p>`, practice_id: practiceId || undefined });
       toast.success('Bozza creata');
       onCreated();
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Errore nella creazione');
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Errore'); }
+    finally { setCreating(false); }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" data-testid="manual-draft-form">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="bg-white rounded-xl border p-5 space-y-3" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="create-draft-form">
+      <p className="text-[12px] font-bold text-[var(--text-primary)]">Nuova comunicazione</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Pratica</label>
-          <select value={practiceId} onChange={(e) => setPracticeId(e.target.value)}
-            className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#0F172A] bg-white"
-            data-testid="manual-practice-select">
-            <option value="">Seleziona pratica...</option>
-            {practices.map(p => {
-              const label = `${p.client_name || ''} - ${p.practice_type_label || ''}`;
-              return <option key={p.id} value={p.id}>{label}</option>;
-            })}
-          </select>
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Oggetto</label>
+          <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Oggetto..." className="rounded-lg h-8 text-[11px] mt-1" style={{ borderColor: 'var(--border-soft)' }} data-testid="draft-subject" />
         </div>
         <div>
-          <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Email destinatario</label>
-          <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)}
-            placeholder="email@esempio.it"
-            className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#0F172A]"
-            data-testid="manual-recipient-input" />
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Destinatario</label>
+          <Input value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} placeholder="email@esempio.it" className="rounded-lg h-8 text-[11px] mt-1" style={{ borderColor: 'var(--border-soft)' }} data-testid="draft-email" />
         </div>
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Oggetto</label>
-        <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-          placeholder="Oggetto email..."
-          className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#0F172A]"
-          data-testid="manual-subject-input" />
+        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Pratica collegata (opzionale)</label>
+        <select value={practiceId} onChange={e => setPracticeId(e.target.value)} className="w-full rounded-lg h-8 text-[11px] mt-1 border px-2 bg-white" style={{ borderColor: 'var(--border-soft)' }} data-testid="draft-practice">
+          <option value="">Nessuna</option>
+          {(practices || []).slice(0, 20).map(p => <option key={p.id} value={p.id}>{p.client_name} — {p.practice_type_label}</option>)}
+        </select>
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Corpo del messaggio</label>
-        <textarea value={bodyHtml} onChange={(e) => setBodyHtml(e.target.value)} rows={5}
-          placeholder="Scrivi il contenuto dell'email..."
-          className="w-full mt-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#0F172A] resize-none"
-          data-testid="manual-body-input" />
+        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Messaggio</label>
+        <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Scrivi il messaggio..." className="w-full rounded-lg text-[11px] mt-1 border p-2 min-h-[60px] resize-none" style={{ borderColor: 'var(--border-soft)' }} data-testid="draft-body" />
       </div>
-      <div className="flex items-center justify-between pt-2">
-        <p className="text-[10px] text-[#94A3B8]">La bozza sara sottoposta a verifica di conformita prima dell'invio</p>
-        <Button type="submit" size="sm" className="gap-2 bg-[#0A192F]" disabled={submitting} data-testid="manual-create-submit">
-          {submitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-          Crea Bozza
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" size="sm" className="rounded-lg h-8 text-[11px]" onClick={onCreated}>Annulla</Button>
+        <Button size="sm" className="rounded-lg h-8 text-[11px] bg-[var(--text-primary)] hover:bg-[#2a3040]" onClick={handleCreate} disabled={creating} data-testid="draft-create-btn">
+          {creating ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <PenLine className="w-3 h-3 mr-1" />}Crea bozza
         </Button>
       </div>
-    </form>
+    </div>
   );
 }

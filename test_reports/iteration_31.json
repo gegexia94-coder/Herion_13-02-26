@@ -1,0 +1,56 @@
+{
+  "summary": "Iteration 31 - Catalog expansion from 20 to 35 procedures with universal flow model. All 16 features tested and passed. Backend: 14/14 pytest tests passed. Frontend: All UI features verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_catalog_expansion.py",
+    "/app/test_reports/pytest/pytest_results_v31.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "catalog_data.py correctly implements 35 entries with universal flow model",
+    "All official procedures have flow_definition with official_entry_point, expected_release, tracking_mode",
+    "All internal procedures have flow_definition=None as expected",
+    "Real Italian government portal URLs used (telematici.agenziaentrate.gov.it, inps.it, registroimprese.it, starweb.infocamere.it)",
+    "SUAP_SCIA correctly has url_verified=false since SUAP portals vary by municipality"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_catalog_expansion.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (16/16 features verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Catalog seeded with 35 entries from catalog_data.py on server startup",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 31 tested catalog expansion to 35 entries. All tests passed. Key verified: (1) GET /api/catalog returns 35 entries. (2) GET /api/catalog/categories returns 5 categories with counts: fiscale=14, previdenziale=5, societario=5, documentale=7, informativo=4. (3) New entries exist: INCOME_TAX_PF, INCOME_TAX_730, LIPE_QUARTERLY, CU_CERTIFICATION, INTRASTAT, CASSETTO_FISCALE, VISURA_CAMERALE, INFO_REGIME_FORFETTARIO, INPS_DURC, INPS_ARTIGIANI, INPS_COMMERCIANTI, COMPANY_FORMATION_SRL, COMPANY_VARIATION, SUAP_SCIA, ATECO_VARIATION. (4) INCOME_TAX_PF has flow_definition with official_entry_point (URL, auth_method=SPID), expected_release (type=protocol_number, timing=delayed), tracking_mode (type=portal_status). (5) COMPANY_FORMATION_SRL has delegation_required=true. (6) SUAP_SCIA has url_verified=false. (7) Internal entries (STATUS_UPDATE) have flow_definition=None. (8) Frontend shows 35 procedure cards with correct category counts. (9) CHI FA COSA shows 5 badges for INCOME_TAX_PF. (10) Search by 'INPS' returns 5 entries.",
+  "features_tested": {
+    "login": {"status": "PASS", "details": ["Login with admin@aic.it / Admin123! successful"]},
+    "catalog_returns_35_entries": {"status": "PASS", "details": ["GET /api/catalog returns 35 entries"]},
+    "catalog_categories_correct_counts": {"status": "PASS", "details": ["fiscale=14, previdenziale=5, societario=5, documentale=7, informativo=4"]},
+    "income_tax_pf_exists": {"status": "PASS", "details": ["INCOME_TAX_PF exists with category=fiscale, official_action, flow_definition"]},
+    "income_tax_pf_official_entry_point": {"status": "PASS", "details": ["flow_definition.official_entry_point has real URL (telematici.agenziaentrate.gov.it) and auth_method=SPID"]},
+    "income_tax_pf_expected_release": {"status": "PASS", "details": ["flow_definition.expected_release has type=protocol_number, timing=delayed"]},
+    "income_tax_pf_tracking_mode": {"status": "PASS", "details": ["flow_definition.tracking_mode has type=portal_status"]},
+    "inps_durc_exists": {"status": "PASS", "details": ["INPS_DURC exists with category=previdenziale"]},
+    "company_formation_srl_delegation_required": {"status": "PASS", "details": ["COMPANY_FORMATION_SRL has delegation_required=true"]},
+    "suap_scia_url_verified_false": {"status": "PASS", "details": ["SUAP_SCIA has url_verified=false in flow_definition"]},
+    "internal_entries_flow_definition_none": {"status": "PASS", "details": ["STATUS_UPDATE (internal) has flow_definition=None"]},
+    "frontend_35_entries": {"status": "PASS", "details": ["Catalog browser displays 35 procedure cards"]},
+    "frontend_category_counts": {"status": "PASS", "details": ["Category cards show: Fiscale 14, Previdenziale 5, Societario 5, Documentale 7, Informativo 4"]},
+    "frontend_chi_fa_cosa_badges": {"status": "PASS", "details": ["INCOME_TAX_PF expanded shows 5 badges: Herion prepara, Tu invii, Tu firmi, Delega possibile, Risposta ente attesa"]},
+    "frontend_official_filter": {"status": "PASS", "details": ["Official filter shows 24 procedures (35 total - 11 internal)"]},
+    "frontend_search_inps": {"status": "PASS", "details": ["Search by 'INPS' returns 5 entries"]}
+  }
+}

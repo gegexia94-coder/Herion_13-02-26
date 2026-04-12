@@ -1,0 +1,85 @@
+{
+  "summary": "Iteration 28 - Refinement pass testing complete. All three refinement features verified: (1) Notification panel grouping with '+ N simili' label working correctly - tested with real data showing '+ 4 simili', '+ 3 simili', '+ 1 simile' (singular/plural Italian correct). (2) Communication context panel tightened - shows 'Richiede la tua azione' with action label in amber block, SITUAZIONE/COSA FARE sections, ENTE with who-acts/SPID/proof status, agent card only shows for in_progress status. (3) Official Step 'Accedi e continua' purple explanation box code verified - shows bg-purple-50/50 box with Lock icon and 'Questo passaggio avviene sul portale ufficiale dell'ente' text before the button when ready_for_submission + requires_user_direct_step + credentials_required.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_28.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "NotificationPanel.jsx: Grouping logic correctly groups consecutive same-title notifications (max 5 per group) with proper Italian singular/plural ('simile' vs 'simili')",
+    "EmailCenterPage.jsx: Context panel correctly shows agent card only when agent.status === 'in_progress', tightened UI with combined who-acts badge and action label",
+    "PracticeDetailPage.jsx: Purple explanation box (bg-purple-50/50) with Lock icon correctly placed before 'Accedi e continua' button, only shows when isReady && requires_user_direct_step && credentials_required",
+    "Communication empty state shows guided message: 'Le comunicazioni vengono create automaticamente durante le pratiche, oppure puoi crearne una manualmente.'"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only testing)",
+    "frontend": "100% (all refinement features verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Used existing practices and notifications from previous iterations",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 28 tested refinement pass features: (1) Notification grouping - consecutive same-title notifications grouped with '+ N simili' label, max 5 per group, singular 'simile' for 2 items, plural 'simili' for 3+. (2) Communication context panel - agent card only shows for in_progress status, 'Richiede la tua azione' badge with action label in amber block, SITUAZIONE/COSA FARE/ENTE sections working. (3) Official Step auth flow - purple explanation box (bg-purple-50/50) with Lock icon shows before 'Accedi e continua' button when practice is ready_for_submission with requires_user_direct_step and credentials_required. All UI in Italian.",
+  "features_tested": {
+    "notification_grouping": {
+      "status": "PASS",
+      "details": [
+        "Consecutive same-title notifications grouped correctly",
+        "Shows '+ 4 simili' for groups of 5 items",
+        "Shows '+ 3 simili' for groups of 4 items",
+        "Shows '+ 1 simile' for groups of 2 items (singular Italian)",
+        "Max 5 items per group enforced",
+        "Different notification types displayed: Nuova Pratica Creata, Pratica Completata, Pratica Inviata"
+      ]
+    },
+    "communication_context_panel": {
+      "status": "PASS",
+      "details": [
+        "PRATICA COLLEGATA section shows practice name and client",
+        "Status badge with step indicator (e.g., 'Escalation Passo 0 di 6')",
+        "'Richiede la tua azione' badge with action label 'Intervieni' in amber block",
+        "SITUAZIONE section shows headline (e.g., 'Pratica bloccata')",
+        "COSA FARE block shows guidance text",
+        "ENTE section shows entity name, 'Chi agisce: Tu', SPID indicator, 'Ricevuta attesa'",
+        "Agent card NOT visible when practice is blocked (correct - only shows for in_progress)"
+      ]
+    },
+    "communication_stat_cards": {
+      "status": "PASS",
+      "details": [
+        "4 stat cards displayed: RICHIEDONO AZIONE (18), INVIATE (2), BLOCCATE (5), TOTALI (33)"
+      ]
+    },
+    "official_step_purple_box": {
+      "status": "PASS (code verified)",
+      "details": [
+        "Purple explanation box uses bg-purple-50/50 background",
+        "Lock icon displayed with text 'Questo passaggio avviene sul portale ufficiale dell'ente'",
+        "Secondary text: 'Dopo l'accesso potrai completare l'invio. Herion non conserva le tue credenziali.'",
+        "'Accedi e continua' button with data-testid='auth-step-btn'",
+        "Only shows when: isReady && requires_user_direct_step && credentials_required",
+        "Note: Could not find practice in ready_for_submission status with required conditions in test data to visually verify"
+      ]
+    },
+    "login_and_navigation": {
+      "status": "PASS",
+      "details": [
+        "Login with admin@aic.it / Admin123! successful",
+        "Dashboard loads with notification bell visible",
+        "Sidebar navigation to Comunicazione works",
+        "Practice list and detail pages accessible"
+      ]
+    }
+  }
+}

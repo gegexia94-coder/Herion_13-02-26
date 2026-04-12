@@ -133,11 +133,56 @@ export function NotificationPanel({ open, onClose }) {
               <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Le notifiche appariranno qui quando ci sono aggiornamenti</p>
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: 'var(--border-soft)' }}>
-              {/* Unread first */}
-              {unread.map(n => <NotificationItem key={n.id} notif={n} onMarkRead={handleMarkRead} />)}
-              {/* Then read */}
-              {read.slice(0, 10).map(n => <NotificationItem key={n.id} notif={n} onMarkRead={handleMarkRead} />)}
+            <div>
+              {/* Group similar notifications */}
+              {(() => {
+                // Group consecutive same-title notifications
+                const groups = [];
+                let current = null;
+                for (const n of [...unread, ...read.slice(0, 15)]) {
+                  if (current && current.title === n.title && current.items.length < 5) {
+                    current.items.push(n);
+                  } else {
+                    current = { title: n.title, items: [n], isUnread: !n.read };
+                    groups.push(current);
+                  }
+                }
+                return (
+                  <div className="divide-y" style={{ borderColor: 'var(--border-soft)' }}>
+                    {groups.map((group, gi) => {
+                      if (group.items.length === 1) {
+                        return <NotificationItem key={group.items[0].id} notif={group.items[0]} onMarkRead={handleMarkRead} />;
+                      }
+                      // Collapsed group
+                      const first = group.items[0];
+                      const cfg = getNotifConfig(first);
+                      const Icon = cfg.icon;
+                      return (
+                        <div key={`group-${gi}`} className={`px-4 py-3 ${group.isUnread ? 'bg-blue-50/20' : ''}`}>
+                          <div className="flex items-start gap-3">
+                            <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                              <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-semibold text-[var(--text-primary)]">{first.title}</p>
+                              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{first.message}</p>
+                              {group.items.length > 1 && (
+                                <p className="text-[9px] text-[var(--text-muted)] mt-1 font-medium">
+                                  + {group.items.length - 1} {group.items.length === 2 ? 'simile' : 'simili'}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1 text-[8px] text-[var(--text-muted)]">
+                                <span className={`font-bold ${cfg.color}`}>{cfg.source}</span>
+                                {first.created_at && <span>{new Date(first.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </ScrollArea>

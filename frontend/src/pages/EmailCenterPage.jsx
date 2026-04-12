@@ -274,15 +274,13 @@ function ContextPanel({ data, draft }) {
   const guidance = ws.ui_guidance || {};
   const activity = ws.current_activity || {};
   const oa = ws.official_action;
-  const delegation = ws.delegation || {};
   const proof = ws.proof_layer || {};
-  const approval = ws.approval || {};
   const agent = ws.current_agent;
   const statusCfg = ws.user_status || { label: '', color: '#5B6475' };
 
   return (
     <div className="space-y-3">
-      {/* Practice context */}
+      {/* Practice + Status — combined card */}
       <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-practice">
         <div className="flex items-center gap-2 mb-2">
           <FileText className="w-3.5 h-3.5 text-[#0ABFCF]" />
@@ -293,27 +291,29 @@ function ContextPanel({ data, draft }) {
         </Link>
         <p className="text-[10px] text-[var(--text-muted)]">{ws.client_name}</p>
 
-        {/* Current step + status */}
         <div className="flex items-center gap-2 mt-2">
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: statusCfg.color + '15', color: statusCfg.color }}>{statusCfg.label}</span>
           <span className="text-[9px] text-[var(--text-muted)]">Passo {(ws.current_step ?? 0) + 1} di 6</span>
         </div>
 
-        {/* Who acts now */}
+        {/* Who acts — prominent */}
         {activity.user_action_required !== undefined && (
-          <div className={`mt-2 p-2 rounded-lg text-[10px] ${activity.user_action_required ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-600'}`}>
-            <span className="font-bold">{activity.user_action_required ? 'Richiede la tua azione' : 'Herion sta lavorando'}</span>
-            {activity.required_action_label && <span className="ml-1">— {activity.required_action_label}</span>}
+          <div className={`mt-2.5 p-2.5 rounded-lg ${activity.user_action_required ? 'bg-amber-50' : 'bg-blue-50'}`}>
+            <p className={`text-[10px] font-bold ${activity.user_action_required ? 'text-amber-700' : 'text-blue-600'}`}>
+              {activity.user_action_required ? 'Richiede la tua azione' : 'Herion sta lavorando'}
+            </p>
+            {activity.required_action_label && (
+              <p className={`text-[9px] mt-0.5 ${activity.user_action_required ? 'text-amber-600' : 'text-blue-500'}`}>{activity.required_action_label}</p>
+            )}
           </div>
         )}
       </div>
 
-      {/* What's happening */}
-      {guidance.headline && (
+      {/* Guidance — only if useful */}
+      {guidance.headline && guidance.next_step_detail && (
         <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-guidance">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-1.5">Situazione attuale</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-1">Situazione</p>
           <p className="text-[11px] font-semibold text-[var(--text-primary)]">{guidance.headline}</p>
-          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{guidance.subheadline}</p>
           {guidance.next_step_detail && (
             <div className="mt-2 p-2 bg-[var(--bg-soft)] rounded-lg">
               <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{guidance.next_step_label}</p>
@@ -323,34 +323,34 @@ function ContextPanel({ data, draft }) {
         </div>
       )}
 
-      {/* Official action summary */}
+      {/* Entity + proof — compact */}
       {oa && (
         <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-official">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Ente</p>
           </div>
           <p className="text-[11px] font-semibold text-[var(--text-primary)]">{oa.entity_name}</p>
-          <div className="flex items-center gap-3 mt-1.5 text-[9px]">
+          <div className="flex items-center gap-3 mt-1 text-[9px]">
             <span className="text-[var(--text-muted)]">Chi agisce: <span className={`font-bold ${oa.requires_user_direct_step ? 'text-amber-600' : 'text-emerald-600'}`}>{oa.requires_user_direct_step ? 'Tu' : 'Herion'}</span></span>
             {oa.credentials_required && <span className="flex items-center gap-0.5 text-amber-600"><Key className="w-2.5 h-2.5" />SPID</span>}
           </div>
           {proof.expected && (
-            <div className={`mt-2 p-1.5 rounded text-[9px] ${proof.status === 'received' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
+            <p className={`text-[9px] font-medium mt-1.5 ${proof.status === 'received' ? 'text-emerald-600' : 'text-amber-600'}`}>
               {proof.status === 'received' ? 'Ricevuta registrata' : 'Ricevuta attesa'}
-            </div>
+            </p>
           )}
         </div>
       )}
 
-      {/* Active agent */}
-      {agent && (
-        <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-agent">
+      {/* Agent — only if active */}
+      {agent && agent.status === 'in_progress' && (
+        <div className="bg-white rounded-xl border p-3" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="context-agent">
           <div className="flex items-center gap-2">
-            <div className={`w-5 h-5 rounded flex items-center justify-center ${agent.status === 'completed' ? 'bg-emerald-50' : 'bg-blue-50'}`}>
-              <Bot className={`w-3 h-3 ${agent.status === 'completed' ? 'text-emerald-500' : 'text-blue-500'}`} />
+            <div className="w-5 h-5 rounded bg-blue-50 flex items-center justify-center">
+              <Bot className="w-3 h-3 text-blue-500" />
             </div>
-            <div className="flex-1 min-w-0">
+            <div>
               <p className="text-[10px] font-semibold text-[var(--text-primary)]">{agent.name}</p>
               <p className="text-[9px] text-[var(--text-muted)]">{agent.title}</p>
             </div>

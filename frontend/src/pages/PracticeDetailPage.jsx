@@ -813,13 +813,24 @@ function OfficialStepCard({ action, proof, status, delegation, onOfficialStepCom
 
         {/* Auth-ready CTA for ready_for_submission */}
         {isReady && action.requires_user_direct_step && action.credentials_required && (
-          <Button
-            onClick={onOfficialStepComplete}
-            className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-lg h-10 w-full text-[11px] font-semibold"
-            data-testid="auth-step-btn"
-          >
-            <Key className="w-3.5 h-3.5 mr-2" />Accedi e continua
-          </Button>
+          <div className="space-y-2">
+            <div className="p-2.5 bg-purple-50/50 rounded-lg">
+              <p className="text-[10px] text-purple-700 font-medium flex items-center gap-1.5">
+                <Lock className="w-3 h-3 flex-shrink-0" />
+                Questo passaggio avviene sul portale ufficiale dell'ente
+              </p>
+              <p className="text-[9px] text-purple-600 mt-0.5">
+                Dopo l'accesso potrai completare l'invio. Herion non conserva le tue credenziali.
+              </p>
+            </div>
+            <Button
+              onClick={onOfficialStepComplete}
+              className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-lg h-10 w-full text-[11px] font-semibold"
+              data-testid="auth-step-btn"
+            >
+              <Key className="w-3.5 h-3.5 mr-2" />Accedi e continua
+            </Button>
+          </div>
         )}
 
         {/* Proof / Receipt status */}

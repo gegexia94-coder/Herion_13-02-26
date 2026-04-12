@@ -10,42 +10,50 @@ Herion is a digital accountant experience that helps users manage fiscal, accoun
 Tipologia → Servizio → Herion shows Official Step + reasoning → User goes to official portal → Returns to Herion → Leaves tracking reference (DOMUS/protocollo/PEC/ricevuta) → Herion tracks, verifies, explains → Loop until completion
 
 ## Brand Positioning (Updated Apr 2026)
-"Commercialista digitale" — not a gestionale, not a portale. A guided operational assistant that stays with the user from preparation to official conclusion. The welcome page communicates: who Herion is, why it matters, how it helps users become more autonomous.
+"Commercialista digitale" — not a gestionale, not a portale. A guided operational assistant that stays with the user from preparation to official conclusion.
 
 ## Welcome Page Structure
 1. Hero — "Gestisci pratiche fiscali con piu chiarezza e meno stress"
 2. Flow Steps — 4-step composition (Capisci → Prepara → Guida → Segue)
-3. Why Herion — 4 benefits (Preparazione, Guida all'ente, Monitoraggio, Continuita)
+3. Why Herion — 4 benefits (Preparazione, Guida, Monitoraggio, Continuita)
 4. Chi Siamo — Human, warm, with "Principio di Herion" quote
-5. Orientamento / Consultation — 3 user-type cards (Libero professionista, Azienda, Privato)
+5. Orientamento — 3 user-type cards (Libero professionista, Azienda, Privato)
 6. Continuita — Prima/Durante/Dopo timeline
 7. Cresci con Herion — Autonomy messaging
 8. Final CTA
 
-## Catalog System — 35 Procedures with Universal Flow Model
+## 6 Operational Areas (/services) — NEW Apr 2026
+| Area | Icon | Color | Catalog Categories | Description |
+|------|------|-------|-------------------|-------------|
+| Gestione fiscale e contabile | Receipt | Blue | fiscale | IVA, F24, dichiarazioni, contabilita, bilanci |
+| Scadenze e pianificazione | Calendar | Amber | fiscale, informativo | Deadlines, deductions, advance preparation |
+| Societa e struttura | Building | Purple | societario | Aperture, variazioni, chiusure, CCIAA |
+| Supporto strategico | Lightbulb | Cyan | informativo, documentale | Situation analysis, practical guidance |
+| Procedure con enti | ExternalLink | Green | fiscale, previdenziale, societario | Official portals, SPID, tracking, proof |
+| Guida continua | Compass | Teal | documentale, informativo | Explanations, next steps, anti-confusion |
 
-### Categories
-| Category | Count | Official | Examples |
-|----------|-------|----------|----------|
-| fiscale | 14 | Yes | P.IVA, F24, Redditi PF, 730, LIPE, CU, Intrastat, e-fattura, cassetto, visura |
-| previdenziale | 5 | Yes | INPS Gestione Separata, Cassetto, DURC, Artigiani, Commercianti |
-| societario | 5 | Yes | Chiusura, Costituzione SRL, Variazione CCIAA, SCIA, ATECO |
-| documentale | 7 | No | Richiesta docs, completezza, dossier, report, approvazione |
-| informativo | 4 | No | Info fiscali, regime forfettario, follow-up, aggiornamento |
+Each area: title, subtitle, description, "Cosa fa Herion qui" block, related procedures grid, stats (procedure count, official count, active), catalog + new practice links.
+
+## Catalog System — 35 Procedures with Universal Flow Model
+| Category | Count | Official |
+|----------|-------|----------|
+| fiscale | 14 | Yes |
+| previdenziale | 5 | Yes |
+| societario | 5 | Yes |
+| documentale | 7 | No |
+| informativo | 4 | No |
 
 ## Tracking & Status Intelligence Layer (Apr 2026)
 - 7 identifier types (DOMUS, protocollo, pratica, PEC, ricevuta, invio, pagamento)
 - 10 tracked states with color/category mapping
-- Verification history with Herion agent checks
-- Entity state tracking (received, processing, reviewing, approved, rejected)
-- Next-step forecasting in plain Italian
-- Mini-timeline milestones (submitted → reference → processing → completed)
+- Verification history, entity state tracking, next-step forecasting
+- Mini-timeline milestones, workspace enrichment
 
-## Testing: Iterations 21-33 all 100%
+## Testing: Iterations 21-34 all 100%
 
 ## Remaining
 - P0: Catalog expansion to 120+ procedures
-- P1: 6 operational area interfaces (Fiscal, Tax Planning, Company, Strategic, Official Procedures, Guidance)
+- P1: Dashboard tone refinement (digital accountant feel)
 - P2: server.py refactoring (7000+ lines → modular routes)
 - P3: Real SPID/CIE integration
 - P3: Advanced analytics, multi-language

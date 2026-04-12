@@ -3,32 +3,46 @@
 ## Architecture
 Frontend: React + Tailwind + Shadcn | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | Brand: Geometric H #0ABFCF
 
-## Implemented (All iterations 100%)
+## Catalog Foundation (Batch 22 — 2026-04-12)
 
-### Refinement Pass 2 (Batch 21 — 2026-04-12)
-- Notification grouping: consecutive same-title notifications collapsed with "+ N simili"
-- Communication context panel tightened: agent card only for in_progress, combined who-acts + action label
-- Official Step "Accedi e continua" with purple explanation box about official portal
-- Italian singular/plural handling in notification groups
+### Categories (5)
+| Category | Label | Official | Count |
+|----------|-------|----------|-------|
+| fiscale | Fiscale | Yes | 7 |
+| previdenziale | Previdenziale | Yes | 2 |
+| societario | Societario | Yes | 1 |
+| documentale | Documentale | No | 7 |
+| informativo | Informativo | No | 3 |
 
-### Communication + Notifications + Auth Prep (Batch 20)
-- Communication page with workspace context panel, practice links, create form with practice selector
-- Notification system: bell + panel overlay, type-based colors, source labels, mark all read
-- Auth states: awaiting_authentication, submission_in_progress, "Accedi e continua" CTA
+### Enriched Fields (per procedure)
+- `category` + `category_label` — clear grouping
+- `procedure_type` — "official_procedure" vs "internal_support"
+- `official_action` — {code, label, description, entity_name, form_reference}
+- `who_acts` — {herion_prepares, herion_submits, user_submits, user_signs, delegation_possible, entity_response_expected}
+- `auth_method` — SPID/CIE/CNS/None
+- `proof_expected` — {type, timing (immediate/delayed), label, optional}
+- `estimated_duration` — {label, min_days, max_days}
+- `document_specs` — [{key, name, why_needed, format, mandatory}]
 
-### Refinement Pass 1 (Batch 19)
-- COSA FARE box, CHI AGISCE ORA badge, blocked progress bar, Italian timeline labels
+### Endpoints
+- GET /api/catalog/categories — categories with procedure counts
+- GET /api/catalog — all 20 entries
+- GET /api/catalog/{id} — single entry with full enrichment
 
-### Frontend Workspace + Delegation (Batch 18)
-- PracticeDetailPage wired to workspace, Official Step card, Delegation UI, Father Review
+## Previous Batches (All tested 100%)
+- Batch 21: Refinement pass 2 (notification grouping, context panel, auth flow)
+- Batch 20: Communication + Notifications + Auth prep
+- Batch 19: Refinement pass 1 (COSA FARE, CHI AGISCE, progress bar)
+- Batch 18: Frontend Workspace + Delegation
+- Batch 17: Backend Workspace + Delegation
+- Batch 16: Language + Agent Behavior
+- Batch 15: Empty States + Widget + Progress + Brand
+- Batch 14: Phase 1-4 (Understanding gate, 6-step, doc clarity, statuses, channel)
+- Batches 1-13: Priority, auth, catalog, governance, email, agents
 
-### Backend Workspace + Delegation (Batch 17)
-- Workspace endpoint, delegation, proof, official step completion
-
-### Language + Agent Behavior (Batch 16), Empty States + Widget + Progress + Brand (Batch 15), Phase 1-4 (Batch 14), Earlier (1-13)
-
-## Testing: Iterations 21-28 all 100%
+## Testing: Iterations 21-29 all 100%
 
 ## Remaining
-- P0: Real SPID/CIE embedded auth integration
-- P1: Advanced analytics, multi-language, catalog expansion
+- P0: Catalog expansion (bulk add procedures), frontend catalog browser
+- P1: Real SPID/CIE integration, advanced analytics
+- P2: Multi-language, catalog 120+

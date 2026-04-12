@@ -1,30 +1,30 @@
 # Herion - Controlled Execution Platform (AI Practice Manager)
 
 ## Original Problem Statement
-Build "Herion AI" — a digital accountant (commercialista digitale) platform with orchestration of agents for fiscal/administrative practice management. All UI in Italian, code in English.
+Build "Herion AI" — a digital accountant (commercialista digitale) platform. All UI in Italian, code in English.
 
 ## Architecture
 - **Frontend**: React + Tailwind CSS + Shadcn UI
 - **Backend**: FastAPI + MongoDB
 - **Auth**: Cookie-based JWT
 - **AI**: OpenAI GPT-5.2 via Emergent LLM Key
-- **Email**: Resend integration
 - **Brand**: Geometric H SVG logo, teal #0ABFCF
 
 ## What's Been Implemented
 
-### Frontend Workspace Integration (Batch 18 — 2026-04-11)
-- **PracticeDetailPage rewired to workspace endpoint** as the main source of truth
-- **Official Step Card**: Shows entity name, action label, submission channel, who acts (Tu/Herion/Delegated), credentials required, portal URL, proof/receipt status, security note
-- **Delegation UI**: Grant (3 levels: assist/partial/full) and revoke controls, scope labels, tracking note, revocable anytime
-- **Father Review Block**: During approval, shows compatibility_check, requirements_check, document_check, entity_check, approval_recommendation, estimated timing, path/goal/timing summaries
-- **Current Agent Card**: Right column shows active agent name, title, message, status
-- **Workspace-driven Guidance**: Labels like "Richiede la tua azione", "Herion sta lavorando" from workspace data
-- **Blockers section**: Severity-based cards (red=high, amber=medium)
-- **Timeline**: Color-coded events from workspace.timeline_summary
+### Refinement Pass (Batch 19 — 2026-04-12)
+- **Guidance card redesign**: "COSA FARE" box with white background for next action, stronger "RICHIEDE LA TUA AZIONE"/"HERION STA LAVORANDO"/"IN ATTESA DALL'ENTE" labels with icons
+- **Official Step "CHI AGISCE ORA"**: Large prominent amber/emerald badge with icon — user immediately knows who acts
+- **Progress bar for blocked practices**: Shows green checks for completed steps + red X on blocked step (instead of all gray)
+- **Timeline Italian labels**: Fixed raw codes (guard_completed → "Protezione Completato"), added missing TIMELINE_EVENTS
+- **Current Agent card**: Cleaner layout with colored bot icon matching status, badge inline
+- **Credentials note**: "Credenziali personali richieste (es. SPID)" — more descriptive
+
+### Frontend Workspace Integration (Batch 18)
+- PracticeDetailPage wired to workspace endpoint, Official Step card, Delegation UI, Father Review block
 
 ### Backend Workspace + Delegation (Batch 17)
-- GET /api/practices/{id}/workspace, POST /delegate, /revoke-delegation, /proof, /complete-official-step
+- GET /workspace, POST /delegate, /revoke-delegation, /proof, /complete-official-step
 
 ### Language + Agent Behavior (Batch 16)
 - Commercialista digitale positioning, Herion/Tu labels, messaging labels
@@ -39,22 +39,17 @@ Build "Herion AI" — a digital accountant (commercialista digitale) platform wi
 - Priority system, auth, catalog, governance, email, etc.
 
 ## Testing Status
+- Iteration 26: 100% (12/12) — Refinement Pass
 - Iteration 25: 100% (16/16) — Frontend Workspace Integration
 - Iteration 24: 100% (19/19) — Backend Workspace + Delegation
-- Iteration 23: 100% — Language + Agent Behavior
-- Iteration 22: 100% — Empty States, Widget, Progress, Logo
-- Iteration 21: 100% — Phase 1-4 refactor
+- Iterations 21-23: 100%
 
 ## Remaining Backlog
 
 ### P0 — Next
-- Structured notifications (documents_missing, signature_required, receipt_upload, etc.)
-- Embedded SPID/CIE auth flow (modal or guided redirect)
-- Communication page integration with workspace data
+- Communication page workspace integration
+- Structured notifications system
+- Embedded SPID/CIE auth flow
 
-### P1 — Polish
-- Improve chat tone further
-- Enhanced agent explanations during orchestration
-
-### P2 — Future
+### P1 — Future
 - Advanced analytics, multi-language, catalog expansion

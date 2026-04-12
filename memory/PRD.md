@@ -1,55 +1,29 @@
-# Herion - Controlled Execution Platform (AI Practice Manager)
-
-## Original Problem Statement
-Build "Herion AI" — a digital accountant (commercialista digitale) platform. All UI in Italian, code in English.
+# Herion - Controlled Execution Platform
 
 ## Architecture
-- **Frontend**: React + Tailwind CSS + Shadcn UI
-- **Backend**: FastAPI + MongoDB
-- **Auth**: Cookie-based JWT
-- **AI**: OpenAI GPT-5.2 via Emergent LLM Key
-- **Brand**: Geometric H SVG logo, teal #0ABFCF
+- Frontend: React + Tailwind CSS + Shadcn UI | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | Brand: Geometric H #0ABFCF
 
-## What's Been Implemented
+## Implemented (All tested 100%)
 
-### Refinement Pass (Batch 19 — 2026-04-12)
-- **Guidance card redesign**: "COSA FARE" box with white background for next action, stronger "RICHIEDE LA TUA AZIONE"/"HERION STA LAVORANDO"/"IN ATTESA DALL'ENTE" labels with icons
-- **Official Step "CHI AGISCE ORA"**: Large prominent amber/emerald badge with icon — user immediately knows who acts
-- **Progress bar for blocked practices**: Shows green checks for completed steps + red X on blocked step (instead of all gray)
-- **Timeline Italian labels**: Fixed raw codes (guard_completed → "Protezione Completato"), added missing TIMELINE_EVENTS
-- **Current Agent card**: Cleaner layout with colored bot icon matching status, badge inline
-- **Credentials note**: "Credenziali personali richieste (es. SPID)" — more descriptive
+### Communication + Notifications + Auth Prep (Batch 20 — 2026-04-12)
+- **Communication Page**: Workspace-driven context panel. Click email → right panel shows linked practice state, current agent, guidance, official action, who acts now. Practice links on every email. Stats: "Richiedono azione", "Inviate", "Bloccate". Create form with practice selector.
+- **Notification System**: Bell icon in sidebar with unread badge (polls every 30s). Panel overlay with type-based colors: amber=action, red=urgent, blue=Herion, green=success, purple=entity. Source labels (Herion/Sistema/Ente). Mark all read. Non-intrusive.
+- **Auth Flow Preparation**: New statuses: awaiting_authentication, submission_in_progress. "Accedi e continua" CTA on Official Step card when credentials required. Backend + frontend ready for future SPID/CIE integration.
+
+### Refinement Pass (Batch 19)
+- COSA FARE box, CHI AGISCE ORA badge, blocked progress bar, Italian timeline labels
 
 ### Frontend Workspace Integration (Batch 18)
-- PracticeDetailPage wired to workspace endpoint, Official Step card, Delegation UI, Father Review block
+- PracticeDetailPage wired to workspace, Official Step card, Delegation UI, Father Review
 
 ### Backend Workspace + Delegation (Batch 17)
 - GET /workspace, POST /delegate, /revoke-delegation, /proof, /complete-official-step
 
-### Language + Agent Behavior (Batch 16)
-- Commercialista digitale positioning, Herion/Tu labels, messaging labels
+### Earlier (Batches 14-16): Understanding gate, 6-step flow, doc clarity, statuses, language, empty states, agent widget, progress, brand
+### Earlier (Batches 1-13): Priority, auth, catalog, governance, email, agents
 
-### Empty States, Widget, Progress, Brand (Batch 15)
-- Guided empty states, agent widget, 6-dot progress, geometric H logo
-
-### Phase 1-4 Refactor (Batch 14)
-- Understanding gate, 6-step flow, document clarity, status semantics, channel layer
-
-### Earlier (Batches 1-13)
-- Priority system, auth, catalog, governance, email, etc.
-
-## Testing Status
-- Iteration 26: 100% (12/12) — Refinement Pass
-- Iteration 25: 100% (16/16) — Frontend Workspace Integration
-- Iteration 24: 100% (19/19) — Backend Workspace + Delegation
-- Iterations 21-23: 100%
+## Testing: Iterations 21-27 all 100%
 
 ## Remaining Backlog
-
-### P0 — Next
-- Communication page workspace integration
-- Structured notifications system
-- Embedded SPID/CIE auth flow
-
-### P1 — Future
-- Advanced analytics, multi-language, catalog expansion
+- P0: Real SPID/CIE embedded auth integration (UI ready, needs provider)
+- P1: Advanced analytics, multi-language, catalog expansion

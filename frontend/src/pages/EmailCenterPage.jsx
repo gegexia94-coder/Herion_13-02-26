@@ -401,7 +401,7 @@ function CreateDraftForm({ practices, onCreated }) {
         <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Pratica collegata (opzionale)</label>
         <select value={practiceId} onChange={e => setPracticeId(e.target.value)} className="w-full rounded-lg h-8 text-[11px] mt-1 border px-2 bg-white" style={{ borderColor: 'var(--border-soft)' }} data-testid="draft-practice">
           <option value="">Nessuna</option>
-          {(practices || []).slice(0, 20).map(p => <option key={p.id} value={p.id}>{p.client_name} — {p.practice_type_label}</option>)}
+          {(practices || []).slice(0, 20).map(p => <option key={p.id} value={p.id}>{p.client_name} - {p.practice_type_label}</option>)}
         </select>
       </div>
       <div>

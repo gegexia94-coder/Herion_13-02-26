@@ -1,0 +1,142 @@
+{
+  "summary": "Iteration 26 - PracticeDetailPage Refinement Pass Testing Complete. All 12 features tested successfully. Verified: (1) Login with admin@aic.it / Admin123! works. (2) Draft practice 98cf9182 shows understanding gate with 'Inizia la pratica' button. (3) Escalated practice d9c4fca6 shows progress bar with green checks for completed steps (Comprendi, Carica) and red X for blocked step (Elabora). (4) Escalated practice shows 'RICHIEDE LA TUA AZIONE' label with eye icon in guidance card. (5) Guidance card shows 'COSA FARE' box with white background containing next action text. (6) Official Step card shows 'CHI AGISCE ORA: Tu' with prominent amber badge and eye icon. (7) Official Step card shows 'Credenziali personali richieste (es. SPID)'. (8) Current agent card shows bot icon with colored background matching status (emerald for completed). (9) Timeline shows Italian labels (capitalized, properly translated from raw codes). (10) Delegation section shows active state with 'Assistenza' level and scope labels. (11) Documents section shows missing docs with 'Da caricare' and 'Richiesto' labels. (12) Blocker cards show 'Escalation attiva' (red/high) and 'Documenti mancanti' (amber/medium) with severity colors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_26.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Progress bar correctly handles blocked practices (stepIdx=-1) by showing completed steps with green checks and blocked step with red X",
+    "Guidance card 'COSA FARE' box uses white/60 background with border for clear next action visibility",
+    "'CHI AGISCE ORA' badge in Official Step card is now a full-width amber/emerald card element with icon",
+    "Timeline labels properly translated from raw codes (guard_completed -> Protezione Completato, routing_completed -> Routing Completato, etc.)",
+    "Current agent card shows bot icon with colored background matching status (blue for in_progress, emerald for completed, amber for waiting)",
+    "Delegation section correctly shows active state with level label (Assistenza), scope labels, and tracking note",
+    "Documents section correctly shows missing docs with 'Da caricare' count and 'Richiesto' badge on each item",
+    "Blocker cards correctly display severity-based styling (red for high severity escalation, amber for medium severity missing docs)"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only testing)",
+    "frontend": "100% (12/12 features verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Used existing practices: 98cf9182-e7df-4b73-a2e4-1c69775e7caa (draft vat_registration), d9c4fca6-a27d-4f97-a006-d191505549f9 (escalated with delegation active, 12 agent logs).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 26 tested the PracticeDetailPage refinement pass. All refinements working correctly: (1) Progress bar handles blocked practices by showing completed steps with green checks and blocked step with red X. (2) Guidance card has 'COSA FARE' box with white background for next action. (3) 'CHI AGISCE ORA' badge is now a large prominent card element. (4) Timeline labels are properly translated to Italian (capitalized). (5) Current agent card shows bot icon with colored background. (6) Delegation section shows active state with scope labels. (7) Documents section shows missing docs with 'Da caricare' and 'Richiesto' labels. (8) Blocker cards show severity-based styling. Test practices: 98cf9182 (draft), d9c4fca6 (escalated with delegation).",
+  "features_tested": {
+    "login": {
+      "status": "PASS",
+      "details": ["admin@aic.it / Admin123! login successful", "Redirects to dashboard after login"]
+    },
+    "draft_practice_understanding_gate": {
+      "status": "PASS",
+      "details": [
+        "Understanding gate 'Prima di iniziare' displayed for draft practice",
+        "'Inizia la pratica' button present with data-testid='start-practice-btn'",
+        "6-step progress bar shows Comprendi highlighted",
+        "Required docs listed: Documento di identita, Dichiarazioni fiscali",
+        "Herion/Tu labels showing who does what"
+      ]
+    },
+    "escalated_practice_progress_bar": {
+      "status": "PASS",
+      "details": [
+        "Progress bar shows green checks for completed steps (Comprendi, Carica)",
+        "Red X icon on blocked step (Elabora)",
+        "Blocked step has red styling (bg-red-50, text-red-500, ring-red-200)"
+      ]
+    },
+    "guidance_card_richiede_azione": {
+      "status": "PASS",
+      "details": [
+        "'RICHIEDE LA TUA AZIONE' label with eye icon displayed",
+        "Amber background (bg-amber-100) with amber text (text-amber-700)",
+        "Uppercase tracking-wider styling"
+      ]
+    },
+    "guidance_card_cosa_fare": {
+      "status": "PASS",
+      "details": [
+        "'COSA FARE' box with white/60 background and border",
+        "Contains next action text: 'Controlla i dettagli del blocco o chiedi a Herion'",
+        "Clear visual separation from main guidance content"
+      ]
+    },
+    "official_step_chi_agisce_ora": {
+      "status": "PASS",
+      "details": [
+        "'CHI AGISCE ORA: Tu' displayed as large prominent amber card",
+        "Eye icon with amber background (bg-amber-200/50)",
+        "Full-width card element with p-3 padding",
+        "Text is 13px font-bold"
+      ]
+    },
+    "official_step_credentials": {
+      "status": "PASS",
+      "details": [
+        "'Credenziali personali richieste (es. SPID)' displayed",
+        "Key icon with amber-500 color",
+        "Text in amber-600 font-medium"
+      ]
+    },
+    "current_agent_card": {
+      "status": "PASS",
+      "details": [
+        "Bot icon with colored background matching status",
+        "Emerald background (bg-emerald-50) for completed status",
+        "Shows agent name 'Herion Guard', title 'Protezione confini', status 'Completato'",
+        "Status badge with emerald styling"
+      ]
+    },
+    "timeline_italian_labels": {
+      "status": "PASS",
+      "details": [
+        "Labels properly translated to Italian",
+        "Delega Richiesta (not delegation_requested)",
+        "Escalation Attivata (not escalation_activated)",
+        "Rischio Valutato (not risk_assessed)",
+        "Protezione Completato (not guard_completed)",
+        "Routing Completato (not routing_completed)",
+        "Labels use capitalize CSS class"
+      ]
+    },
+    "delegation_section_active": {
+      "status": "PASS",
+      "details": [
+        "Shows 'Assistenza' level badge (bg-sky-50, text-sky-600)",
+        "Scope labels: 'Preparazione documenti', 'Verifica completezza'",
+        "Tracking note: 'Concessa il 11 apr 2026'",
+        "Revoke button present"
+      ]
+    },
+    "documents_missing_labels": {
+      "status": "PASS",
+      "details": [
+        "'Da caricare (2)' header in amber-700",
+        "Missing docs: 'Documento di identita', 'Dichiarazioni fiscali'",
+        "'Richiesto' badge on each missing doc",
+        "Amber styling for missing docs section"
+      ]
+    },
+    "blocker_cards_severity": {
+      "status": "PASS",
+      "details": [
+        "'Escalation attiva' with high severity (bg-red-50, border-red-200, text-red-800)",
+        "'Documenti mancanti' with medium severity (bg-amber-50, border-amber-200, text-amber-800)",
+        "AlertTriangle icon with matching severity color"
+      ]
+    }
+  }
+}

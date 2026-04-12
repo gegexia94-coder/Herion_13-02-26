@@ -1467,6 +1467,11 @@ TIMELINE_EVENTS = {
     "delegation_reset": "Delega reimpostata",
     "submission_failed": "Invio fallito",
     "submission_retried": "Invio ritentato",
+    "guard_completed": "Protezione confini completata",
+    "routing_completed": "Instradamento completato",
+    "research_completed": "Ricerca normativa completata",
+    "father_completed": "Verifica supervisore completata",
+    "orchestration_completed": "Analisi completata",
 }
 
 async def add_timeline_event(practice_id: str, user_id: str, event_type: str, details: dict = None):

@@ -268,18 +268,33 @@ export default function PracticeDetailPage() {
       <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="step-progress">
         <div className="flex items-center justify-between gap-1">
           {PRACTICE_STEPS.map((step, idx) => {
-            const done = stepIdx > idx;
-            const current = stepIdx === idx && !isBlocked;
+            // For blocked practices, show how far they got before blocking
+            const effectiveStep = isBlocked ? Math.max(0, ...completedActivities.map(() => 2)) : stepIdx;
+            const done = effectiveStep > idx;
+            const current = !isBlocked && stepIdx === idx;
+            const blocked = isBlocked && idx === effectiveStep;
             const StepIcon = step.icon;
             return (
               <div key={step.key} className="flex items-center flex-1" data-testid={`step-${step.key}`}>
                 <div className="flex flex-col items-center">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${done ? 'bg-emerald-50 text-emerald-600' : current ? 'bg-[#0ABFCF]/10 text-[#0ABFCF] ring-2 ring-[#0ABFCF]/30' : 'bg-[var(--bg-app)] text-[var(--text-muted)]'}`}>
-                    {done ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> : <StepIcon className="w-4 h-4" strokeWidth={1.5} />}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                    blocked ? 'bg-red-50 text-red-500 ring-2 ring-red-200' :
+                    done ? 'bg-emerald-50 text-emerald-600' :
+                    current ? 'bg-[#0ABFCF]/10 text-[#0ABFCF] ring-2 ring-[#0ABFCF]/30' :
+                    'bg-[var(--bg-app)] text-[var(--text-muted)]'
+                  }`}>
+                    {blocked ? <XCircle className="w-4 h-4" strokeWidth={2} /> :
+                     done ? <CheckCircle className="w-4 h-4" strokeWidth={2} /> :
+                     <StepIcon className="w-4 h-4" strokeWidth={1.5} />}
                   </div>
-                  <p className={`text-[9px] font-semibold mt-1.5 text-center max-w-[60px] leading-tight ${done ? 'text-emerald-600' : current ? 'text-[#0ABFCF]' : 'text-[var(--text-muted)]'}`}>{step.label}</p>
+                  <p className={`text-[9px] font-semibold mt-1.5 text-center max-w-[60px] leading-tight ${
+                    blocked ? 'text-red-500' :
+                    done ? 'text-emerald-600' :
+                    current ? 'text-[#0ABFCF]' :
+                    'text-[var(--text-muted)]'
+                  }`}>{step.label}</p>
                 </div>
-                {idx < 5 && <div className={`h-px flex-1 mx-1.5 ${done ? 'bg-emerald-300' : 'bg-[var(--border-soft)]'}`} />}
+                {idx < 5 && <div className={`h-px flex-1 mx-1.5 ${done && !blocked ? 'bg-emerald-300' : 'bg-[var(--border-soft)]'}`} />}
               </div>
             );
           })}
@@ -310,18 +325,39 @@ export default function PracticeDetailPage() {
 
           {/* ── UI GUIDANCE from workspace ── */}
           {!canStart && guidance.headline && (
-            <div className={`rounded-xl px-5 py-4 ${activity.user_action_required ? 'bg-amber-50/50' : isDone ? 'bg-emerald-50/50' : 'bg-[var(--bg-soft)]'}`} data-testid="guidance-card">
-              {activity.user_action_required && <span className="inline-flex text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 bg-amber-100 text-amber-700" data-testid="guidance-label">Richiede la tua azione</span>}
-              {!activity.user_action_required && activity.code !== 'done' && <span className="inline-flex text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 bg-blue-100 text-blue-600" data-testid="guidance-label">Herion sta lavorando</span>}
-              <p className="text-[13px] font-semibold text-[var(--text-primary)]">{guidance.headline}</p>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-1">{guidance.subheadline}</p>
-              {guidance.next_step_label && (
-                <p className="text-[10px] text-[var(--text-muted)] mt-2 flex items-center gap-1.5">
-                  <ArrowRight className="w-3 h-3 flex-shrink-0" /><strong>{guidance.next_step_label}:</strong> {guidance.next_step_detail}
-                </p>
+            <div className={`rounded-xl px-5 py-4 ${isBlocked ? 'bg-red-50/40' : activity.user_action_required ? 'bg-amber-50/40' : isDone ? 'bg-emerald-50/40' : 'bg-blue-50/30'}`} data-testid="guidance-card">
+              {/* Who acts now — most important info */}
+              <div className="flex items-center gap-2 mb-2">
+                {activity.user_action_required ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-100 text-amber-700" data-testid="guidance-label">
+                    <Eye className="w-3 h-3" />Richiede la tua azione
+                  </span>
+                ) : activity.code === 'herion_working' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-blue-100 text-blue-600" data-testid="guidance-label">
+                    <Cog className="w-3 h-3" />Herion sta lavorando
+                  </span>
+                ) : activity.code === 'wait_response' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-purple-100 text-purple-600" data-testid="guidance-label">
+                    <ExternalLink className="w-3 h-3" />In attesa dall'ente
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Main headline */}
+              <p className="text-[14px] font-bold text-[var(--text-primary)] leading-tight">{guidance.headline}</p>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">{guidance.subheadline}</p>
+
+              {/* Next action — bold and clear */}
+              {guidance.next_step_label && guidance.next_step_detail && (
+                <div className="mt-3 p-3 bg-white/60 rounded-lg border border-white/80">
+                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-0.5">{guidance.next_step_label}</p>
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)]">{guidance.next_step_detail}</p>
+                </div>
               )}
+
+              {/* What Herion already completed */}
               {completedActivities.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <div className="mt-3 flex flex-wrap gap-1.5">
                   {completedActivities.slice(-3).map((a, i) => (
                     <span key={i} className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
                       <CheckCircle className="w-2.5 h-2.5" />{a.label}
@@ -498,16 +534,19 @@ export default function PracticeDetailPage() {
           {/* ── CURRENT AGENT ── */}
           {ws.current_agent && (
             <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="current-agent-card">
-              <div className="flex items-center gap-2 mb-2">
-                <Bot className="w-3.5 h-3.5 text-[#0ABFCF]" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Agente attivo</p>
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${ws.current_agent.status === 'in_progress' ? 'bg-blue-50' : ws.current_agent.status === 'completed' ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                  <Bot className={`w-3.5 h-3.5 ${ws.current_agent.status === 'in_progress' ? 'text-blue-500' : ws.current_agent.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-bold text-[var(--text-primary)]">{ws.current_agent.name}</p>
+                  <p className="text-[9px] text-[var(--text-muted)]">{ws.current_agent.title}</p>
+                </div>
+                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${ws.current_agent.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : ws.current_agent.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                  {ws.current_agent.status === 'completed' ? 'Completato' : ws.current_agent.status === 'in_progress' ? 'In corso' : 'In attesa'}
+                </span>
               </div>
-              <p className="text-[12px] font-semibold text-[var(--text-primary)]">{ws.current_agent.name}</p>
-              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{ws.current_agent.title}</p>
-              <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">{ws.current_agent.message}</p>
-              <span className={`inline-flex text-[8px] font-bold px-1.5 py-0.5 rounded-full mt-2 ${ws.current_agent.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : ws.current_agent.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
-                {ws.current_agent.status === 'completed' ? 'Completato' : ws.current_agent.status === 'in_progress' ? 'In corso' : ws.current_agent.status}
-              </span>
+              <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">{ws.current_agent.message}</p>
             </div>
           )}
 
@@ -552,15 +591,26 @@ export default function PracticeDetailPage() {
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Cronologia</p>
               <ScrollArea className="h-[160px]">
                 <div className="space-y-2">
-                  {ws.timeline_summary.map((event, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <Circle className={`w-2.5 h-2.5 flex-shrink-0 mt-1 ${event.type === 'success' ? 'text-emerald-500' : event.type === 'error' ? 'text-red-500' : event.type === 'warning' ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} fill="currentColor" />
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-medium text-[var(--text-primary)]">{event.event}</p>
-                        {event.time && <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(event.time), 'dd MMM, HH:mm', { locale: it })}</p>}
+                  {ws.timeline_summary.map((event, i) => {
+                    // Clean up raw event labels
+                    const label = event.event
+                      ?.replace(/_completed/g, ' completato')
+                      ?.replace(/_/g, ' ')
+                      ?.replace(/^guard /, 'Protezione ')
+                      ?.replace(/^advisor /, 'Analisi ')
+                      ?.replace(/^monitor /, 'Monitoraggio ')
+                      ?.replace(/^intake /, 'Raccolta ')
+                      || event.event;
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <Circle className={`w-2.5 h-2.5 flex-shrink-0 mt-1 ${event.type === 'success' ? 'text-emerald-500' : event.type === 'error' ? 'text-red-500' : event.type === 'warning' ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} fill="currentColor" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-medium text-[var(--text-primary)] capitalize">{label}</p>
+                          {event.time && <p className="text-[9px] text-[var(--text-muted)]">{format(new Date(event.time), 'dd MMM, HH:mm', { locale: it })}</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
@@ -724,26 +774,33 @@ function OfficialStepCard({ action, proof, status, delegation, onOfficialStepCom
           <p className="text-[11px] text-[var(--text-secondary)]">{action.action_label}</p>
         </div>
 
-        {/* Key details grid */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="text-[10px]">
-            <span className="text-[var(--text-muted)] font-medium">Canale:</span>{' '}
+        {/* WHO ACTS NOW — most prominent element */}
+        <div className={`flex items-center gap-3 p-3 rounded-lg ${actor.bg}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${actor.label === 'Tu' ? 'bg-amber-200/50' : 'bg-emerald-200/50'}`}>
+            {actor.label === 'Tu' ? <Eye className={`w-4 h-4 ${actor.color}`} /> : <Bot className={`w-4 h-4 ${actor.color}`} />}
+          </div>
+          <div>
+            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Chi agisce ora</p>
+            <p className={`text-[13px] font-bold ${actor.color}`}>{actor.label}</p>
+          </div>
+        </div>
+
+        {/* Key details */}
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div>
+            <span className="text-[var(--text-muted)]">Canale: </span>
             <span className="font-semibold text-[var(--text-primary)]">{action.submission_channel === 'official_portal' ? 'Portale ufficiale' : action.submission_channel === 'PEC' ? 'PEC' : action.submission_channel}</span>
           </div>
-          <div className="text-[10px]">
-            <span className="text-[var(--text-muted)] font-medium">Chi agisce:</span>{' '}
-            <span className={`font-semibold ${actor.color}`}>{actor.label}</span>
-          </div>
-          {action.credentials_required && (
-            <div className="text-[10px] flex items-center gap-1">
-              <Key className="w-3 h-3 text-amber-500" />
-              <span className="text-amber-600 font-medium">Credenziali richieste</span>
-            </div>
-          )}
-          <div className="text-[10px]">
-            <span className="text-[var(--text-muted)] font-medium">Herion prepara:</span>{' '}
+          <div>
+            <span className="text-[var(--text-muted)]">Herion prepara: </span>
             <span className="font-semibold text-emerald-600">{action.can_herion_prepare ? 'Si' : 'No'}</span>
           </div>
+          {action.credentials_required && (
+            <div className="flex items-center gap-1 col-span-2">
+              <Key className="w-3 h-3 text-amber-500" />
+              <span className="text-amber-600 font-medium">Credenziali personali richieste (es. SPID)</span>
+            </div>
+          )}
         </div>
 
         {/* Portal link */}

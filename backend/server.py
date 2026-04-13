@@ -549,6 +549,13 @@ CATALOG_CATEGORIES = {
         "icon": "info",
         "is_official": False,
     },
+    "lavoro": {
+        "id": "lavoro",
+        "label": "Lavoro",
+        "description": "Assunzioni, cessazioni, buste paga, comunicazioni obbligatorie",
+        "icon": "briefcase",
+        "is_official": True,
+    },
 }
 
 

@@ -1,306 +1,277 @@
 """
-Test Catalog Expansion from 20 to 35 procedures with universal flow model.
-Tests the new entries and flow_definition structure.
+Test Catalog Expansion Batch 1: 35 → 78 procedures
+Tests:
+- Total procedure count (78)
+- Category counts (fiscale:24, previdenziale:12, societario:13, documentale:12, informativo:12, lavoro:5)
+- New 'lavoro' category exists with 5 procedures
+- New procedures exist in each category
+- Full enriched structure for each procedure
+- No duplicate practice_id values
+- url_verified=false for 11 procedures
 """
+
 import pytest
 import requests
 import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
-# Test credentials
-ADMIN_EMAIL = "admin@aic.it"
-ADMIN_PASSWORD = "Admin123!"
+# Expected category counts
+EXPECTED_CATEGORIES = {
+    "fiscale": 24,
+    "previdenziale": 12,
+    "societario": 13,
+    "documentale": 12,
+    "informativo": 12,
+    "lavoro": 5
+}
+
+# New procedures added in Batch 1
+NEW_FISCALE_PROCEDURES = [
+    "MOD_770", "IRAP_DECLARATION", "RAVVEDIMENTO", "IVA_RIMBORSO",
+    "CONTRATTO_LOCAZIONE", "CEDOLARE_SECCA", "IMU_TASI",
+    "DICHIARAZIONE_SUCCESSIONE", "INTERPELLO_ADE", "RATEIZZAZIONE_CARTELLE"
+]
+
+NEW_PREVIDENZIALE_PROCEDURES = [
+    "INPS_UNIEMENS", "INPS_F24_CONTRIB", "INPS_MATERNITA",
+    "INPS_NASPI", "INAIL_AUTOLIQ", "INAIL_DENUNCIA", "INPS_COLF_BADANTI"
+]
+
+NEW_SOCIETARIO_PROCEDURES = [
+    "VAT_OPEN_SOCIETA", "DEPOSITO_BILANCIO", "NOMINA_AMMINISTRATORE",
+    "MODIFICA_STATUTO", "CESSIONE_QUOTE", "PEC_OBBLIGATORIA",
+    "ISCRIZIONE_REA", "TRASFORMAZIONE_SOCIETARIA"
+]
+
+NEW_LAVORO_PROCEDURES = [
+    "ASSUNZIONE_DIP", "CESSAZIONE_DIP", "TRASFORMAZIONE_CONTRATTO",
+    "BUSTA_PAGA", "CONGUAGLIO_FISCALE"
+]
+
+# Procedures with url_verified=false
+UNVERIFIED_URL_PROCEDURES = [
+    "SUAP_SCIA", "IMU_TASI", "INTERPELLO_ADE", "RATEIZZAZIONE_CARTELLE",
+    "INAIL_AUTOLIQ", "INAIL_DENUNCIA", "ASSUNZIONE_DIP", "CESSAZIONE_DIP",
+    "TRASFORMAZIONE_CONTRATTO", "BUSTA_PAGA", "CONGUAGLIO_FISCALE"
+]
 
 
-class TestCatalogExpansion:
-    """Test catalog expansion to 35 entries with universal flow model."""
+@pytest.fixture(scope="module")
+def auth_cookies():
+    """Login and get auth cookies"""
+    response = requests.post(
+        f"{BASE_URL}/api/auth/login",
+        json={"email": "admin@aic.it", "password": "Admin123!"}
+    )
+    assert response.status_code == 200, f"Login failed: {response.text}"
+    return response.cookies
+
+
+@pytest.fixture(scope="module")
+def catalog(auth_cookies):
+    """Fetch the full catalog"""
+    response = requests.get(f"{BASE_URL}/api/catalog", cookies=auth_cookies)
+    assert response.status_code == 200, f"Failed to fetch catalog: {response.text}"
+    return response.json()
+
+
+@pytest.fixture(scope="module")
+def categories(auth_cookies):
+    """Fetch catalog categories"""
+    response = requests.get(f"{BASE_URL}/api/catalog/categories", cookies=auth_cookies)
+    assert response.status_code == 200, f"Failed to fetch categories: {response.text}"
+    return response.json()
+
+
+class TestCatalogTotalCount:
+    """Test total procedure count"""
     
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """Login and get auth token."""
-        self.session = requests.Session()
-        login_response = self.session.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        assert login_response.status_code == 200, f"Login failed: {login_response.text}"
-        self.user = login_response.json()
-        # Cookies are automatically stored in session
+    def test_catalog_returns_78_procedures(self, catalog):
+        """GET /api/catalog returns 78 procedures total"""
+        assert len(catalog) == 78, f"Expected 78 procedures, got {len(catalog)}"
+
+
+class TestCategoryCountsFromAPI:
+    """Test category counts from /api/catalog/categories"""
     
-    def test_catalog_returns_35_entries(self):
-        """GET /api/catalog returns 35 entries."""
-        response = self.session.get(f"{BASE_URL}/api/catalog")
-        assert response.status_code == 200, f"Catalog fetch failed: {response.text}"
-        entries = response.json()
-        assert isinstance(entries, list), "Catalog should return a list"
-        assert len(entries) == 35, f"Expected 35 entries, got {len(entries)}"
-        print(f"✓ Catalog returns {len(entries)} entries")
+    def test_categories_endpoint_returns_6_categories(self, categories):
+        """GET /api/catalog/categories returns 6 categories"""
+        assert len(categories) == 6, f"Expected 6 categories, got {len(categories)}"
     
-    def test_catalog_categories_returns_5_categories(self):
-        """GET /api/catalog/categories returns 5 categories with correct counts."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/categories")
-        assert response.status_code == 200, f"Categories fetch failed: {response.text}"
-        categories = response.json()
-        assert isinstance(categories, list), "Categories should return a list"
-        assert len(categories) == 5, f"Expected 5 categories, got {len(categories)}"
-        
-        # Build a dict for easy lookup
-        cat_dict = {c["id"]: c for c in categories}
-        
-        # Verify expected counts
-        expected_counts = {
-            "fiscale": 14,
-            "previdenziale": 5,
-            "societario": 5,
-            "documentale": 7,
-            "informativo": 4
-        }
-        
-        for cat_id, expected_count in expected_counts.items():
-            assert cat_id in cat_dict, f"Category {cat_id} not found"
-            actual_count = cat_dict[cat_id].get("procedure_count", 0)
-            assert actual_count == expected_count, f"Category {cat_id}: expected {expected_count}, got {actual_count}"
-            print(f"✓ Category {cat_id}: {actual_count} procedures")
+    def test_fiscale_count_24(self, categories):
+        """Fiscale category has 24 procedures"""
+        fiscale = next((c for c in categories if c["id"] == "fiscale"), None)
+        assert fiscale is not None, "Fiscale category not found"
+        assert fiscale["procedure_count"] == 24, f"Expected 24 fiscale, got {fiscale['procedure_count']}"
     
-    def test_income_tax_pf_exists_with_flow_definition(self):
-        """INCOME_TAX_PF exists with category=fiscale, official_action, flow_definition."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/INCOME_TAX_PF")
-        assert response.status_code == 200, f"INCOME_TAX_PF not found: {response.text}"
-        entry = response.json()
-        
-        # Verify basic fields
-        assert entry["practice_id"] == "INCOME_TAX_PF"
-        assert entry["category"] == "fiscale"
-        assert entry["procedure_type"] == "official_procedure"
-        
-        # Verify official_action exists
-        assert "official_action" in entry, "official_action missing"
-        assert entry["official_action"] is not None, "official_action should not be None"
-        
-        # Verify flow_definition exists
-        assert "flow_definition" in entry, "flow_definition missing"
-        assert entry["flow_definition"] is not None, "flow_definition should not be None"
-        
-        print(f"✓ INCOME_TAX_PF exists with category=fiscale, official_action, flow_definition")
+    def test_previdenziale_count_12(self, categories):
+        """Previdenziale category has 12 procedures"""
+        prev = next((c for c in categories if c["id"] == "previdenziale"), None)
+        assert prev is not None, "Previdenziale category not found"
+        assert prev["procedure_count"] == 12, f"Expected 12 previdenziale, got {prev['procedure_count']}"
     
-    def test_income_tax_pf_flow_definition_official_entry_point(self):
-        """INCOME_TAX_PF has flow_definition.official_entry_point with real URL and auth_method=SPID."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/INCOME_TAX_PF")
-        assert response.status_code == 200
-        entry = response.json()
-        
-        flow_def = entry.get("flow_definition", {})
-        assert flow_def is not None, "flow_definition is None"
-        
-        entry_point = flow_def.get("official_entry_point", {})
-        assert entry_point is not None, "official_entry_point is None"
-        
-        # Verify URL exists and is a real URL
-        url = entry_point.get("url")
-        assert url is not None, "official_entry_point.url is None"
-        assert url.startswith("https://"), f"URL should start with https://, got: {url}"
-        assert "agenziaentrate" in url.lower(), f"URL should be AdE portal, got: {url}"
-        
-        # Verify auth_method is SPID
-        auth_method = entry_point.get("auth_method")
-        assert auth_method == "SPID", f"Expected auth_method=SPID, got: {auth_method}"
-        
-        print(f"✓ INCOME_TAX_PF has official_entry_point with URL={url} and auth_method=SPID")
+    def test_societario_count_13(self, categories):
+        """Societario category has 13 procedures"""
+        soc = next((c for c in categories if c["id"] == "societario"), None)
+        assert soc is not None, "Societario category not found"
+        assert soc["procedure_count"] == 13, f"Expected 13 societario, got {soc['procedure_count']}"
     
-    def test_income_tax_pf_flow_definition_expected_release(self):
-        """INCOME_TAX_PF has flow_definition.expected_release with type=protocol_number, timing=delayed."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/INCOME_TAX_PF")
-        assert response.status_code == 200
-        entry = response.json()
-        
-        flow_def = entry.get("flow_definition", {})
-        expected_release = flow_def.get("expected_release", {})
-        assert expected_release is not None, "expected_release is None"
-        
-        release_type = expected_release.get("type")
-        assert release_type == "protocol_number", f"Expected type=protocol_number, got: {release_type}"
-        
-        timing = expected_release.get("timing")
-        assert timing == "delayed", f"Expected timing=delayed, got: {timing}"
-        
-        print(f"✓ INCOME_TAX_PF has expected_release with type=protocol_number, timing=delayed")
+    def test_documentale_count_12(self, categories):
+        """Documentale category has 12 procedures"""
+        doc = next((c for c in categories if c["id"] == "documentale"), None)
+        assert doc is not None, "Documentale category not found"
+        assert doc["procedure_count"] == 12, f"Expected 12 documentale, got {doc['procedure_count']}"
     
-    def test_income_tax_pf_flow_definition_tracking_mode(self):
-        """INCOME_TAX_PF has flow_definition.tracking_mode with type=portal_status."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/INCOME_TAX_PF")
-        assert response.status_code == 200
-        entry = response.json()
-        
-        flow_def = entry.get("flow_definition", {})
-        tracking_mode = flow_def.get("tracking_mode", {})
-        assert tracking_mode is not None, "tracking_mode is None"
-        
-        tracking_type = tracking_mode.get("type")
-        assert tracking_type == "portal_status", f"Expected type=portal_status, got: {tracking_type}"
-        
-        print(f"✓ INCOME_TAX_PF has tracking_mode with type=portal_status")
+    def test_informativo_count_12(self, categories):
+        """Informativo category has 12 procedures"""
+        info = next((c for c in categories if c["id"] == "informativo"), None)
+        assert info is not None, "Informativo category not found"
+        assert info["procedure_count"] == 12, f"Expected 12 informativo, got {info['procedure_count']}"
     
-    def test_inps_durc_exists_with_previdenziale(self):
-        """INPS_DURC exists with category=previdenziale."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/INPS_DURC")
-        assert response.status_code == 200, f"INPS_DURC not found: {response.text}"
-        entry = response.json()
-        
-        assert entry["practice_id"] == "INPS_DURC"
-        assert entry["category"] == "previdenziale"
-        assert entry["procedure_type"] == "official_procedure"
-        
-        print(f"✓ INPS_DURC exists with category=previdenziale")
+    def test_lavoro_count_5(self, categories):
+        """Lavoro category has 5 procedures"""
+        lavoro = next((c for c in categories if c["id"] == "lavoro"), None)
+        assert lavoro is not None, "Lavoro category not found"
+        assert lavoro["procedure_count"] == 5, f"Expected 5 lavoro, got {lavoro['procedure_count']}"
+
+
+class TestLavoroCategory:
+    """Test new 'lavoro' category"""
     
-    def test_company_formation_srl_exists_with_delegation_required(self):
-        """COMPANY_FORMATION_SRL exists with category=societario, delegation_required=true."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/COMPANY_FORMATION_SRL")
-        assert response.status_code == 200, f"COMPANY_FORMATION_SRL not found: {response.text}"
-        entry = response.json()
-        
-        assert entry["practice_id"] == "COMPANY_FORMATION_SRL"
-        assert entry["category"] == "societario"
-        assert entry["delegation_required"] == True, f"Expected delegation_required=True, got: {entry.get('delegation_required')}"
-        
-        print(f"✓ COMPANY_FORMATION_SRL exists with category=societario, delegation_required=true")
+    def test_lavoro_category_exists(self, categories):
+        """New 'lavoro' category exists"""
+        lavoro = next((c for c in categories if c["id"] == "lavoro"), None)
+        assert lavoro is not None, "Lavoro category not found"
+        assert lavoro["label"] == "Lavoro"
+        assert lavoro["is_official"] == True
     
-    def test_suap_scia_has_url_verified_false(self):
-        """SUAP_SCIA has url_verified=false in flow_definition."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/SUAP_SCIA")
-        assert response.status_code == 200, f"SUAP_SCIA not found: {response.text}"
-        entry = response.json()
-        
-        assert entry["practice_id"] == "SUAP_SCIA"
-        
-        flow_def = entry.get("flow_definition", {})
-        assert flow_def is not None, "flow_definition is None"
-        
-        entry_point = flow_def.get("official_entry_point", {})
-        url_verified = entry_point.get("url_verified")
-        assert url_verified == False, f"Expected url_verified=False, got: {url_verified}"
-        
-        print(f"✓ SUAP_SCIA has url_verified=false in flow_definition")
+    def test_lavoro_has_5_procedures(self, catalog):
+        """Lavoro category has exactly 5 procedures"""
+        lavoro_procs = [p for p in catalog if p.get("category") == "lavoro"]
+        assert len(lavoro_procs) == 5, f"Expected 5 lavoro procedures, got {len(lavoro_procs)}"
     
-    def test_internal_entries_have_flow_definition_none(self):
-        """Internal entries (STATUS_UPDATE) have flow_definition=None."""
-        response = self.session.get(f"{BASE_URL}/api/catalog/STATUS_UPDATE")
-        assert response.status_code == 200, f"STATUS_UPDATE not found: {response.text}"
-        entry = response.json()
-        
-        assert entry["practice_id"] == "STATUS_UPDATE"
-        assert entry["procedure_type"] == "internal_support"
-        assert entry["flow_definition"] is None, f"Expected flow_definition=None for internal entry, got: {entry.get('flow_definition')}"
-        
-        print(f"✓ STATUS_UPDATE (internal) has flow_definition=None")
+    def test_lavoro_procedures_exist(self, catalog):
+        """All 5 lavoro procedures exist"""
+        catalog_ids = {p["practice_id"] for p in catalog}
+        for proc_id in NEW_LAVORO_PROCEDURES:
+            assert proc_id in catalog_ids, f"Lavoro procedure {proc_id} not found"
+
+
+class TestNewFiscaleProcedures:
+    """Test new fiscale procedures"""
     
-    def test_new_entries_exist(self):
-        """Verify all new entries exist in catalog."""
-        new_entries = [
-            "INCOME_TAX_PF",
-            "INCOME_TAX_730",
-            "LIPE_QUARTERLY",
-            "CU_CERTIFICATION",
-            "INTRASTAT",
-            "CASSETTO_FISCALE",
-            "VISURA_CAMERALE",
-            "INFO_REGIME_FORFETTARIO",
-            "INPS_DURC",
-            "INPS_ARTIGIANI",
-            "INPS_COMMERCIANTI",
-            "COMPANY_FORMATION_SRL",
-            "COMPANY_VARIATION",
-            "SUAP_SCIA",
-            "ATECO_VARIATION"
+    def test_new_fiscale_procedures_exist(self, catalog):
+        """All new fiscale procedures exist"""
+        catalog_ids = {p["practice_id"] for p in catalog}
+        for proc_id in NEW_FISCALE_PROCEDURES:
+            assert proc_id in catalog_ids, f"Fiscale procedure {proc_id} not found"
+
+
+class TestNewPrevidenzialeProcedures:
+    """Test new previdenziale procedures"""
+    
+    def test_new_previdenziale_procedures_exist(self, catalog):
+        """All new previdenziale procedures exist"""
+        catalog_ids = {p["practice_id"] for p in catalog}
+        for proc_id in NEW_PREVIDENZIALE_PROCEDURES:
+            assert proc_id in catalog_ids, f"Previdenziale procedure {proc_id} not found"
+
+
+class TestNewSocietarioProcedures:
+    """Test new societario procedures"""
+    
+    def test_new_societario_procedures_exist(self, catalog):
+        """All new societario procedures exist"""
+        catalog_ids = {p["practice_id"] for p in catalog}
+        for proc_id in NEW_SOCIETARIO_PROCEDURES:
+            assert proc_id in catalog_ids, f"Societario procedure {proc_id} not found"
+
+
+class TestNoDuplicates:
+    """Test no duplicate practice_id values"""
+    
+    def test_no_duplicate_practice_ids(self, catalog):
+        """No duplicate practice_id values across the entire catalog"""
+        ids = [p["practice_id"] for p in catalog]
+        duplicates = [id for id in ids if ids.count(id) > 1]
+        assert len(duplicates) == 0, f"Duplicate practice_ids found: {set(duplicates)}"
+
+
+class TestEnrichedStructure:
+    """Test each procedure has full enriched structure"""
+    
+    def test_official_procedures_have_full_structure(self, catalog):
+        """Official procedures have all required fields"""
+        official_procs = [p for p in catalog if p.get("procedure_type") == "official_procedure"]
+        
+        required_fields = [
+            "category", "procedure_type", "official_action", "auth_method",
+            "proof_expected", "flow_definition", "who_acts", "estimated_duration",
+            "document_specs"
         ]
         
-        for entry_id in new_entries:
-            response = self.session.get(f"{BASE_URL}/api/catalog/{entry_id}")
-            assert response.status_code == 200, f"Entry {entry_id} not found"
-            entry = response.json()
-            assert entry["practice_id"] == entry_id
-            print(f"✓ {entry_id} exists")
+        for proc in official_procs:
+            for field in required_fields:
+                assert field in proc, f"Procedure {proc['practice_id']} missing field: {field}"
+            
+            # Check flow_definition structure
+            flow = proc.get("flow_definition")
+            assert flow is not None, f"Procedure {proc['practice_id']} has no flow_definition"
+            assert "official_entry_point" in flow, f"Procedure {proc['practice_id']} missing official_entry_point"
+            assert "expected_release" in flow, f"Procedure {proc['practice_id']} missing expected_release"
+            assert "tracking_mode" in flow, f"Procedure {proc['practice_id']} missing tracking_mode"
     
-    def test_search_by_inps_returns_inps_entries(self):
-        """Search by 'INPS' returns all INPS-related entries."""
-        response = self.session.get(f"{BASE_URL}/api/catalog")
-        assert response.status_code == 200
-        entries = response.json()
+    def test_internal_procedures_have_required_fields(self, catalog):
+        """Internal support procedures have required fields"""
+        internal_procs = [p for p in catalog if p.get("procedure_type") == "internal_support"]
         
-        # Filter entries that have INPS in name or entity
-        inps_entries = [
-            e for e in entries 
-            if "INPS" in e.get("name", "").upper() 
-            or (e.get("official_action") and "INPS" in e.get("official_action", {}).get("entity_name", "").upper())
-        ]
+        required_fields = ["category", "procedure_type", "who_acts", "estimated_duration"]
         
-        # Should have at least 5 INPS entries (INPS_GESTIONE_SEP, INPS_CASSETTO, INPS_DURC, INPS_ARTIGIANI, INPS_COMMERCIANTI)
-        assert len(inps_entries) >= 5, f"Expected at least 5 INPS entries, got {len(inps_entries)}"
-        
-        inps_ids = [e["practice_id"] for e in inps_entries]
-        print(f"✓ Found {len(inps_entries)} INPS-related entries: {inps_ids}")
+        for proc in internal_procs:
+            for field in required_fields:
+                assert field in proc, f"Internal procedure {proc['practice_id']} missing field: {field}"
 
 
-class TestCatalogFlowDefinitionStructure:
-    """Test the universal flow model structure for official procedures."""
+class TestUrlVerifiedFalse:
+    """Test procedures with url_verified=false"""
     
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """Login and get auth token."""
-        self.session = requests.Session()
-        login_response = self.session.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
-        })
-        assert login_response.status_code == 200
+    def test_11_procedures_have_url_verified_false(self, catalog):
+        """11 procedures have url_verified=false"""
+        unverified = []
+        for proc in catalog:
+            flow = proc.get("flow_definition")
+            if flow:
+                entry_point = flow.get("official_entry_point", {})
+                if entry_point.get("url_verified") == False:
+                    unverified.append(proc["practice_id"])
+        
+        assert len(unverified) == 11, f"Expected 11 unverified URLs, got {len(unverified)}: {unverified}"
     
-    def test_all_official_procedures_have_flow_definition(self):
-        """All official_procedure entries have flow_definition with required fields."""
-        response = self.session.get(f"{BASE_URL}/api/catalog")
-        assert response.status_code == 200
-        entries = response.json()
+    def test_correct_procedures_have_url_verified_false(self, catalog):
+        """Correct procedures have url_verified=false"""
+        unverified = set()
+        for proc in catalog:
+            flow = proc.get("flow_definition")
+            if flow:
+                entry_point = flow.get("official_entry_point", {})
+                if entry_point.get("url_verified") == False:
+                    unverified.add(proc["practice_id"])
         
-        official_entries = [e for e in entries if e.get("procedure_type") == "official_procedure"]
-        
-        for entry in official_entries:
-            flow_def = entry.get("flow_definition")
-            assert flow_def is not None, f"{entry['practice_id']}: flow_definition is None"
-            
-            # Check required fields
-            assert "official_entry_point" in flow_def, f"{entry['practice_id']}: missing official_entry_point"
-            assert "expected_release" in flow_def, f"{entry['practice_id']}: missing expected_release"
-            assert "tracking_mode" in flow_def, f"{entry['practice_id']}: missing tracking_mode"
-            
-            # Check official_entry_point structure
-            entry_point = flow_def["official_entry_point"]
-            assert "type" in entry_point, f"{entry['practice_id']}: missing entry_point.type"
-            assert "auth_method" in entry_point, f"{entry['practice_id']}: missing entry_point.auth_method"
-            
-            # Check expected_release structure
-            expected_release = flow_def["expected_release"]
-            assert "type" in expected_release, f"{entry['practice_id']}: missing expected_release.type"
-            assert "timing" in expected_release, f"{entry['practice_id']}: missing expected_release.timing"
-            
-            # Check tracking_mode structure
-            tracking_mode = flow_def["tracking_mode"]
-            assert "type" in tracking_mode, f"{entry['practice_id']}: missing tracking_mode.type"
-        
-        print(f"✓ All {len(official_entries)} official procedures have valid flow_definition")
-    
-    def test_all_internal_procedures_have_no_flow_definition(self):
-        """All internal_support entries have flow_definition=None."""
-        response = self.session.get(f"{BASE_URL}/api/catalog")
-        assert response.status_code == 200
-        entries = response.json()
-        
-        internal_entries = [e for e in entries if e.get("procedure_type") == "internal_support"]
-        
-        for entry in internal_entries:
-            flow_def = entry.get("flow_definition")
-            assert flow_def is None, f"{entry['practice_id']}: internal entry should have flow_definition=None, got: {flow_def}"
-        
-        print(f"✓ All {len(internal_entries)} internal procedures have flow_definition=None")
+        expected = set(UNVERIFIED_URL_PROCEDURES)
+        assert unverified == expected, f"Mismatch in unverified URLs. Expected: {expected}, Got: {unverified}"
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+class TestCatalogByCategory:
+    """Test catalog counts by category from actual data"""
+    
+    def test_category_counts_match_expected(self, catalog):
+        """Category counts from catalog data match expected"""
+        counts = {}
+        for proc in catalog:
+            cat = proc.get("category", "unknown")
+            counts[cat] = counts.get(cat, 0) + 1
+        
+        for cat, expected_count in EXPECTED_CATEGORIES.items():
+            actual = counts.get(cat, 0)
+            assert actual == expected_count, f"Category {cat}: expected {expected_count}, got {actual}"

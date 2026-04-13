@@ -34,8 +34,8 @@ const AREAS = [
     color: '#F59E0B',
     bgLight: 'bg-amber-50',
     textColor: 'text-amber-700',
-    catalogCategories: ['fiscale', 'informativo'],
-    keywords: ['scadenza', 'F24', 'LIPE', 'dichiarazione', 'regime'],
+    catalogCategories: ['fiscale', 'informativo', 'lavoro'],
+    keywords: ['scadenza', 'F24', 'LIPE', 'dichiarazione', 'regime', 'UniEmens', 'autoliquidazione', 'conguaglio'],
   },
   {
     id: 'company',
@@ -73,8 +73,8 @@ const AREAS = [
     color: '#10B981',
     bgLight: 'bg-emerald-50',
     textColor: 'text-emerald-700',
-    catalogCategories: ['fiscale', 'previdenziale', 'societario'],
-    keywords: ['INPS', 'Agenzia', 'Entrate', 'Camera', 'SUAP', 'portale', 'SPID'],
+    catalogCategories: ['fiscale', 'previdenziale', 'societario', 'lavoro'],
+    keywords: ['INPS', 'Agenzia', 'Entrate', 'Camera', 'SUAP', 'portale', 'SPID', 'INAIL', 'Centro', 'Impiego'],
   },
   {
     id: 'guidance',

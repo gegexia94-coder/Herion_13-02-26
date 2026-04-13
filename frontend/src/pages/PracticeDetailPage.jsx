@@ -123,7 +123,7 @@ export default function PracticeDetailPage() {
   const handleFileSelect = (e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setShowUploadDialog(true); } };
   const handleFileUpload = async () => {
     if (!pendingFile) return; setShowUploadDialog(false); setUploading(true);
-    try { await uploadDocument(id, pendingFile, uploadCategory); toast.success('Documento caricato'); loadData(); }
+    try { await uploadDocument(id, pendingFile, uploadCategory); toast.success('Documento salvato nel tuo archivio'); loadData(); }
     catch { toast.error('Errore nel caricamento'); }
     finally { setUploading(false); setPendingFile(null); setUploadCategory('other'); }
   };
@@ -664,7 +664,29 @@ export default function PracticeDetailPage() {
       </AlertDialog>
 
       <AlertDialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm"><AlertDialogHeader><AlertDialogTitle className="text-base font-bold text-center">Carica documento</AlertDialogTitle><AlertDialogDescription className="text-center text-[12px]">File: <span className="font-medium text-[var(--text-primary)]">{pendingFile?.name}</span></AlertDialogDescription></AlertDialogHeader><div className="px-6 pb-2"><label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Categoria</label><Select value={uploadCategory} onValueChange={setUploadCategory}><SelectTrigger className="rounded-lg h-9 text-[12px] mt-1.5" style={{ borderColor: 'var(--border-soft)' }}><SelectValue /></SelectTrigger><SelectContent className="rounded-lg">{DOC_UPLOAD_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent></Select></div><AlertDialogFooter className="gap-2"><AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel><AlertDialogAction onClick={handleFileUpload} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]">Carica</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-center">Carica nel tuo archivio</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[12px]">File: <span className="font-medium text-[var(--text-primary)]">{pendingFile?.name}</span></AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-3">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Categoria</label>
+              <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                <SelectTrigger className="rounded-lg h-9 text-[12px] mt-1.5" style={{ borderColor: 'var(--border-soft)' }}><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-lg">{DOC_UPLOAD_CATEGORIES.map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-start gap-2 p-2 bg-blue-50/30 rounded-lg">
+              <Info className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[8px] text-blue-600/70 leading-relaxed">Il documento sara salvato nel tuo archivio personale per la preparazione. Non verra inviato all'ente.</p>
+            </div>
+          </div>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFileUpload} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg flex-1 text-[12px]" data-testid="confirm-upload-btn">Salva in archivio</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={showDelegateDialog} onOpenChange={setShowDelegateDialog}>
@@ -932,7 +954,10 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
   return (
     <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="document-section">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-[12px] font-bold text-[var(--text-primary)]">Documenti</p>
+        <div>
+          <p className="text-[12px] font-bold text-[var(--text-primary)]">Archivio documenti</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">I documenti caricati restano nel tuo archivio personale</p>
+        </div>
         {canUpload && (
           <label className="cursor-pointer">
             <input type="file" onChange={onFileSelect} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.p7m" data-testid="file-input" />
@@ -943,10 +968,16 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
         )}
       </div>
 
+      {/* Archive clarification banner */}
+      <div className="flex items-start gap-2 p-2.5 bg-blue-50/30 rounded-lg mb-3 border border-blue-100/50" data-testid="archive-clarification">
+        <Info className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />
+        <p className="text-[9px] text-blue-600/70 leading-relaxed">Caricare un documento qui significa conservarlo nel tuo archivio Herion per la preparazione della pratica. Non equivale a un invio ufficiale all'ente.</p>
+      </div>
+
       {/* Missing docs from workspace */}
       {docsSummary.missing_count > 0 && (
         <div className="mb-3">
-          <p className="text-[10px] font-bold text-amber-700 mb-1.5">Da caricare ({docsSummary.missing_count})</p>
+          <p className="text-[10px] font-bold text-amber-700 mb-1.5">Da caricare per preparare la pratica ({docsSummary.missing_count})</p>
           <div className="space-y-1">
             {(docsSummary.missing_labels || []).map((label, i) => (
               <div key={i} className="flex items-center gap-2.5 py-1.5 px-3 bg-amber-50/60 rounded-lg" data-testid={`missing-doc-${i}`}>
@@ -970,7 +1001,7 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
             let badge = isGenerated ? <span className="text-[8px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">Generato da Herion</span>
               : isSigned ? <span className="text-[8px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Firmato {isP7m ? '(p7m)' : ''}</span>
               : needsSig ? <span className="text-[8px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">Richiede firma</span>
-              : <span className="text-[8px] font-bold bg-[var(--bg-soft)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Ricevuto</span>;
+              : <span className="text-[8px] font-bold bg-[var(--bg-soft)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">In archivio</span>;
             return (
               <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--hover-soft)] transition-colors" data-testid={`document-${doc.id}`}>
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -988,8 +1019,8 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
       ) : docsSummary.missing_count === 0 ? (
         <div className="border border-dashed rounded-xl p-5 text-center" style={{ borderColor: 'var(--border-soft)' }}>
           <Upload className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-2 opacity-40" strokeWidth={1.5} />
-          <p className="text-[12px] text-[var(--text-secondary)] font-medium">Nessun documento ancora</p>
-          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Carica i documenti per avviare la pratica</p>
+          <p className="text-[12px] text-[var(--text-secondary)] font-medium">Nessun documento nel tuo archivio</p>
+          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Carica i documenti per iniziare a preparare la pratica</p>
         </div>
       ) : null}
 

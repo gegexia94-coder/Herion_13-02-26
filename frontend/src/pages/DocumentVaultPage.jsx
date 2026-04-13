@@ -101,8 +101,17 @@ export default function DocumentVaultPage() {
   return (
     <div className="space-y-6" data-testid="document-vault">
       <div>
-        <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Archivio Documenti</h1>
-        <p className="text-sm text-[#475569]">Custodia, verifica e protezione dei documenti</p>
+        <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight mb-1">Archivio documenti</h1>
+        <p className="text-[13px] text-[var(--text-secondary)]">I tuoi documenti sono conservati qui per la preparazione e l'organizzazione delle pratiche.</p>
+      </div>
+
+      {/* Archive clarification banner */}
+      <div className="flex items-start gap-3 p-4 bg-blue-50/40 rounded-xl border border-blue-100/50" data-testid="vault-archive-banner">
+        <Shield className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-[11px] font-semibold text-blue-700 mb-0.5">Archivio personale — non invio ufficiale</p>
+          <p className="text-[10px] text-blue-600/70 leading-relaxed">I documenti caricati restano nel tuo archivio Herion. Puoi usarli per preparare le pratiche e riutilizzarli in futuro. Il caricamento non equivale a un invio ufficiale all'ente.</p>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -199,8 +208,8 @@ export default function DocumentVaultPage() {
       ) : (
         <div className="bg-white rounded-2xl border border-[#E2E8F0] text-center py-16">
           <Lock className="w-10 h-10 text-[#CBD5E1] mx-auto mb-3" strokeWidth={1.5} />
-          <h3 className="text-base font-semibold text-[#0F172A] mb-1">Nessun documento</h3>
-          <p className="text-sm text-[#475569]">L'archivio e vuoto o i filtri non restituiscono risultati</p>
+          <h3 className="text-base font-semibold text-[#0F172A] mb-1">Nessun documento nel tuo archivio</h3>
+          <p className="text-sm text-[#475569]">Carica i documenti nelle tue pratiche — saranno disponibili qui per consultazione e riutilizzo futuro</p>
         </div>
       )}
     </div>

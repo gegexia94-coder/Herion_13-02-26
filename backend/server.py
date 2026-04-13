@@ -2971,8 +2971,8 @@ def build_ui_guidance(status: str, missing_docs: list, channel: dict, is_approva
         return {"headline": "Iniziamo insieme", "subheadline": "Leggi cosa serve per questa pratica. Herion ti accompagna passo dopo passo.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Inizia la pratica' per cominciare il percorso."}
     elif status == "waiting_user_documents":
         if missing_docs:
-            return {"headline": "Servono ancora alcuni documenti", "subheadline": f"Mancano {len(missing_docs)} documenti per procedere. Herion ti indica esattamente cosa serve.", "next_step_label": "Cosa fare", "next_step_detail": f"Carica: {', '.join(missing_docs[:3])}."}
-        return {"headline": "Documenti ricevuti — ottimo lavoro", "subheadline": "Herion puo analizzare tutto e preparare la pratica per te.", "next_step_label": "Prossimo passo", "next_step_detail": "Clicca 'Avvia Analisi Herion' per procedere."}
+            return {"headline": "Servono ancora alcuni documenti", "subheadline": f"Mancano {len(missing_docs)} documenti nel tuo archivio. Caricarli serve per preparare la pratica — non equivale a un invio ufficiale.", "next_step_label": "Cosa fare", "next_step_detail": f"Carica nel tuo archivio: {', '.join(missing_docs[:3])}."}
+        return {"headline": "Documenti ricevuti nel tuo archivio", "subheadline": "Herion puo analizzare tutto e preparare la pratica. I documenti sono nel tuo archivio, non ancora inviati all'ente.", "next_step_label": "Prossimo passo", "next_step_detail": "Clicca 'Avvia Analisi Herion' per procedere con la preparazione."}
     elif status in ("internal_processing", "in_progress", "processing"):
         return {"headline": "Herion sta lavorando per te", "subheadline": "Stiamo verificando documenti, conformita e requisiti. Ti avviseremo appena pronto.", "next_step_label": "Cosa succede dopo", "next_step_detail": "Ti chiederemo di verificare il risultato prima di procedere. Nessuna azione richiesta ora."}
     elif status in ("waiting_user_review", "waiting_approval"):
@@ -2983,8 +2983,8 @@ def build_ui_guidance(status: str, missing_docs: list, channel: dict, is_approva
         return {"headline": "In attesa della tua firma", "subheadline": "Alcuni documenti richiedono la tua firma digitale. Herion resta al tuo fianco.", "next_step_label": "Cosa fare", "next_step_detail": "Firma i documenti richiesti per procedere."}
     elif status == "ready_for_submission":
         if is_external:
-            return {"headline": f"Pronta per l'invio a {entity_name}", "subheadline": "Herion ha preparato tutto. L'invio ufficiale va fatto da te — ti guidiamo noi.", "next_step_label": "Cosa fare", "next_step_detail": f"Accedi a {entity_name} con le tue credenziali e completa l'invio. Poi torna qui."}
-        return {"headline": "Pronta per il completamento", "subheadline": "La pratica e pronta per essere chiusa. Herion ha verificato tutto.", "next_step_label": "Prossimo passo", "next_step_detail": "Conferma il completamento."}
+            return {"headline": f"Pronta per l'invio ufficiale a {entity_name}", "subheadline": "Herion ha preparato tutto nel tuo archivio. Ora serve il passaggio ufficiale — l'invio va completato da te sul portale dell'ente.", "next_step_label": "Passaggio ufficiale", "next_step_detail": f"Accedi a {entity_name} con le tue credenziali e completa l'invio. Solo dopo questo passaggio la pratica sara ufficialmente presentata."}
+        return {"headline": "Pronta per il completamento ufficiale", "subheadline": "I documenti sono pronti nel tuo archivio. Manca solo la conferma ufficiale.", "next_step_label": "Prossimo passo", "next_step_detail": "Conferma il completamento ufficiale."}
     elif status == "awaiting_authentication":
         return {"headline": f"Accedi a {entity_name}", "subheadline": "Per completare l'invio, accedi al portale ufficiale con le tue credenziali. Herion ti aspetta.", "next_step_label": "Cosa fare", "next_step_detail": "Clicca 'Accedi e continua' per avviare l'accesso al portale."}
     elif status == "submission_in_progress":

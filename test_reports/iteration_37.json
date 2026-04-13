@@ -1,0 +1,65 @@
+{
+  "summary": "Iteration 37 - Catalog Batch 2 Expansion testing (78 → 123 procedures). All 56 backend tests passed. Frontend catalog page shows correct category counts. All new Batch 2 entries verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_catalog_batch2_expansion.py",
+    "/app/test_reports/pytest/pytest_results_v37.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/catalog returns exactly 123 procedures as expected",
+    "GET /api/catalog/categories returns 6 categories with correct counts: fiscale(30), previdenziale(17), societario(18), lavoro(15), documentale(20), informativo(23)",
+    "No duplicate practice_id values found in the catalog",
+    "All 6 new Batch 2 fiscale entries verified: ESTEROMETRO, ISA_AFFIDABILITA, IMPOSTA_BOLLO_EFATT, BONUS_EDILIZI, CREDITO_IMPOSTA_RS, IMPOSTA_REGISTRO",
+    "All 5 new Batch 2 previdenziale entries verified: INPS_RISCATTO_LAUREA, INPS_RICONGIUNZIONE, INPS_ESTRATTO_CONTO, INPS_BONUS_NIDO, INPS_CONGEDO_PARENTALE",
+    "All 5 new Batch 2 societario entries verified: VIDIMAZIONE_LIBRI, DOMICILIAZIONE_LEGALE, CONTRATTO_RETE, SCIOGLIMENTO_SOCIETA, FUSIONE_SOCIETARIA",
+    "All 10 new Batch 2 lavoro entries verified: PROSPETTO_INFORMATIVO, LIBRO_UNICO, WELFARE_AZIENDALE, CU_DIPENDENTI, MOD_770_SOSTITUTI, FRINGE_BENEFIT, GESTIONE_FERIE, TRASFERTA_RIMBORSO, PREMIO_RISULTATO, CEDOLINO_COLLABORATORE",
+    "All 8 new Batch 2 documentale entries verified: DOC_CONSERVAZIONE_SOST, DOC_MARCA_TEMPORALE, DOC_PROCURA_TELEMATICA, DOC_RACCOLTA_CONSENSI, DOC_CONTRATTO_SERVIZIO, DOC_CHECKLIST_ANNUALE, DOC_FASCICOLO_CLIENTI, DOC_TEMPLATE_FATTURA",
+    "All 11 new Batch 2 informativo entries verified: INFO_CONTRIBUTI_MINIMI, INFO_DEDUZIONI, INFO_SCADENZE_TRIMESTRALI, INFO_FATTURAZIONE_ELETTRONICA, INFO_REGIME_IMPATRIATI, INFO_STARTUP_INNOVATIVA, INFO_SOCIETA_BENEFIT, INFO_OBBLIGO_PEC, INFO_ANTIRIC_ADEGUATA, INFO_PIANIFICAZIONE_SUCCESSORIA, INFO_LAVORO_AUTONOMO",
+    "Official procedures have complete flow_definition with official_entry_point, expected_release, tracking_mode",
+    "Internal support procedures correctly have null flow_definition",
+    "url_verified=false correctly set for unverified portals (15+ entries found)",
+    "Pre-start endpoint works for new Batch 2 entries (tested FUSIONE_SOCIETARIA, ESTEROMETRO, INFO_CONTRIBUTI_MINIMI)",
+    "Frontend catalog page displays all 6 categories with correct procedure counts",
+    "All UI text is in Italian as required"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_catalog_batch2_expansion.py"
+  ],
+  "success_rate": {
+    "backend": "100% (56/56 tests passed)",
+    "frontend": "100% (catalog page displays correctly)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "No new seed data created - tested existing catalog entries",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 37 verified Catalog Batch 2 expansion from 78 to 123 procedures. All tests passed. Key verified: (1) Total count: 123 procedures. (2) Category counts: fiscale(30), previdenziale(17), societario(18), lavoro(15), documentale(20), informativo(23). (3) No duplicate practice_ids. (4) All 45 new Batch 2 entries exist with correct enriched structure. (5) Official procedures have flow_definition, internal procedures have null. (6) url_verified=false for unverified portals. (7) Pre-start endpoint works for new entries. (8) Frontend catalog page shows correct counts. (9) All UI in Italian.",
+  "features_tested": {
+    "total_count_123": {"status": "PASS", "details": ["GET /api/catalog returns 123 procedures"]},
+    "category_counts_correct": {"status": "PASS", "details": ["fiscale:30, previdenziale:17, societario:18, lavoro:15, documentale:20, informativo:23"]},
+    "no_duplicate_practice_ids": {"status": "PASS", "details": ["All 123 practice_ids are unique"]},
+    "batch2_fiscale_entries": {"status": "PASS", "details": ["ESTEROMETRO, ISA_AFFIDABILITA, IMPOSTA_BOLLO_EFATT, BONUS_EDILIZI, CREDITO_IMPOSTA_RS, IMPOSTA_REGISTRO all exist"]},
+    "batch2_previdenziale_entries": {"status": "PASS", "details": ["INPS_RISCATTO_LAUREA, INPS_RICONGIUNZIONE, INPS_ESTRATTO_CONTO, INPS_BONUS_NIDO, INPS_CONGEDO_PARENTALE all exist"]},
+    "batch2_societario_entries": {"status": "PASS", "details": ["VIDIMAZIONE_LIBRI, DOMICILIAZIONE_LEGALE, CONTRATTO_RETE, SCIOGLIMENTO_SOCIETA, FUSIONE_SOCIETARIA all exist"]},
+    "batch2_lavoro_entries": {"status": "PASS", "details": ["All 10 lavoro entries exist: PROSPETTO_INFORMATIVO, LIBRO_UNICO, WELFARE_AZIENDALE, CU_DIPENDENTI, MOD_770_SOSTITUTI, FRINGE_BENEFIT, GESTIONE_FERIE, TRASFERTA_RIMBORSO, PREMIO_RISULTATO, CEDOLINO_COLLABORATORE"]},
+    "batch2_documentale_entries": {"status": "PASS", "details": ["All 8 documentale entries exist"]},
+    "batch2_informativo_entries": {"status": "PASS", "details": ["All 11 informativo entries exist"]},
+    "enriched_structure_official": {"status": "PASS", "details": ["Official procedures have flow_definition with official_entry_point, expected_release, tracking_mode"]},
+    "enriched_structure_internal": {"status": "PASS", "details": ["Internal support procedures have null flow_definition"]},
+    "url_verified_false": {"status": "PASS", "details": ["15+ procedures have url_verified=false for unverified portals"]},
+    "prestart_endpoint_new_entries": {"status": "PASS", "details": ["GET /api/catalog/FUSIONE_SOCIETARIA/pre-start works correctly"]},
+    "frontend_catalog_page": {"status": "PASS", "details": ["Catalog page shows all 6 categories with correct counts"]},
+    "ui_in_italian": {"status": "PASS", "details": ["All UI text is in Italian"]}
+  }
+}

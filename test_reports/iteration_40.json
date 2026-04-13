@@ -1,0 +1,74 @@
+{
+  "summary": "Iteration 40 - International/EU/Foreign-user flows testing. All 12 backend tests passed. Frontend verified: 5 client types, InternationalGuidanceCard with all blocks (translation, validation, requirements, safety note), Services page international area, Catalog page Internazionale filter with 13 procedures.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_international_features.py",
+    "/app/test_reports/pytest/pytest_results_v40.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/catalog/categories returns 7 categories including 'internazionale' with 13 procedures - VERIFIED",
+    "GET /api/catalog returns 136 total procedures - VERIFIED",
+    "8 official international procedures exist (TRADUZIONE_GIURATA, APOSTILLE_DOCUMENTO, LEGALIZZAZIONE_CONSOLARE, CF_STRANIERO, RICONOSCIMENTO_TITOLO, RICONOSCIMENTO_PROFESSIONALE, PERMESSO_SOGGIORNO_SUPPORT, DICHIARAZIONE_PRESENZA) - VERIFIED",
+    "5 internal international entries exist (INFO_APOSTILLE_VS_LEGALIZZAZIONE, INFO_TRADUZIONE_TIPI, INFO_DOCUMENTI_ESTERI_ITALIA, INFO_DOCUMENTI_ITALIANI_ESTERO, INFO_FISCALITA_STRANIERI) - VERIFIED",
+    "Pre-start for TRADUZIONE_GIURATA with client_type=non_eu_citizen returns international.relevant=true with translation and validation guidance - VERIFIED",
+    "Pre-start for VAT_OPEN_PF with client_type=eu_citizen returns international.relevant=true with additional_requirements (codice fiscale, attestato) - VERIFIED",
+    "Pre-start for DOC_MISSING_REQUEST with client_type=private returns international.relevant=false - VERIFIED",
+    "Pre-start international block includes safety_note for cross-border procedures - VERIFIED",
+    "Pre-start for non_eu_citizen includes legalization guidance (may_need_legalization=true) - VERIFIED",
+    "Pre-start for eu_citizen does NOT include legalization guidance (may_need_legalization=false) - VERIFIED",
+    "CreatePracticePage shows 5 client types: Privato, Professionista, Azienda, Cittadino UE, Extra-UE - VERIFIED",
+    "Client type 'non_eu_citizen' filters procedures to show international entries - VERIFIED",
+    "InternationalGuidanceCard renders in prepare phase (data-testid='international-card') - VERIFIED",
+    "InternationalGuidanceCard shows translation block (data-testid='intl-translation-block') - VERIFIED",
+    "InternationalGuidanceCard shows validation block (data-testid='intl-validation-block') - VERIFIED",
+    "InternationalGuidanceCard shows additional requirements (data-testid='intl-requirements-block') - VERIFIED",
+    "InternationalGuidanceCard shows safety note (data-testid='intl-safety-note') - VERIFIED",
+    "Services page shows 'Documenti internazionali' area (data-testid='area-card-international') - VERIFIED",
+    "Catalog page shows 'Internazionale' category filter with 13 procedures - VERIFIED",
+    "All UI text is in Italian as required - VERIFIED"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_international_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% (all international UI components verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "No new seed data created - tested existing seeded data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 40 verified International/EU/Foreign-user flows. Key verified: (1) 7 catalog categories including 'internazionale' with 13 procedures. (2) 136 total catalog entries. (3) 8 official international procedures + 5 internal support entries. (4) Pre-start intelligence returns international guidance block with translation, validation, additional_requirements, and safety_note. (5) non_eu_citizen gets legalization guidance (may_need_legalization=true), eu_citizen does not. (6) CreatePracticePage shows 5 client types: private, freelancer, company, eu_citizen, non_eu_citizen. (7) InternationalGuidanceCard renders with all blocks when international guidance is relevant. (8) Services page has 'Documenti internazionali' area. (9) Catalog page has 'Internazionale' category filter. (10) All UI in Italian.",
+  "features_tested": {
+    "catalog_categories_7": {"status": "PASS", "details": ["7 categories including internazionale"]},
+    "catalog_total_136": {"status": "PASS", "details": ["136 total procedures"]},
+    "international_official_procedures": {"status": "PASS", "details": ["8 official procedures exist"]},
+    "international_internal_entries": {"status": "PASS", "details": ["5 internal support entries exist"]},
+    "prestart_traduzione_non_eu": {"status": "PASS", "details": ["international.relevant=true with translation/validation guidance"]},
+    "prestart_vat_eu_citizen": {"status": "PASS", "details": ["international.relevant=true with additional_requirements"]},
+    "prestart_doc_missing_private": {"status": "PASS", "details": ["international.relevant=false"]},
+    "prestart_safety_note": {"status": "PASS", "details": ["safety_note present for cross-border procedures"]},
+    "non_eu_legalization_guidance": {"status": "PASS", "details": ["may_need_legalization=true for non_eu_citizen"]},
+    "eu_no_legalization_guidance": {"status": "PASS", "details": ["may_need_legalization=false for eu_citizen"]},
+    "create_practice_5_client_types": {"status": "PASS", "details": ["Privato, Professionista, Azienda, Cittadino UE, Extra-UE"]},
+    "non_eu_filters_procedures": {"status": "PASS", "details": ["Shows international entries when non_eu_citizen selected"]},
+    "international_card_renders": {"status": "PASS", "details": ["data-testid='international-card' found"]},
+    "intl_translation_block": {"status": "PASS", "details": ["data-testid='intl-translation-block' found"]},
+    "intl_validation_block": {"status": "PASS", "details": ["data-testid='intl-validation-block' found"]},
+    "intl_requirements_block": {"status": "PASS", "details": ["data-testid='intl-requirements-block' found"]},
+    "intl_safety_note": {"status": "PASS", "details": ["data-testid='intl-safety-note' found"]},
+    "services_international_area": {"status": "PASS", "details": ["data-testid='area-card-international' found"]},
+    "catalog_internazionale_filter": {"status": "PASS", "details": ["Internazionale category with 13 procedures"]}
+  }
+}

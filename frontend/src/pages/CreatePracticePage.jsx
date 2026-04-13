@@ -14,7 +14,7 @@ import {
   ArrowLeft, ArrowRight, User, Briefcase, Building2, UserCircle,
   CheckCircle, FileText, Search, ExternalLink, Shield, Key, Clock,
   MapPin, AlertTriangle, Info, Compass, ChevronRight, Loader2,
-  BookOpen, Lock, CircleDot, Check, X, Link2, ShieldAlert
+  BookOpen, Lock, CircleDot, Check, X, Link2, ShieldAlert, Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +22,8 @@ const CLIENT_TYPES = [
   { value: 'private', label: 'Privato', desc: 'Persona fisica', icon: UserCircle },
   { value: 'freelancer', label: 'Professionista', desc: 'Con Partita IVA', icon: User },
   { value: 'company', label: 'Azienda', desc: 'Societa o impresa', icon: Building2 },
+  { value: 'eu_citizen', label: 'Cittadino UE', desc: 'Unione Europea', icon: Globe },
+  { value: 'non_eu_citizen', label: 'Extra-UE', desc: 'Cittadino straniero', icon: Globe },
 ];
 
 const PHASE_LABELS = [
@@ -157,7 +159,7 @@ export default function CreatePracticePage() {
           {/* Client type */}
           <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Chi sei</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {CLIENT_TYPES.map(ct => (
                 <button key={ct.value} onClick={() => { setClientType(ct.value); setSelectedType(''); setPreStart(null); }}
                   className={`p-3 rounded-lg border text-center transition-all ${clientType === ct.value ? 'border-[#0ABFCF] bg-[#0ABFCF]/5 ring-1 ring-[#0ABFCF]/30' : 'border-[var(--border-soft)] hover:bg-[var(--bg-app)]'}`}
@@ -335,6 +337,11 @@ export default function CreatePracticePage() {
                   <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-1">{preStart.ateco.reason}</p>
                   <p className="text-[11px] text-[#0ABFCF] font-medium">{preStart.ateco.guidance}</p>
                 </div>
+              )}
+
+              {/* International guidance block */}
+              {preStart.international?.relevant && (
+                <InternationalGuidanceCard intl={preStart.international} />
               )}
 
               {/* Who acts + proof summary */}
@@ -604,3 +611,96 @@ function DependencyCard({ deps }) {
     </div>
   );
 }
+
+// ─── INTERNATIONAL GUIDANCE CARD ───
+
+function InternationalGuidanceCard({ intl }) {
+  if (!intl?.relevant) return null;
+
+  return (
+    <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="international-card">
+      <div className="px-5 py-3.5 bg-indigo-50/40 border-b border-indigo-100">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-indigo-500" strokeWidth={1.5} />
+          <p className="text-[11px] font-bold text-indigo-800">Aspetti internazionali</p>
+        </div>
+        <p className="text-[10px] text-indigo-600/60 mt-1">Herion ti orienta sui requisiti per documenti internazionali e procedure transfrontaliere.</p>
+      </div>
+
+      <div className="px-5 py-4 space-y-3.5">
+        {/* Translation guidance */}
+        {intl.translation && (
+          <div data-testid="intl-translation-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Traduzione</p>
+            {intl.translation.may_need_sworn_translation && (
+              <div className="p-3 bg-indigo-50/30 rounded-lg mb-1.5">
+                <p className="text-[11px] font-semibold text-indigo-700">{intl.translation.sworn_translation_label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{intl.translation.sworn_translation_desc}</p>
+              </div>
+            )}
+            {intl.translation.may_need_certified_translation && (
+              <div className="p-3 bg-slate-50 rounded-lg mb-1.5">
+                <p className="text-[11px] font-semibold text-[var(--text-primary)]">{intl.translation.certified_translation_label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{intl.translation.certified_translation_desc}</p>
+              </div>
+            )}
+            {intl.translation.note && (
+              <p className="text-[9px] text-[var(--text-muted)] italic mt-1">{intl.translation.note}</p>
+            )}
+          </div>
+        )}
+
+        {/* Validation guidance (apostille / legalization) */}
+        {intl.validation && (
+          <div data-testid="intl-validation-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Validazione documento</p>
+            {intl.validation.may_need_apostille && (
+              <div className="p-3 bg-blue-50/30 rounded-lg mb-1.5">
+                <p className="text-[11px] font-semibold text-blue-700">{intl.validation.apostille_label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{intl.validation.apostille_desc}</p>
+              </div>
+            )}
+            {intl.validation.may_need_legalization && (
+              <div className="p-3 bg-purple-50/30 rounded-lg mb-1.5">
+                <p className="text-[11px] font-semibold text-purple-700">{intl.validation.legalization_label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{intl.validation.legalization_desc}</p>
+              </div>
+            )}
+            {intl.validation.note && (
+              <p className="text-[9px] text-[var(--text-muted)] italic mt-1">{intl.validation.note}</p>
+            )}
+          </div>
+        )}
+
+        {/* Additional requirements */}
+        {intl.additional_requirements?.length > 0 && (
+          <div data-testid="intl-requirements-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Requisiti aggiuntivi</p>
+            <div className="space-y-1">
+              {intl.additional_requirements.map((req, i) => (
+                <div key={i} className="flex items-center gap-2 p-2 bg-[var(--bg-app)] rounded-lg">
+                  {req.mandatory ? <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" /> : <Info className="w-3 h-3 text-blue-400 flex-shrink-0" />}
+                  <p className="text-[10px] text-[var(--text-primary)]">{req.label}</p>
+                  <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-full ml-auto ${req.mandatory ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
+                    {req.mandatory ? 'Obbligatorio' : 'Facoltativo'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Safety note */}
+        {intl.safety_note && (
+          <div className="p-3 bg-amber-50/30 rounded-lg border border-amber-100" data-testid="intl-safety-note">
+            <div className="flex items-start gap-2">
+              <Shield className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[9px] text-amber-700 leading-relaxed">{intl.safety_note}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

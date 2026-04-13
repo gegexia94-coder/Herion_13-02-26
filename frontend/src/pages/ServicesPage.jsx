@@ -6,7 +6,7 @@ import {
   Receipt, Shield, Building, Compass, Calendar, BookOpen,
   ArrowRight, ExternalLink, FileText, MapPin, Clock, Users,
   Briefcase, TrendingUp, AlertTriangle, CheckCircle, ChevronRight,
-  RefreshCw, Lightbulb, HelpCircle
+  RefreshCw, Lightbulb, HelpCircle, Globe
 } from 'lucide-react';
 
 // ─── 6 OPERATIONAL AREAS DEFINITION ───
@@ -88,6 +88,19 @@ const AREAS = [
     textColor: 'text-[#0ABFCF]',
     catalogCategories: ['documentale', 'informativo'],
     keywords: ['follow-up', 'aggiornamento', 'stato', 'completezza', 'approvazione'],
+  },
+  {
+    id: 'international',
+    title: 'Documenti internazionali',
+    subtitle: 'Traduzioni, apostille, legalizzazioni, riconoscimenti',
+    description: 'Herion ti orienta quando hai bisogno di utilizzare documenti esteri in Italia o documenti italiani all\'estero. Ti guida su traduzioni, apostille, legalizzazioni e riconoscimenti.',
+    what_herion_does: 'Ti spiega quale percorso di validazione serve, raccoglie la documentazione e ti orienta verso l\'ente competente.',
+    icon: Globe,
+    color: '#6366F1',
+    bgLight: 'bg-indigo-50',
+    textColor: 'text-indigo-700',
+    catalogCategories: ['internazionale'],
+    keywords: ['traduzione', 'apostille', 'legalizzazione', 'straniero', 'estero', 'riconoscimento', 'permesso', 'fiscale stranieri'],
   },
 ];
 

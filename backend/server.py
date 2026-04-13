@@ -559,6 +559,13 @@ CATALOG_CATEGORIES = {
         "icon": "briefcase",
         "is_official": True,
     },
+    "internazionale": {
+        "id": "internazionale",
+        "label": "Internazionale",
+        "description": "Traduzioni, apostille, legalizzazioni, riconoscimenti, documenti esteri",
+        "icon": "globe",
+        "is_official": True,
+    },
 }
 
 
@@ -735,6 +742,7 @@ async def get_pre_start_intelligence(practice_id: str, client_type: str = "priva
         "proof_expected": {"type": proof.get("type"), "label": proof.get("label", ""), "timing": proof.get("timing", "")} if proof.get("type") else None,
         "who_acts_summary": {"herion_prepares": who_acts.get("herion_prepares", True), "user_submits": who_acts.get("user_submits", False), "user_signs": who_acts.get("user_signs", False), "delegation_possible": who_acts.get("delegation_possible", False)},
         "dependencies": _get_dependencies_for_procedure(practice_id),
+        "international": _get_international_guidance(practice_id, client_type),
     }
 
 
@@ -754,6 +762,13 @@ def _get_dependencies_for_procedure(practice_id: str) -> dict:
         "total_links": len(dep.get("linked_obligations", [])),
         "high_risks": len([r for r in dep.get("risk_if_omitted", []) if r["severity"] == "high"]),
     }
+
+
+
+def _get_international_guidance(practice_id: str, client_type: str) -> dict:
+    """Get international guidance for a procedure based on user type."""
+    from international_data import get_international_guidance
+    return get_international_guidance(practice_id, client_type)
 
 
 @api_router.get("/catalog/{practice_id}/dependencies")
@@ -7288,6 +7303,8 @@ async def startup():
     if catalog_count == 0:
         from catalog_data import get_catalog_entries
         catalog_entries = get_catalog_entries()
+        from international_data import get_international_catalog_entries
+        catalog_entries.extend(get_international_catalog_entries())
         for entry in catalog_entries:
             entry["created_at"] = datetime.now(timezone.utc).isoformat()
         await db.practice_catalog.insert_many(catalog_entries)

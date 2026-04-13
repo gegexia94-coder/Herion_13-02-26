@@ -32,7 +32,8 @@ from models.schemas import (
     ProfileUpdate, ChangePasswordRequest, PracticeCreate, PracticeUpdate,
     AgentAction, OrchestrationRequest, PracticeChatRequest, ReminderCreate,
     DelegationRequest, RevokeDelegationRequest, ProofUploadRequest,
-    OfficialStepCompleteRequest, TrackingUpdateRequest, TrackingVerifyRequest
+    OfficialStepCompleteRequest, TrackingUpdateRequest, TrackingVerifyRequest,
+    ConsulenzaTriageRequest, ConsulenzaRefineRequest
 )
 
 # Resend Config
@@ -676,6 +677,293 @@ async def get_registry_entry(registry_id: str, user: dict = Depends(get_current_
         raise HTTPException(status_code=404, detail="Ente non trovato nel registro")
     return entry
 
+
+# ========================
+# CONSULENZA RAPIDA — AI TRIAGE
+# ========================
+
+CONSULENZA_SYSTEM_PROMPT = """Sei Herion Consulenza, il consulente di orientamento della piattaforma Herion — il commercialista digitale.
+
+Il tuo compito e aiutare l'utente a trovare la procedura giusta partendo dalla descrizione della sua situazione.
+
+REGOLE FONDAMENTALI:
+- Rispondi SEMPRE in italiano semplice e cordiale.
+- Suggerisci da 1 a 3 procedure dal catalogo. MAI piu di 3.
+- Per ogni procedura suggerita, spiega PERCHE e rilevante alla situazione dell'utente.
+- Se la situazione e ambigua, chiedi un chiarimento specifico PRIMA di suggerire procedure.
+- NON inventare certezze. Se non sei sicuro, dillo chiaramente.
+- NON eseguire azioni automatiche. Sei solo un orientamento.
+- NON dare consulenza legale o fiscale definitiva.
+- Usa un tono caldo, pratico, da "commercialista digitale di fiducia".
+
+FORMATO DI RISPOSTA — Rispondi SEMPRE con JSON valido, nessun testo fuori dal JSON:
+{
+  "type": "suggestions" | "clarification",
+  "message": "Un messaggio di accompagnamento breve e cordiale per l'utente",
+  "suggestions": [
+    {
+      "practice_id": "ID_PROCEDURA_DAL_CATALOGO",
+      "name": "Nome procedura",
+      "category": "categoria",
+      "why": "Spiegazione chiara e specifica del perche questa procedura corrisponde alla situazione dell'utente",
+      "confidence": "high" | "medium" | "low",
+      "next_step_hint": "Cosa succedera se l'utente sceglie questa procedura"
+    }
+  ],
+  "clarification_question": "Domanda specifica se type=clarification, null se type=suggestions",
+  "disclaimer": "Nota di trasparenza se necessario, null altrimenti"
+}
+
+Se il tipo e "clarification", il campo suggestions deve essere un array vuoto [].
+Se il tipo e "suggestions", il campo clarification_question deve essere null.
+
+CATALOGO PROCEDURE DISPONIBILI (usa SOLO queste):
+"""
+
+
+def _build_catalog_summary_for_ai():
+    """Build a compact catalog summary for the AI triage context."""
+    from catalog_data import get_catalog_entries
+    from international_data import get_international_catalog_entries
+
+    all_entries = get_catalog_entries() + get_international_catalog_entries()
+    lines = []
+    for e in all_entries:
+        pid = e.get("practice_id", "")
+        name = e.get("name", "")
+        desc = e.get("user_explanation") or e.get("description", "")
+        cat = e.get("category_label", "")
+        ptype = e.get("procedure_type", "")
+        user_types = ", ".join(e.get("user_type", []))
+        risk = e.get("risk_level", "")
+        lines.append(f"- {pid} | {name} | {cat} | {ptype} | utenti: {user_types} | rischio: {risk} | {desc[:120]}")
+    return "\n".join(lines)
+
+
+_catalog_summary_cache = None
+
+
+def _get_catalog_summary():
+    global _catalog_summary_cache
+    if _catalog_summary_cache is None:
+        _catalog_summary_cache = _build_catalog_summary_for_ai()
+    return _catalog_summary_cache
+
+
+@api_router.post("/consulenza/triage")
+async def consulenza_triage(req: ConsulenzaTriageRequest, user: dict = Depends(get_current_user)):
+    """AI-powered triage: user describes situation, gets 1-3 procedure suggestions."""
+    if not EMERGENT_KEY:
+        raise HTTPException(status_code=503, detail="Servizio AI non configurato")
+
+    if not req.description or len(req.description.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Descrivi la tua situazione con almeno qualche dettaglio")
+
+    session_id = f"consulenza-{user['id']}-{uuid.uuid4().hex[:8]}"
+    catalog_summary = _get_catalog_summary()
+    system_prompt = CONSULENZA_SYSTEM_PROMPT + catalog_summary
+
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_KEY,
+            session_id=session_id,
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5.2")
+
+        user_message = UserMessage(text=f"La mia situazione: {req.description}")
+        response = await chat.send_message(user_message)
+
+        # Parse the AI response
+        import json as json_module
+        parsed = None
+        try:
+            clean = response.strip()
+            if clean.startswith("```"):
+                clean = clean.split("\n", 1)[1] if "\n" in clean else clean[3:]
+                if clean.endswith("```"):
+                    clean = clean[:-3]
+                clean = clean.strip()
+                if clean.startswith("json"):
+                    clean = clean[4:].strip()
+            parsed = json_module.loads(clean)
+        except (json_module.JSONDecodeError, Exception):
+            parsed = {
+                "type": "suggestions",
+                "message": response,
+                "suggestions": [],
+                "clarification_question": None,
+                "disclaimer": None
+            }
+
+        # Validate suggested practice_ids exist in catalog
+        if parsed.get("suggestions"):
+            valid_suggestions = []
+            for s in parsed["suggestions"]:
+                pid = s.get("practice_id", "")
+                exists = await db.practice_catalog.find_one({"practice_id": pid}, {"_id": 0, "practice_id": 1})
+                if exists:
+                    valid_suggestions.append(s)
+                else:
+                    logger.warning(f"Consulenza triage suggested invalid practice_id: {pid}")
+            parsed["suggestions"] = valid_suggestions
+
+        # Store session
+        session_doc = {
+            "session_id": session_id,
+            "user_id": user["id"],
+            "messages": [
+                {"role": "user", "text": req.description, "timestamp": datetime.now(timezone.utc).isoformat()},
+                {"role": "assistant", "response": parsed, "timestamp": datetime.now(timezone.utc).isoformat()}
+            ],
+            "status": "active",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.consulenza_sessions.insert_one(session_doc)
+
+        # Activity log
+        await db.activity_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user["id"],
+            "action": "consulenza_triage",
+            "category": "consulenza",
+            "description": f"Consulenza rapida avviata",
+            "metadata": {"session_id": session_id},
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+
+        return {
+            "session_id": session_id,
+            "response": parsed
+        }
+
+    except Exception as e:
+        logger.error(f"Consulenza triage error: {e}")
+        raise HTTPException(status_code=500, detail="Errore durante l'analisi. Riprova tra qualche istante.")
+
+
+@api_router.post("/consulenza/refine")
+async def consulenza_refine(req: ConsulenzaRefineRequest, user: dict = Depends(get_current_user)):
+    """Refine the triage with follow-up questions."""
+    if not EMERGENT_KEY:
+        raise HTTPException(status_code=503, detail="Servizio AI non configurato")
+
+    session = await db.consulenza_sessions.find_one(
+        {"session_id": req.session_id, "user_id": user["id"]},
+        {"_id": 0}
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Sessione non trovata")
+
+    catalog_summary = _get_catalog_summary()
+    system_prompt = CONSULENZA_SYSTEM_PROMPT + catalog_summary
+
+    try:
+        # Build conversation context as a single prompt
+        history_lines = []
+        for msg in session.get("messages", []):
+            if msg["role"] == "user":
+                history_lines.append(f"UTENTE: {msg['text']}")
+            elif msg["role"] == "assistant":
+                resp = msg.get("response", {})
+                summary_parts = [resp.get("message", "")]
+                for s in resp.get("suggestions", []):
+                    summary_parts.append(f"  - {s.get('name', '')} ({s.get('practice_id', '')})")
+                if resp.get("clarification_question"):
+                    summary_parts.append(f"  Chiarimento: {resp['clarification_question']}")
+                history_lines.append(f"HERION: {' | '.join(summary_parts)}")
+
+        context = "\n".join(history_lines)
+
+        chat = LlmChat(
+            api_key=EMERGENT_KEY,
+            session_id=f"{req.session_id}-r{len(session.get('messages', []))}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5.2")
+
+        full_message = f"CONVERSAZIONE PRECEDENTE:\n{context}\n\nNUOVO MESSAGGIO DELL'UTENTE:\n{req.follow_up}"
+        user_message = UserMessage(text=full_message)
+        response = await chat.send_message(user_message)
+
+        # Parse
+        import json as json_module
+        parsed = None
+        try:
+            clean = response.strip()
+            if clean.startswith("```"):
+                clean = clean.split("\n", 1)[1] if "\n" in clean else clean[3:]
+                if clean.endswith("```"):
+                    clean = clean[:-3]
+                clean = clean.strip()
+                if clean.startswith("json"):
+                    clean = clean[4:].strip()
+            parsed = json_module.loads(clean)
+        except (json_module.JSONDecodeError, Exception):
+            parsed = {
+                "type": "suggestions",
+                "message": response,
+                "suggestions": [],
+                "clarification_question": None,
+                "disclaimer": None
+            }
+
+        # Validate practice_ids
+        if parsed.get("suggestions"):
+            valid = []
+            for s in parsed["suggestions"]:
+                pid = s.get("practice_id", "")
+                exists = await db.practice_catalog.find_one({"practice_id": pid}, {"_id": 0, "practice_id": 1})
+                if exists:
+                    valid.append(s)
+            parsed["suggestions"] = valid
+
+        # Update session
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await db.consulenza_sessions.update_one(
+            {"session_id": req.session_id},
+            {
+                "$push": {
+                    "messages": {
+                        "$each": [
+                            {"role": "user", "text": req.follow_up, "timestamp": now_iso},
+                            {"role": "assistant", "response": parsed, "timestamp": now_iso}
+                        ]
+                    }
+                },
+                "$set": {"updated_at": now_iso}
+            }
+        )
+
+        return {
+            "session_id": req.session_id,
+            "response": parsed
+        }
+
+    except Exception as e:
+        logger.error(f"Consulenza refine error: {e}")
+        raise HTTPException(status_code=500, detail="Errore durante l'analisi. Riprova tra qualche istante.")
+
+
+@api_router.get("/consulenza/sessions")
+async def get_consulenza_sessions(user: dict = Depends(get_current_user)):
+    """Get the user's consulenza session history."""
+    sessions = await db.consulenza_sessions.find(
+        {"user_id": user["id"]},
+        {"_id": 0, "session_id": 1, "status": 1, "created_at": 1, "updated_at": 1,
+         "messages": {"$slice": 1}}
+    ).sort("created_at", -1).to_list(20)
+
+    result = []
+    for s in sessions:
+        first_msg = s.get("messages", [{}])[0] if s.get("messages") else {}
+        result.append({
+            "session_id": s.get("session_id"),
+            "status": s.get("status"),
+            "created_at": s.get("created_at"),
+            "updated_at": s.get("updated_at"),
+            "preview": (first_msg.get("text", "")[:80] + "...") if first_msg.get("text", "") else ""
+        })
+    return result
 
 
 # ========================

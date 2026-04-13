@@ -127,3 +127,12 @@ class TrackingVerifyRequest(BaseModel):
     entity_state: Optional[str] = None
     notes: Optional[str] = None
     next_expected_step: Optional[str] = None
+
+
+class ConsulenzaTriageRequest(BaseModel):
+    description: str
+
+
+class ConsulenzaRefineRequest(BaseModel):
+    session_id: str
+    follow_up: str

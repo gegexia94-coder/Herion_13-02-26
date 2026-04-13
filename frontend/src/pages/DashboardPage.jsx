@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   Plus, ArrowRight, Play, CheckCircle, AlertTriangle, RefreshCw, Send,
   FileText, ChevronLeft, ChevronRight, Calendar, FileCheck, Megaphone,
-  Globe, Clock, Lock, Shield, Bot, Compass, MapPin, Eye, BookOpen
+  Globe, Clock, Lock, Shield, Bot, Compass, MapPin, Eye, BookOpen, MessageCircle
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -183,9 +183,14 @@ export default function DashboardPage() {
       )}
 
       {/* ═══ QUICK ACTIONS ═══ */}
-      <div className="grid grid-cols-3 gap-2.5" data-testid="quick-actions">
+      <div className="grid grid-cols-4 gap-2.5" data-testid="quick-actions">
+        <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
+          <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">Consulenza rapida</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Descrivi e trova la procedura giusta</p>
+        </button>
         <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
-          <Plus className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
+          <Plus className="w-4 h-4 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">Nuova pratica</p>
           <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Avvia con la preparazione guidata</p>
         </button>

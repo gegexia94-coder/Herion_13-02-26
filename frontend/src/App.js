@@ -29,6 +29,7 @@ import SearchPage from "@/pages/SearchPage";
 import SupportPage from "@/pages/SupportPage";
 import ServicesPage from "@/pages/ServicesPage";
 import AdminStatsPage from "@/pages/AdminStatsPage";
+import ConsulenzaRapidaPage from "@/pages/ConsulenzaRapidaPage";
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/consulenza" element={<ConsulenzaRapidaPage />} />
             <Route path="/admin/stats" element={<AdminStatsPage />} />
             <Route path="/deadlines" element={<DeadlineDashboardPage />} />
             <Route path="/submissions" element={<SubmissionCenterPage />} />

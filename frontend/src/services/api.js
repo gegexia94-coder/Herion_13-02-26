@@ -182,4 +182,9 @@ export const verifyTracking = (practiceId, data) =>
 // Admin Statistics
 export const getAdminStats = (window = '30d') => api.get(`/admin/stats?window=${window}`);
 
+// Consulenza Rapida
+export const consulenzaTriage = (description) => api.post('/consulenza/triage', { description });
+export const consulenzaRefine = (session_id, follow_up) => api.post('/consulenza/refine', { session_id, follow_up });
+export const getConsulenzaSessions = () => api.get('/consulenza/sessions');
+
 export default api;

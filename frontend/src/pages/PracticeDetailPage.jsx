@@ -7,7 +7,7 @@ import {
   approvePractice, startPractice, markPracticeSubmitted, markPracticeCompleted,
   downloadPracticePdf, getPracticeWorkspace, delegatePractice,
   revokeDelegation, uploadProof, completeOfficialStep,
-  updateTracking, verifyTracking
+  updateTracking, verifyTracking, getProcedureDependencies
 } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,6 +92,7 @@ export default function PracticeDetailPage() {
   const [showTrackingDialog, setShowTrackingDialog] = useState(false);
   const [trackingIdType, setTrackingIdType] = useState('protocol_number');
   const [trackingIdValue, setTrackingIdValue] = useState('');
+  const [deps, setDeps] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -103,6 +104,11 @@ export default function PracticeDetailPage() {
       setWorkspace(w.data);
       setDocuments(d.data);
       setChatHistory(c.data.reverse());
+      // Load dependencies if practice has a type
+      const pType = w.data?.practice_type || p.data?.practice_type;
+      if (pType) {
+        try { const depRes = await getProcedureDependencies(pType); setDeps(depRes.data); } catch { /* no deps */ }
+      }
     } catch (e) { console.warn('Load failed:', e?.message); }
     finally { setLoading(false); }
   }, [id]);
@@ -393,6 +399,9 @@ export default function PracticeDetailPage() {
 
           {/* ── TRACKING & STATUS INTELLIGENCE CARD ── */}
           {!canStart && <TrackingCard tracking={trackingIntel} status={status} onAddReference={() => setShowTrackingDialog(true)} onCopyReference={handleCopyReference} />}
+
+          {/* ── DEPENDENCY & RISK CARD ── */}
+          {deps?.has_dependencies && <PracticeDependencyCard deps={deps} />}
 
           {/* ── FATHER REVIEW / APPROVAL GATE ── */}
           {canApprove && father.active && (
@@ -997,6 +1006,93 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
 
 
 // ═══════════════════════════════════════
+
+// ═══════════════════════════════════════
+// DEPENDENCY & RISK CARD (Practice Detail)
+// ═══════════════════════════════════════
+
+const DEP_TYPE_STYLES = {
+  mandatory: { bg: 'bg-red-50', text: 'text-red-700', label: 'Obbligatorio', dot: 'bg-red-400' },
+  recommended: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Consigliato', dot: 'bg-blue-400' },
+  conditional: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Condizionale', dot: 'bg-amber-400' },
+};
+const DEP_TIMING = { before: 'Prima', during: 'Contestuale', after: 'Dopo' };
+const DEP_RISK_STYLES = {
+  high: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100' },
+  medium: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' },
+  low: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100' },
+};
+
+function PracticeDependencyCard({ deps }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!deps?.has_dependencies) return null;
+  const { linked_obligations, risk_if_omitted, completion_integrity, mandatory_links, high_risks } = deps;
+
+  return (
+    <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-dependency-card">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-5 py-3.5 flex items-center gap-3 bg-orange-50/30 border-b border-orange-100 hover:bg-orange-50/50 transition-colors" data-testid="dependency-toggle">
+        <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0" strokeWidth={1.5} />
+        <div className="flex-1">
+          <p className="text-[11px] font-bold text-orange-800">Passaggi collegati e rischi</p>
+          <p className="text-[9px] text-orange-600/60 mt-0.5">{mandatory_links} obbligatori, {high_risks} rischi alti</p>
+        </div>
+        <ChevronDown className={`w-3.5 h-3.5 text-orange-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+      {expanded && (
+        <div className="px-5 py-4 space-y-3">
+          {linked_obligations.length > 0 && (
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-1.5">Cosa non dimenticare</p>
+              {linked_obligations.map((ob, i) => {
+                const st = DEP_TYPE_STYLES[ob.type] || DEP_TYPE_STYLES.recommended;
+                return (
+                  <div key={i} className={`flex items-start gap-2 p-2 rounded-lg mb-1 ${st.bg}`} data-testid={`dep-obligation-${i}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${st.dot} flex-shrink-0 mt-1.5`} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className={`text-[10px] font-semibold ${st.text}`}>{ob.label}</p>
+                        <span className={`text-[7px] font-bold ${st.text} opacity-60`}>{st.label}</span>
+                        <span className="text-[7px] text-[var(--text-muted)] ml-auto">{DEP_TIMING[ob.when_needed]}</span>
+                      </div>
+                      <p className="text-[9px] text-[var(--text-secondary)] mt-0.5">{ob.why_linked}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {risk_if_omitted.length > 0 && (
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-1.5">Rischi da evitare</p>
+              {risk_if_omitted.map((risk, i) => {
+                const rs = DEP_RISK_STYLES[risk.severity] || DEP_RISK_STYLES.medium;
+                return (
+                  <div key={i} className={`p-2 rounded-lg border mb-1 ${rs.bg} ${rs.border}`} data-testid={`dep-risk-${i}`}>
+                    <p className={`text-[9px] font-bold ${rs.text}`}>{risk.label}</p>
+                    <p className="text-[9px] text-[var(--text-secondary)] mt-0.5">{risk.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {completion_integrity && (
+            <div className="p-2.5 bg-[var(--bg-app)] rounded-lg" data-testid="dep-completion">
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Percorso completo</p>
+              {completion_integrity.is_complete_only_if?.map((item, i) => (
+                <div key={i} className="flex items-center gap-1.5 mb-0.5">
+                  <Circle className="w-2 h-2 text-[var(--text-muted)]" />
+                  <p className="text-[9px] text-[var(--text-primary)]">{item}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // TRACKING CARD — STATUS INTELLIGENCE
 // ═══════════════════════════════════════
 

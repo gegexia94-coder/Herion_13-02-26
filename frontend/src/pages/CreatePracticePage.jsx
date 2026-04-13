@@ -14,7 +14,7 @@ import {
   ArrowLeft, ArrowRight, User, Briefcase, Building2, UserCircle,
   CheckCircle, FileText, Search, ExternalLink, Shield, Key, Clock,
   MapPin, AlertTriangle, Info, Compass, ChevronRight, Loader2,
-  BookOpen, Lock, CircleDot, Check, X
+  BookOpen, Lock, CircleDot, Check, X, Link2, ShieldAlert
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -386,6 +386,11 @@ export default function CreatePracticePage() {
                 )}
               </div>
 
+              {/* ── DEPENDENCY & RISK BLOCK ── */}
+              {preStart.dependencies?.has_dependencies && (
+                <DependencyCard deps={preStart.dependencies} />
+              )}
+
               {/* Actions */}
               <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={() => setPhase('select')} className="rounded-xl h-9 text-[11px] px-4" data-testid="back-to-select">
@@ -480,6 +485,122 @@ export default function CreatePracticePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+
+// ─── DEPENDENCY & RISK CARD ───
+
+const OBLIGATION_STYLES = {
+  mandatory: { bg: 'bg-red-50', text: 'text-red-700', label: 'Obbligatorio', dot: 'bg-red-400' },
+  recommended: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Consigliato', dot: 'bg-blue-400' },
+  conditional: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Condizionale', dot: 'bg-amber-400' },
+};
+
+const TIMING_LABELS = { before: 'Prima', during: 'Contestuale', after: 'Dopo' };
+
+const RISK_STYLES = {
+  high: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100' },
+  medium: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' },
+  low: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100' },
+};
+
+function DependencyCard({ deps }) {
+  if (!deps?.has_dependencies) return null;
+
+  const { linked_obligations, risk_if_omitted, completion_integrity, mandatory_links, high_risks } = deps;
+
+  return (
+    <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="dependency-card">
+
+      {/* Header */}
+      <div className="px-5 py-3.5 bg-orange-50/40 border-b border-orange-100">
+        <div className="flex items-center gap-2">
+          <Link2 className="w-4 h-4 text-orange-500" strokeWidth={1.5} />
+          <p className="text-[11px] font-bold text-orange-800">Passaggi collegati e rischi</p>
+          <div className="ml-auto flex items-center gap-2">
+            {mandatory_links > 0 && <span className="text-[8px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{mandatory_links} obbligatori</span>}
+            {high_risks > 0 && <span className="text-[8px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{high_risks} rischi alti</span>}
+          </div>
+        </div>
+        <p className="text-[10px] text-orange-600/70 mt-1">Herion ti segnala i passaggi collegati per evitare omissioni.</p>
+      </div>
+
+      <div className="px-5 py-4 space-y-4">
+
+        {/* Linked obligations */}
+        {linked_obligations.length > 0 && (
+          <div data-testid="linked-obligations-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Cosa non dimenticare</p>
+            <div className="space-y-1.5">
+              {linked_obligations.map((ob, i) => {
+                const style = OBLIGATION_STYLES[ob.type] || OBLIGATION_STYLES.recommended;
+                return (
+                  <div key={i} className={`flex items-start gap-3 p-2.5 rounded-lg ${style.bg}`} data-testid={`obligation-${i}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${style.dot} flex-shrink-0 mt-1.5`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={`text-[11px] font-semibold ${style.text}`}>{ob.label}</p>
+                        <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-white/60 ${style.text}`}>{style.label}</span>
+                        <span className="text-[7px] text-[var(--text-muted)] ml-auto">{TIMING_LABELS[ob.when_needed] || ob.when_needed}</span>
+                      </div>
+                      <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{ob.why_linked}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Risk block */}
+        {risk_if_omitted.length > 0 && (
+          <div data-testid="risk-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Rischi da evitare</p>
+            <div className="space-y-1.5">
+              {risk_if_omitted.map((risk, i) => {
+                const style = RISK_STYLES[risk.severity] || RISK_STYLES.medium;
+                return (
+                  <div key={i} className={`p-2.5 rounded-lg border ${style.bg} ${style.border}`} data-testid={`risk-${i}`}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <ShieldAlert className={`w-3 h-3 ${style.text} flex-shrink-0`} />
+                      <p className={`text-[10px] font-bold ${style.text}`}>{risk.label}</p>
+                      <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-full ${style.bg} ${style.text} border ${style.border} ml-auto`}>{risk.severity === 'high' ? 'Alto' : risk.severity === 'medium' ? 'Medio' : 'Basso'}</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">{risk.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Completion integrity */}
+        {completion_integrity && (
+          <div data-testid="completion-integrity-block">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2">Per completare davvero questa pratica</p>
+            <div className="p-3 bg-[var(--bg-app)] rounded-lg">
+              <div className="space-y-1">
+                {completion_integrity.is_complete_only_if?.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <CircleDot className="w-2.5 h-2.5 text-[var(--text-muted)] flex-shrink-0" />
+                    <p className="text-[10px] text-[var(--text-primary)]">{item}</p>
+                  </div>
+                ))}
+              </div>
+              {completion_integrity.common_missing_steps?.length > 0 && (
+                <div className="mt-2.5 pt-2.5 border-t" style={{ borderColor: 'var(--border-soft)' }}>
+                  <p className="text-[9px] font-bold text-amber-600 mb-1">Passaggi spesso dimenticati:</p>
+                  {completion_integrity.common_missing_steps.map((step, i) => (
+                    <p key={i} className="text-[9px] text-amber-600/80 ml-3">• {step}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

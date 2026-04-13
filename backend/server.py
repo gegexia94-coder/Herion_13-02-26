@@ -731,13 +731,38 @@ async def get_pre_start_intelligence(practice_id: str, client_type: str = "priva
         "timing": {"label": duration.get("label", ""), "min_days": duration.get("min_days"), "max_days": duration.get("max_days")},
         "proof_expected": {"type": proof.get("type"), "label": proof.get("label", ""), "timing": proof.get("timing", "")} if proof.get("type") else None,
         "who_acts_summary": {"herion_prepares": who_acts.get("herion_prepares", True), "user_submits": who_acts.get("user_submits", False), "user_signs": who_acts.get("user_signs", False), "delegation_possible": who_acts.get("delegation_possible", False)},
+        "dependencies": _get_dependencies_for_procedure(practice_id),
     }
 
 
+def _get_dependencies_for_procedure(practice_id: str) -> dict:
+    """Get dependency intelligence for a procedure from the dependency map."""
+    from dependency_data import get_dependency_map
+    dep_map = get_dependency_map()
+    dep = dep_map.get(practice_id)
+    if not dep:
+        return {"has_dependencies": False, "linked_obligations": [], "risk_if_omitted": [], "completion_integrity": None}
+    return {
+        "has_dependencies": True,
+        "linked_obligations": dep.get("linked_obligations", []),
+        "risk_if_omitted": dep.get("risk_if_omitted", []),
+        "completion_integrity": dep.get("completion_integrity"),
+        "mandatory_links": len([o for o in dep.get("linked_obligations", []) if o["type"] == "mandatory"]),
+        "total_links": len(dep.get("linked_obligations", [])),
+        "high_risks": len([r for r in dep.get("risk_if_omitted", []) if r["severity"] == "high"]),
+    }
 
-# ========================
-# AUTHORITY REGISTRY
-# ========================
+
+@api_router.get("/catalog/{practice_id}/dependencies")
+async def get_procedure_dependencies(practice_id: str, user: dict = Depends(get_current_user)):
+    """Get the full dependency and risk intelligence for a procedure."""
+    entry = await db.practice_catalog.find_one({"practice_id": practice_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Servizio non trovato nel catalogo")
+    deps = _get_dependencies_for_procedure(practice_id)
+    deps["practice_id"] = practice_id
+    deps["practice_name"] = entry.get("name", "")
+    return deps
 
 @api_router.get("/registry")
 async def get_authority_registry(user: dict = Depends(get_current_user)):

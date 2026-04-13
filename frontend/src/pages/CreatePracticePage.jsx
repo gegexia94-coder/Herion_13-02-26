@@ -1,421 +1,482 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createPractice } from '@/services/api';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createPractice, getCatalog, getPreStartIntelligence } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { 
-  ArrowLeft,
-  ArrowRight,
-  User,
-  Briefcase,
-  Info,
-  Building2,
-  UserCircle,
-  CheckCircle,
-  FileText
+import {
+  ArrowLeft, ArrowRight, User, Briefcase, Building2, UserCircle,
+  CheckCircle, FileText, Search, ExternalLink, Shield, Key, Clock,
+  MapPin, AlertTriangle, Info, Compass, ChevronRight, Loader2,
+  BookOpen, Lock, CircleDot, Check, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const PRACTICE_TYPES = [
-  { value: 'vat_registration', label: 'Apertura Partita IVA', description: 'Registrazione di una nuova partita IVA' },
-  { value: 'vat_closure', label: 'Chiusura Partita IVA', description: 'Chiusura di una partita IVA esistente' },
-  { value: 'tax_declaration', label: 'Dichiarazione dei Redditi', description: 'Compilazione e invio della dichiarazione dei redditi' },
-  { value: 'f24_payment', label: 'Versamento F24', description: 'Calcolo e pagamento tramite modello F24' },
-  { value: 'inps_registration', label: 'Iscrizione INPS', description: 'Iscrizione alla gestione previdenziale INPS' },
-  { value: 'other', label: 'Altra Pratica', description: 'Altre pratiche fiscali o amministrative' },
+const CLIENT_TYPES = [
+  { value: 'private', label: 'Privato', desc: 'Persona fisica', icon: UserCircle },
+  { value: 'freelancer', label: 'Professionista', desc: 'Con Partita IVA', icon: User },
+  { value: 'company', label: 'Azienda', desc: 'Societa o impresa', icon: Building2 },
 ];
 
-const CLIENT_TYPES = [
-  { value: 'private', label: 'Privato', description: 'Persona fisica senza P.IVA', icon: UserCircle, requiresVat: false },
-  { value: 'freelancer', label: 'Professionista', description: 'Con Partita IVA', icon: User, requiresVat: true },
-  { value: 'company', label: 'Azienda', description: 'Società o impresa', icon: Building2, requiresVat: true },
+const PHASE_LABELS = [
+  { key: 'select', label: 'Scegli' },
+  { key: 'prepare', label: 'Preparati' },
+  { key: 'confirm', label: 'Conferma' },
 ];
 
 export default function CreatePracticePage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [phase, setPhase] = useState('select'); // select | prepare | confirm
+  const [catalog, setCatalog] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selectedType, setSelectedType] = useState(searchParams.get('type') || '');
+  const [clientType, setClientType] = useState('');
+  const [preStart, setPreStart] = useState(null);
+  const [preStartLoading, setPreStartLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [creating, setCreating] = useState(false);
+
   const [formData, setFormData] = useState({
-    practice_type: '',
-    client_type: '',
-    client_name: '',
-    fiscal_code: '',
-    vat_number: '',
-    description: '',
-    additional_data: {}
+    client_name: '', fiscal_code: '', vat_number: '', description: '',
   });
 
-  const handleSubmit = async () => {
-    setShowConfirmDialog(false);
-    setLoading(true);
-    
+  // Load catalog
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getCatalog();
+        setCatalog(res.data || []);
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  // Auto-advance if type pre-selected from URL
+  useEffect(() => {
+    if (selectedType && catalog.length > 0 && !clientType) {
+      const entry = catalog.find(c => c.practice_id === selectedType);
+      if (entry) {
+        // Pre-select a sensible client type
+        const types = entry.user_type || [];
+        if (types.includes('freelancer')) setClientType('freelancer');
+        else if (types.includes('company')) setClientType('company');
+        else setClientType('private');
+      }
+    }
+  }, [selectedType, catalog, clientType]);
+
+  // Load pre-start intelligence when type + clientType selected
+  useEffect(() => {
+    if (!selectedType || !clientType) { setPreStart(null); return; }
+    (async () => {
+      setPreStartLoading(true);
+      try {
+        const res = await getPreStartIntelligence(selectedType, clientType);
+        setPreStart(res.data);
+      } catch { setPreStart(null); }
+      finally { setPreStartLoading(false); }
+    })();
+  }, [selectedType, clientType]);
+
+  const filtered = useMemo(() => {
+    if (!search) return catalog;
+    const q = search.toLowerCase();
+    return catalog.filter(c =>
+      c.name?.toLowerCase().includes(q) ||
+      c.description?.toLowerCase().includes(q) ||
+      c.category?.toLowerCase().includes(q) ||
+      c.official_action?.entity_name?.toLowerCase().includes(q)
+    );
+  }, [catalog, search]);
+
+  const selectedEntry = catalog.find(c => c.practice_id === selectedType);
+  const showVat = clientType === 'freelancer' || clientType === 'company';
+  const phaseIndex = phase === 'select' ? 0 : phase === 'prepare' ? 1 : 2;
+
+  const handleCreate = async () => {
+    setShowConfirm(false);
+    setCreating(true);
     try {
-      const response = await createPractice(formData);
-      toast.success('Pratica creata con successo', {
-        description: 'La pratica è stata registrata nel sistema'
+      const res = await createPractice({
+        practice_type: selectedType,
+        client_type: clientType,
+        client_name: formData.client_name,
+        fiscal_code: formData.fiscal_code,
+        vat_number: formData.vat_number,
+        description: formData.description || selectedEntry?.description || '',
+        additional_data: {},
       });
-      navigate(`/practices/${response.data.id}`);
-    } catch (error) {
-      toast.error('Errore nella creazione', {
-        description: error.response?.data?.detail || 'Si è verificato un errore'
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast.success('Pratica creata');
+      navigate(`/practices/${res.data.id}`);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Errore nella creazione');
+    } finally { setCreating(false); }
   };
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!formData.practice_type || !formData.client_name || !formData.description || !formData.client_type) {
-      toast.error('Compila tutti i campi obbligatori');
-      return;
-    }
-
-    const selectedClientType = CLIENT_TYPES.find(t => t.value === formData.client_type);
-    if (selectedClientType?.requiresVat && !formData.vat_number) {
-      toast.error('La partita IVA è obbligatoria');
-      return;
-    }
-
-    setShowConfirmDialog(true);
-  };
-
-  const selectedType = PRACTICE_TYPES.find(t => t.value === formData.practice_type);
-  const selectedClientType = CLIENT_TYPES.find(t => t.value === formData.client_type);
-  const showVatField = selectedClientType?.requiresVat;
+  const canProceedToConfirm = preStart?.readiness?.can_start && formData.client_name && clientType;
 
   return (
     <div className="max-w-3xl mx-auto" data-testid="create-practice-page">
       {/* Header */}
-      <div className="mb-8">
-        <button 
-          onClick={() => navigate('/practices')}
-          className="flex items-center gap-2 text-sm text-[#5C5C59] hover:text-[#111110] mb-4 transition-colors"
-          data-testid="back-btn"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Torna alle pratiche
+      <div className="mb-6">
+        <button onClick={() => phase === 'select' ? navigate('/practices') : setPhase(phase === 'confirm' ? 'prepare' : 'select')}
+          className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-3 transition-colors" data-testid="back-btn">
+          <ArrowLeft className="w-3.5 h-3.5" />{phase === 'select' ? 'Torna alle pratiche' : 'Indietro'}
         </button>
-        <h1 className="text-2xl font-semibold text-[#111110] mb-2">Nuova Pratica</h1>
-        <p className="text-sm text-[#5C5C59]">Crea una nuova pratica fiscale in pochi passaggi</p>
+        <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Nuova pratica</h1>
+        <p className="text-[12px] text-[var(--text-secondary)] mt-1">Herion ti prepara prima di iniziare.</p>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center mb-10">
-        <div className="flex items-center gap-3">
-          {[1, 2, 3].map((num) => (
-            <div key={num} className="flex items-center">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold transition-all ${
-                step >= num 
-                  ? 'bg-[#0A192F] text-white shadow-lg shadow-[#0A192F]/20' 
-                  : 'bg-[#F5F5F4] text-[#A1A19E]'
-              }`}>
-                {step > num ? <CheckCircle className="w-5 h-5" /> : num}
-              </div>
-              {num < 3 && (
-                <div className={`w-16 h-1 mx-2 rounded-full transition-colors ${
-                  step > num ? 'bg-[#0A192F]' : 'bg-[#E5E5E3]'
-                }`} />
-              )}
+      {/* Phase indicator */}
+      <div className="flex items-center gap-2 mb-6" data-testid="phase-indicator">
+        {PHASE_LABELS.map((p, i) => (
+          <div key={p.key} className="flex items-center">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+              i === phaseIndex ? 'bg-[var(--text-primary)] text-white' :
+              i < phaseIndex ? 'bg-emerald-50 text-emerald-600' : 'bg-[var(--bg-soft)] text-[var(--text-muted)]'
+            }`}>
+              {i < phaseIndex ? <Check className="w-3 h-3" /> : <span className="text-[10px]">{i + 1}</span>}
+              {p.label}
             </div>
-          ))}
-        </div>
+            {i < 2 && <ChevronRight className="w-3 h-3 text-[var(--text-muted)] mx-1" />}
+          </div>
+        ))}
       </div>
 
-      <form onSubmit={handleFormSubmit}>
-        {/* Step 1: Practice Type */}
-        {step === 1 && (
-          <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-[#0A192F]" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-[#111110]">Tipo Pratica</h3>
-                <p className="text-xs text-[#5C5C59]">Seleziona il tipo di pratica da creare</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {PRACTICE_TYPES.map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, practice_type: type.value })}
-                  className={`p-4 border rounded-xl text-left transition-all duration-200 ${
-                    formData.practice_type === type.value 
-                      ? 'border-[#0A192F] bg-[#0A192F]/5 ring-1 ring-[#0A192F]' 
-                      : 'border-[#E5E5E3] hover:border-[#0A192F]/50 hover:bg-[#FAFAFA]'
-                  }`}
-                  data-testid={`practice-type-${type.value}`}
-                >
-                  <p className="font-medium text-[#111110] text-sm mb-1">{type.label}</p>
-                  <p className="text-xs text-[#5C5C59]">{type.description}</p>
+      {/* ═══ PHASE 1: SELECT ═══ */}
+      {phase === 'select' && (
+        <div className="space-y-4" data-testid="phase-select">
+          {/* Client type */}
+          <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Chi sei</p>
+            <div className="grid grid-cols-3 gap-2">
+              {CLIENT_TYPES.map(ct => (
+                <button key={ct.value} onClick={() => { setClientType(ct.value); setSelectedType(''); setPreStart(null); }}
+                  className={`p-3 rounded-lg border text-center transition-all ${clientType === ct.value ? 'border-[#0ABFCF] bg-[#0ABFCF]/5 ring-1 ring-[#0ABFCF]/30' : 'border-[var(--border-soft)] hover:bg-[var(--bg-app)]'}`}
+                  data-testid={`client-type-${ct.value}`}>
+                  <ct.icon className={`w-5 h-5 mx-auto mb-1 ${clientType === ct.value ? 'text-[#0ABFCF]' : 'text-[var(--text-muted)]'}`} strokeWidth={1.5} />
+                  <p className="text-[11px] font-semibold text-[var(--text-primary)]">{ct.label}</p>
+                  <p className="text-[9px] text-[var(--text-muted)]">{ct.desc}</p>
                 </button>
               ))}
             </div>
+          </div>
 
-            <div className="flex justify-end mt-6">
-              <Button 
-                type="button" 
-                onClick={() => setStep(2)}
-                disabled={!formData.practice_type}
-                className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20"
-                data-testid="next-step-1"
-              >
-                Continua <ArrowRight className="w-4 h-4 ml-2" />
+          {/* Search + catalog */}
+          {clientType && (
+            <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="procedure-selector">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Cosa devi fare</p>
+              <div className="relative mb-3">
+                <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Cerca procedura..." className="pl-9 rounded-lg h-9 text-[12px]" style={{ borderColor: 'var(--border-soft)' }}
+                  data-testid="procedure-search" />
+              </div>
+              <ScrollArea className="h-[280px]">
+                <div className="space-y-1 pr-2">
+                  {loading ? <div className="flex justify-center py-8"><Loader2 className="w-4 h-4 animate-spin text-[var(--text-muted)]" /></div> :
+                    filtered.filter(c => c.user_type?.includes(clientType)).length === 0 ?
+                      <p className="text-center text-[12px] text-[var(--text-muted)] py-8">Nessuna procedura trovata</p> :
+                    filtered.filter(c => c.user_type?.includes(clientType)).map(entry => {
+                      const isOff = entry.procedure_type === 'official_procedure';
+                      const isSelected = selectedType === entry.practice_id;
+                      return (
+                        <button key={entry.practice_id} onClick={() => setSelectedType(entry.practice_id)}
+                          className={`w-full text-left p-3 rounded-lg transition-all ${isSelected ? 'bg-[#0ABFCF]/8 border border-[#0ABFCF]/30' : 'hover:bg-[var(--bg-app)] border border-transparent'}`}
+                          data-testid={`procedure-option-${entry.practice_id}`}>
+                          <div className="flex items-start gap-2.5">
+                            <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${isOff ? 'bg-blue-50' : 'bg-slate-50'}`}>
+                              {isOff ? <ExternalLink className="w-3 h-3 text-blue-500" /> : <FileText className="w-3 h-3 text-slate-400" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-[11px] font-semibold leading-tight ${isSelected ? 'text-[#0ABFCF]' : 'text-[var(--text-primary)]'}`}>{entry.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] text-[var(--text-muted)]">{entry.category_label}</span>
+                                {entry.official_action?.entity_name && <span className="text-[9px] text-[var(--text-muted)]">{entry.official_action.entity_name}</span>}
+                              </div>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[#0ABFCF] flex-shrink-0 mt-1" />}
+                          </div>
+                        </button>
+                      );
+                    })
+                  }
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Next */}
+          {selectedType && clientType && (
+            <div className="flex justify-end">
+              <Button onClick={() => setPhase('prepare')} className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-10 px-6 text-[12px] font-semibold" data-testid="go-to-prepare">
+                Vai alla preparazione <ArrowRight className="w-3.5 h-3.5 ml-2" />
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* Step 2: Client Data */}
-        {step === 2 && (
-          <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
-                <User className="w-5 h-5 text-[#0A192F]" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-[#111110]">Dati Cliente</h3>
-                <p className="text-xs text-[#5C5C59]">Inserisci le informazioni del cliente</p>
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              {/* Client Type */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Tipo Cliente *</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {CLIENT_TYPES.map((type) => {
-                    const IconComponent = type.icon;
-                    return (
-                      <button
-                        key={type.value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, client_type: type.value, vat_number: type.requiresVat ? formData.vat_number : '' })}
-                        className={`p-4 border rounded-xl text-center transition-all duration-200 ${
-                          formData.client_type === type.value 
-                            ? 'border-[#0A192F] bg-[#0A192F]/5 ring-1 ring-[#0A192F]' 
-                            : 'border-[#E5E5E3] hover:border-[#0A192F]/50'
-                        }`}
-                        data-testid={`client-type-${type.value}`}
-                      >
-                        <IconComponent className={`w-6 h-6 mx-auto mb-2 ${formData.client_type === type.value ? 'text-[#0A192F]' : 'text-[#A1A19E]'}`} />
-                        <p className="text-xs font-medium text-[#111110]">{type.label}</p>
-                        <p className="text-[10px] text-[#5C5C59] mt-0.5">{type.description}</p>
-                      </button>
-                    );
-                  })}
+      {/* ═══ PHASE 2: PREPARE (Pre-Practice Intelligence) ═══ */}
+      {phase === 'prepare' && (
+        <div className="space-y-4" data-testid="phase-prepare">
+          {preStartLoading ? (
+            <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-[var(--text-muted)]" /></div>
+          ) : preStart ? (
+            <>
+              {/* Orientation block */}
+              <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="orientation-block">
+                <div className="flex items-center gap-2 mb-3">
+                  <Compass className="w-4 h-4 text-[#0ABFCF]" strokeWidth={1.5} />
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Orientamento pratica</p>
+                </div>
+                <h2 className="text-[15px] font-bold text-[var(--text-primary)] mb-1">{preStart.orientation.practice_name}</h2>
+                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-3">{preStart.orientation.practice_description}</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${preStart.orientation.is_official ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500'}`}>
+                    {preStart.orientation.is_official ? 'Procedura ufficiale' : 'Servizio interno'}
+                  </span>
+                  <span className="text-[9px] text-[var(--text-muted)]">{preStart.orientation.category_label}</span>
+                  {preStart.timing?.label && (
+                    <span className="text-[9px] text-[var(--text-muted)] flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{preStart.timing.label}</span>
+                  )}
                 </div>
               </div>
 
-              {/* Client Name */}
-              <div className="space-y-2">
-                <Label htmlFor="client_name" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Nome / Ragione Sociale *</Label>
-                <Input
-                  id="client_name"
-                  value={formData.client_name}
-                  onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-                  placeholder="Es: Mario Rossi / Rossi S.r.l."
-                  className="rounded-xl border-[#E5E5E3] h-11"
-                  required
-                  data-testid="client-name-input"
-                />
-              </div>
-
-              {/* Fiscal Code & VAT */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fiscal_code" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Codice Fiscale</Label>
-                  <Input
-                    id="fiscal_code"
-                    value={formData.fiscal_code}
-                    onChange={(e) => setFormData({ ...formData, fiscal_code: e.target.value.toUpperCase() })}
-                    placeholder="RSSMRA85M01H501Z"
-                    className="rounded-xl border-[#E5E5E3] h-11 font-mono"
-                    maxLength={16}
-                    data-testid="fiscal-code-input"
-                  />
+              {/* Entity direction block */}
+              {preStart.entity_direction && (
+                <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="entity-block">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Ente e direzione</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-purple-50/30 rounded-lg">
+                    <Building2 className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+                    <div className="flex-1">
+                      <p className="text-[13px] font-bold text-[var(--text-primary)]">{preStart.entity_direction.entity_name}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{preStart.entity_direction.action_label}</p>
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        <span className="text-[9px] text-[var(--text-muted)]">{preStart.entity_direction.submission_channel}</span>
+                        {preStart.entity_direction.form_reference && (
+                          <span className="text-[9px] text-[var(--text-muted)]">Modulo: {preStart.entity_direction.form_reference}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                {showVatField && (
-                  <div className="space-y-2 animate-in slide-in-from-left-2 duration-200">
-                    <Label htmlFor="vat_number" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">
-                      Partita IVA *
-                    </Label>
-                    <Input
-                      id="vat_number"
-                      value={formData.vat_number}
-                      onChange={(e) => setFormData({ ...formData, vat_number: e.target.value })}
-                      placeholder="12345678901"
-                      className="rounded-xl border-[#E5E5E3] h-11 font-mono"
-                      maxLength={11}
-                      required={selectedClientType?.requiresVat}
-                      data-testid="vat-number-input"
-                    />
+              {/* Checklist block */}
+              {preStart.checklist?.length > 0 && (
+                <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="checklist-block">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Cosa ti serve</p>
+                    </div>
+                    <span className="text-[9px] text-[var(--text-muted)]">{preStart.readiness.mandatory_count} obbligatori</span>
+                  </div>
+                  <div className="space-y-2">
+                    {preStart.checklist.map((item, i) => (
+                      <div key={i} className={`flex items-start gap-3 p-3 rounded-lg ${item.mandatory ? 'bg-[var(--bg-app)]' : 'bg-transparent'}`} data-testid={`checklist-item-${i}`}>
+                        <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                          item.type === 'identification' ? 'bg-purple-50' : item.type === 'precondition' ? 'bg-amber-50' : 'bg-blue-50'
+                        }`}>
+                          {item.type === 'identification' ? <Key className="w-3 h-3 text-purple-500" /> :
+                           item.type === 'precondition' ? <Shield className="w-3 h-3 text-amber-500" /> :
+                           <FileText className="w-3 h-3 text-blue-500" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold text-[var(--text-primary)]">{item.label}</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{item.why_needed}</p>
+                          {item.format && <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Formato: {item.format}</p>}
+                        </div>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${item.mandatory ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
+                          {item.mandatory ? 'Obbligatorio' : 'Facoltativo'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Auth block */}
+              {preStart.auth?.auth_required && (
+                <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="auth-block">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lock className="w-4 h-4 text-purple-500" strokeWidth={1.5} />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Autenticazione richiesta</p>
+                  </div>
+                  <div className="p-3 bg-purple-50/30 rounded-lg">
+                    <p className="text-[12px] font-semibold text-purple-700 mb-1">{preStart.auth.auth_label || preStart.auth.auth_method}</p>
+                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{preStart.auth.auth_description}</p>
+                    <p className="text-[9px] text-[var(--text-muted)] mt-2 flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />{preStart.auth.when_needed}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ATECO block */}
+              {preStart.ateco?.relevant && (
+                <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="ateco-block">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="w-4 h-4 text-[#0ABFCF]" strokeWidth={1.5} />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Codice ATECO</p>
+                  </div>
+                  <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-1">{preStart.ateco.reason}</p>
+                  <p className="text-[11px] text-[#0ABFCF] font-medium">{preStart.ateco.guidance}</p>
+                </div>
+              )}
+
+              {/* Who acts + proof summary */}
+              <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="who-acts-block">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-3">Come funziona</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Herion prepara', active: preStart.who_acts_summary.herion_prepares, color: 'emerald' },
+                    { label: 'Tu invii', active: preStart.who_acts_summary.user_submits, color: 'amber' },
+                    { label: 'Firma richiesta', active: preStart.who_acts_summary.user_signs, color: 'amber' },
+                    { label: 'Delega possibile', active: preStart.who_acts_summary.delegation_possible, color: 'blue' },
+                  ].map((item, i) => (
+                    <div key={i} className={`flex items-center gap-2 p-2 rounded-lg ${item.active ? `bg-${item.color}-50` : 'bg-[var(--bg-app)]'}`}>
+                      {item.active ? <Check className={`w-3 h-3 text-${item.color}-500`} /> : <X className="w-3 h-3 text-[var(--text-muted)]" />}
+                      <span className={`text-[10px] font-medium ${item.active ? `text-${item.color}-700` : 'text-[var(--text-muted)]'}`}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+                {preStart.proof_expected && (
+                  <div className="mt-3 p-2 bg-[var(--bg-app)] rounded-lg flex items-center gap-2">
+                    <CircleDot className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span className="text-[10px] text-[var(--text-secondary)]">Ricevuta attesa: {preStart.proof_expected.label}</span>
                   </div>
                 )}
               </div>
 
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider">Descrizione *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descrivi brevemente la pratica..."
-                  className="rounded-xl border-[#E5E5E3] min-h-[100px] resize-none"
-                  required
-                  data-testid="description-input"
-                />
+              {/* Readiness result */}
+              <div className={`rounded-xl border-2 p-5 ${
+                preStart.readiness.state === 'ready_to_start' ? 'bg-emerald-50/40 border-emerald-200' :
+                preStart.readiness.state === 'ready_with_warnings' ? 'bg-amber-50/40 border-amber-200' :
+                preStart.readiness.state === 'likely_wrong_practice' ? 'bg-amber-50/40 border-amber-300' :
+                'bg-red-50/40 border-red-200'
+              }`} data-testid="readiness-block">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: preStart.readiness.color }} />
+                  <p className="text-[13px] font-bold" style={{ color: preStart.readiness.color }} data-testid="readiness-label">{preStart.readiness.label}</p>
+                </div>
+                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-3">{preStart.readiness.message}</p>
+                {preStart.readiness.issues?.length > 0 && (
+                  <div className="space-y-1.5">
+                    {preStart.readiness.issues.map((issue, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        {issue.severity === 'warning' ? <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" /> :
+                         <Info className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />}
+                        <p className={`text-[10px] ${issue.severity === 'warning' ? 'text-amber-700' : 'text-[var(--text-secondary)]'}`}>{issue.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="flex justify-between mt-6">
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => setStep(1)}
-                className="rounded-xl"
-                data-testid="back-step-2"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => setStep(3)}
-                disabled={!formData.client_name || !formData.description || !formData.client_type || (selectedClientType?.requiresVat && !formData.vat_number)}
-                className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20"
-                data-testid="next-step-2"
-              >
-                Continua <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        )}
+              {/* Actions */}
+              <div className="flex items-center justify-between">
+                <Button variant="outline" onClick={() => setPhase('select')} className="rounded-xl h-9 text-[11px] px-4" data-testid="back-to-select">
+                  <ArrowLeft className="w-3 h-3 mr-1.5" />Cambia procedura
+                </Button>
+                {preStart.readiness.can_start && (
+                  <Button onClick={() => setPhase('confirm')} className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-10 px-6 text-[12px] font-semibold" data-testid="go-to-confirm">
+                    Continua <ArrowRight className="w-3.5 h-3.5 ml-2" />
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-[var(--text-muted)] text-[12px]">Seleziona una procedura per vedere la preparazione.</div>
+          )}
+        </div>
+      )}
 
-        {/* Step 3: Summary */}
-        {step === 3 && (
-          <div className="bg-white rounded-2xl border border-[#E5E5E3]/60 p-6 shadow-sm animate-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0A192F]/5 flex items-center justify-center">
-                <Info className="w-5 h-5 text-[#0A192F]" />
+      {/* ═══ PHASE 3: CONFIRM ═══ */}
+      {phase === 'confirm' && preStart && (
+        <div className="space-y-4" data-testid="phase-confirm">
+          <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-4">Dati della pratica</p>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Nome / Ragione sociale *</Label>
+                <Input value={formData.client_name} onChange={e => setFormData({...formData, client_name: e.target.value})}
+                  placeholder="Es: Mario Rossi / Rossi S.r.l." className="rounded-lg h-9 text-[12px] mt-1.5" style={{ borderColor: 'var(--border-soft)' }}
+                  data-testid="client-name-input" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Codice fiscale</Label>
+                  <Input value={formData.fiscal_code} onChange={e => setFormData({...formData, fiscal_code: e.target.value.toUpperCase()})}
+                    placeholder="RSSMRA85M01H501Z" className="rounded-lg h-9 text-[12px] mt-1.5 font-mono" style={{ borderColor: 'var(--border-soft)' }} maxLength={16}
+                    data-testid="fiscal-code-input" />
+                </div>
+                {showVat && (
+                  <div>
+                    <Label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Partita IVA *</Label>
+                    <Input value={formData.vat_number} onChange={e => setFormData({...formData, vat_number: e.target.value})}
+                      placeholder="12345678901" className="rounded-lg h-9 text-[12px] mt-1.5 font-mono" style={{ borderColor: 'var(--border-soft)' }} maxLength={11}
+                      data-testid="vat-number-input" />
+                  </div>
+                )}
               </div>
               <div>
-                <h3 className="font-semibold text-[#111110]">Riepilogo</h3>
-                <p className="text-xs text-[#5C5C59]">Verifica i dati prima di creare la pratica</p>
+                <Label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Note aggiuntive</Label>
+                <Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                  placeholder="Dettagli o note sulla pratica..." className="rounded-lg text-[12px] mt-1.5 min-h-[80px] resize-none" style={{ borderColor: 'var(--border-soft)' }}
+                  data-testid="description-input" />
               </div>
-            </div>
-
-            <div className="space-y-5">
-              <div className="p-5 bg-[#FAFAFA] rounded-xl border border-[#E5E5E3]/60">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Tipo Pratica</p>
-                    <p className="text-sm font-medium text-[#111110]">{selectedType?.label}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Tipo Cliente</p>
-                    <p className="text-sm font-medium text-[#111110]">{selectedClientType?.label}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Cliente</p>
-                    <p className="text-sm font-medium text-[#111110]">{formData.client_name}</p>
-                  </div>
-                  {formData.fiscal_code && (
-                    <div>
-                      <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Codice Fiscale</p>
-                      <p className="text-sm font-mono text-[#111110]">{formData.fiscal_code}</p>
-                    </div>
-                  )}
-                  {formData.vat_number && (
-                    <div>
-                      <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Partita IVA</p>
-                      <p className="text-sm font-mono text-[#111110]">{formData.vat_number}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 pt-4 border-t border-[#E5E5E3]/60">
-                  <p className="text-xs font-medium text-[#5C5C59] uppercase tracking-wider mb-1">Descrizione</p>
-                  <p className="text-sm text-[#111110]">{formData.description}</p>
-                </div>
-              </div>
-
-              <div className="p-4 bg-[#0A192F]/5 rounded-xl border border-[#0A192F]/10">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-[#0A192F] mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-[#111110] mb-1">Dopo la creazione</p>
-                    <p className="text-xs text-[#5C5C59]">
-                      Potrai caricare documenti e utilizzare Herion AI per analizzare e gestire la pratica.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between mt-6">
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => setStep(2)}
-                className="rounded-xl"
-                data-testid="back-step-3"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={loading}
-                className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl shadow-lg shadow-[#0A192F]/20"
-                data-testid="submit-practice"
-              >
-                {loading ? 'Creazione...' : 'Crea Pratica'}
-              </Button>
             </div>
           </div>
-        )}
-      </form>
 
-      {/* Confirmation Dialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent className="rounded-2xl border-[#E5E5E3]/60 shadow-2xl max-w-md">
-          <AlertDialogHeader>
-            <div className="w-12 h-12 rounded-xl bg-[#0A192F]/10 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-6 h-6 text-[#0A192F]" />
+          {/* Summary */}
+          <div className="bg-[var(--bg-app)] rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)' }} data-testid="confirm-summary">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] mb-2">Riepilogo</p>
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Procedura</span><span className="font-semibold text-[var(--text-primary)]">{preStart.orientation.practice_name}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Tipo cliente</span><span className="font-semibold text-[var(--text-primary)]">{CLIENT_TYPES.find(c=>c.value===clientType)?.label}</span></div>
+              {preStart.entity_direction && <div className="flex justify-between"><span className="text-[var(--text-muted)]">Ente</span><span className="font-semibold text-[var(--text-primary)]">{preStart.entity_direction.entity_name}</span></div>}
+              {preStart.auth?.auth_method && <div className="flex justify-between"><span className="text-[var(--text-muted)]">Autenticazione</span><span className="font-semibold text-purple-600">{preStart.auth.auth_method}</span></div>}
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Documenti richiesti</span><span className="font-semibold text-[var(--text-primary)]">{preStart.readiness.mandatory_count}</span></div>
             </div>
-            <AlertDialogTitle className="text-xl font-semibold text-center">Conferma creazione</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-[#5C5C59]">
-              Stai per creare una pratica <span className="font-medium text-[#111110]">"{selectedType?.label}"</span> per <span className="font-medium text-[#111110]">{formData.client_name}</span>.
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Button variant="outline" onClick={() => setPhase('prepare')} className="rounded-xl h-9 text-[11px] px-4" data-testid="back-to-prepare">
+              <ArrowLeft className="w-3 h-3 mr-1.5" />Preparazione
+            </Button>
+            <Button onClick={() => { if (!formData.client_name) { toast.error('Inserisci il nome del cliente'); return; } if (showVat && !formData.vat_number) { toast.error('Inserisci la Partita IVA'); return; } setShowConfirm(true); }}
+              disabled={creating || !formData.client_name} className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-10 px-6 text-[12px] font-semibold" data-testid="submit-practice">
+              {creating ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Creazione...</> : <>Crea pratica</>}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm dialog */}
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent className="rounded-xl shadow-xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-center">Conferma creazione</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[12px]">
+              Stai per creare la pratica <span className="font-semibold text-[var(--text-primary)]">{preStart?.orientation?.practice_name}</span> per <span className="font-semibold text-[var(--text-primary)]">{formData.client_name}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 sm:gap-3">
-            <AlertDialogCancel className="rounded-xl border-[#E5E5E3] hover:bg-[#F5F5F4] flex-1">
-              Annulla
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleSubmit}
-              className="bg-[#0A192F] hover:bg-[#0A192F]/90 rounded-xl flex-1"
-              data-testid="confirm-create-btn"
-            >
-              Conferma
-            </AlertDialogAction>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg flex-1 text-[12px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreate} className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-lg flex-1 text-[12px]" data-testid="confirm-create-btn">Conferma</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

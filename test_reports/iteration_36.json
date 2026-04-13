@@ -1,0 +1,74 @@
+{
+  "summary": "Iteration 36 - Pre-Practice Intelligence Layer + Guided Start Flow testing. All 28 backend tests passed. All frontend tests passed. The 3-phase CreatePracticePage flow (Select → Prepare → Confirm) works correctly with pre-start intelligence blocks.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_prestart_intelligence.py",
+    "/app/test_reports/pytest/pytest_results_v36.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/catalog/{practice_id}/pre-start endpoint correctly returns all intelligence blocks: orientation, entity_direction, checklist, auth, ateco, readiness, timing, who_acts_summary, proof_expected",
+    "Readiness states correctly computed: ready_to_start for simple procedures, ready_with_warnings for complex procedures with many requirements, likely_wrong_practice when client_type doesn't match",
+    "ATECO block correctly shows relevant=true for VAT/business procedures (VAT_OPEN_PF) and relevant=false for internal procedures (DOC_MISSING_REQUEST)",
+    "Entity direction block correctly shows for official procedures and is null for internal/support procedures",
+    "Checklist includes document_specs, auth credentials (when auth_method set), and preconditions",
+    "CreatePracticePage 3-phase flow works: Phase 1 (Select) → Phase 2 (Prepare) → Phase 3 (Confirm)",
+    "All data-testid attributes present and working: phase-indicator, client-type-*, procedure-selector, go-to-prepare, orientation-block, entity-block, checklist-block, auth-block, ateco-block, who-acts-block, readiness-block, back-to-select, go-to-confirm, client-name-input, fiscal-code-input, vat-number-input, description-input, confirm-summary, back-to-prepare, submit-practice, confirm-create-btn",
+    "Back navigation between phases works correctly",
+    "Practice creation via confirm dialog works and redirects to practice detail page"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_prestart_intelligence.py"
+  ],
+  "success_rate": {
+    "backend": "100% (28/28 tests passed)",
+    "frontend": "100% (all UI tests passed)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Test practice created via Playwright (TEST_Playwright_User) - can be cleaned up",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 36 tested Pre-Practice Intelligence Layer. All tests passed. Key verified: (1) GET /api/catalog/{practice_id}/pre-start returns all intelligence blocks. (2) Readiness states: ready_to_start, ready_with_warnings, likely_wrong_practice work correctly based on client_type and procedure requirements. (3) ATECO block shows relevant=true for VAT_OPEN_PF (business procedure) and relevant=false for DOC_MISSING_REQUEST (internal). (4) Entity direction shows for official procedures, null for internal. (5) Checklist includes documents, auth credentials, preconditions. (6) CreatePracticePage 3-phase flow: Select (client type + procedure) → Prepare (pre-start intelligence) → Confirm (form + create). (7) All data-testid attributes work. (8) Back navigation works between phases. (9) Practice creation via confirm dialog works.",
+  "features_tested": {
+    "prestart_endpoint_exists": {"status": "PASS", "details": ["GET /api/catalog/VAT_OPEN_PF/pre-start returns 200"]},
+    "prestart_returns_all_blocks": {"status": "PASS", "details": ["orientation, checklist, auth, ateco, readiness, timing, who_acts_summary blocks present"]},
+    "prestart_404_invalid_practice": {"status": "PASS", "details": ["Returns 404 for non-existent practice_id"]},
+    "orientation_block_structure": {"status": "PASS", "details": ["practice_name, practice_description, category, is_official, suitable_for_client_type present"]},
+    "entity_direction_official": {"status": "PASS", "details": ["VAT_OPEN_PF has entity_direction with entity_name, submission_channel"]},
+    "entity_direction_null_internal": {"status": "PASS", "details": ["DOC_MISSING_REQUEST has entity_direction=null"]},
+    "checklist_documents": {"status": "PASS", "details": ["Checklist includes document_specs with key, label, mandatory, type"]},
+    "checklist_auth_credential": {"status": "PASS", "details": ["Checklist includes auth credential when auth_method set"]},
+    "auth_block_structure": {"status": "PASS", "details": ["auth_required, auth_method, auth_description, when_needed present"]},
+    "ateco_relevant_vat_open": {"status": "PASS", "details": ["ATECO relevant=true for VAT_OPEN_PF with reason and guidance"]},
+    "ateco_not_relevant_doc_request": {"status": "PASS", "details": ["ATECO relevant=false for DOC_MISSING_REQUEST"]},
+    "readiness_block_structure": {"status": "PASS", "details": ["state, label, color, can_start, message, issues, mandatory_count present"]},
+    "readiness_ready_with_warnings": {"status": "PASS", "details": ["VAT_OPEN_PF with freelancer shows ready_with_warnings"]},
+    "readiness_likely_wrong_practice": {"status": "PASS", "details": ["VAT_OPEN_PF with private shows likely_wrong_practice when not suitable"]},
+    "who_acts_summary_structure": {"status": "PASS", "details": ["herion_prepares, user_submits, user_signs, delegation_possible present"]},
+    "phase_indicator_3_steps": {"status": "PASS", "details": ["Shows Scegli → Preparati → Conferma"]},
+    "client_type_buttons": {"status": "PASS", "details": ["data-testid client-type-private/freelancer/company all visible"]},
+    "procedure_selector_search": {"status": "PASS", "details": ["data-testid procedure-selector and procedure-search work"]},
+    "go_to_prepare_button": {"status": "PASS", "details": ["data-testid go-to-prepare appears after selection"]},
+    "phase2_orientation_block": {"status": "PASS", "details": ["data-testid orientation-block shows procedure name and description"]},
+    "phase2_entity_block": {"status": "PASS", "details": ["data-testid entity-block shows entity name and direction"]},
+    "phase2_checklist_block": {"status": "PASS", "details": ["data-testid checklist-block shows required documents"]},
+    "phase2_auth_block": {"status": "PASS", "details": ["data-testid auth-block shows SPID requirement"]},
+    "phase2_ateco_block": {"status": "PASS", "details": ["data-testid ateco-block shows when relevant"]},
+    "phase2_who_acts_block": {"status": "PASS", "details": ["data-testid who-acts-block shows Herion/user responsibilities"]},
+    "phase2_readiness_block": {"status": "PASS", "details": ["data-testid readiness-block shows state and issues"]},
+    "phase3_form_fields": {"status": "PASS", "details": ["client-name-input, fiscal-code-input, vat-number-input, description-input all work"]},
+    "phase3_confirm_dialog": {"status": "PASS", "details": ["data-testid confirm-create-btn creates practice successfully"]},
+    "back_navigation": {"status": "PASS", "details": ["data-testid back-to-select and back-to-prepare work correctly"]},
+    "practice_creation_redirect": {"status": "PASS", "details": ["After creation, redirects to /practices/{id} detail page"]}
+  }
+}

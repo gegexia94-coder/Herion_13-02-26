@@ -581,6 +581,160 @@ async def get_catalog_entry(practice_id: str, user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Servizio non trovato nel catalogo")
     return entry
 
+
+@api_router.get("/catalog/{practice_id}/pre-start")
+async def get_pre_start_intelligence(practice_id: str, client_type: str = "private", user: dict = Depends(get_current_user)):
+    """Pre-practice intelligence: orientation, requirements, entity, auth, ATECO, readiness."""
+    entry = await db.practice_catalog.find_one({"practice_id": practice_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Servizio non trovato nel catalogo")
+
+    is_official = entry.get("procedure_type") == "official_procedure"
+    flow = entry.get("flow_definition") or {}
+    official_action = entry.get("official_action") or {}
+    who_acts = entry.get("who_acts") or {}
+    proof = entry.get("proof_expected") or {}
+    duration = entry.get("estimated_duration") or {}
+    doc_specs = entry.get("document_specs") or []
+    required_docs = entry.get("required_documents") or []
+    blocking = entry.get("blocking_conditions") or []
+    auth_method = entry.get("auth_method")
+    user_types = entry.get("user_type") or []
+
+    # 1. ORIENTATION
+    orientation = {
+        "practice_name": entry.get("name", ""),
+        "practice_description": entry.get("user_explanation") or entry.get("description", ""),
+        "category": entry.get("category", ""),
+        "category_label": entry.get("category_label", ""),
+        "procedure_type": entry.get("procedure_type", ""),
+        "is_official": is_official,
+        "risk_level": entry.get("risk_level", "basic"),
+        "suitable_for_client_type": client_type in user_types,
+        "supported_client_types": [{"type": ut, "label": {"private": "Privato", "freelancer": "Libero professionista", "company": "Azienda"}.get(ut, ut)} for ut in user_types],
+    }
+
+    # 2. ENTITY / DIRECTION
+    entity_direction = None
+    if is_official:
+        ep = flow.get("official_entry_point") or {}
+        entity_direction = {
+            "entity_name": official_action.get("entity_name") or flow.get("target_entity"),
+            "action_label": official_action.get("label", ""),
+            "action_description": official_action.get("description", ""),
+            "form_reference": official_action.get("form_reference"),
+            "submission_channel": "Portale ufficiale" if ep.get("type") == "portal" else "Invio manuale",
+            "portal_url": ep.get("url"),
+            "url_verified": ep.get("url_verified", False),
+            "destination_type": entry.get("destination_type", ""),
+        }
+
+    # 3. REQUIREMENTS CHECKLIST
+    checklist_items = []
+    for ds in doc_specs:
+        checklist_items.append({
+            "key": ds.get("key", "document"),
+            "label": ds.get("name", ""),
+            "why_needed": ds.get("why_needed", ""),
+            "format": ds.get("format", ""),
+            "mandatory": ds.get("mandatory", True),
+            "type": "document",
+        })
+    if auth_method:
+        checklist_items.append({
+            "key": "auth_credential",
+            "label": f"Credenziali {auth_method}",
+            "why_needed": "Necessarie per accedere al portale ufficiale dell'ente",
+            "format": auth_method or "SPID / CIE / CNS",
+            "mandatory": True,
+            "type": "identification",
+        })
+    if client_type in ("freelancer", "company") and "tax_declarations" in required_docs:
+        checklist_items.append({
+            "key": "vat_active",
+            "label": "Partita IVA attiva",
+            "why_needed": "Necessaria per questa tipologia di pratica",
+            "format": "Numero P.IVA o visura",
+            "mandatory": True,
+            "type": "precondition",
+        })
+
+    # 4. IDENTIFICATION / AUTH
+    auth_desc = "Questa procedura non richiede autenticazione su portali esterni."
+    if auth_method == "SPID":
+        auth_desc = "Per completare l'invio ufficiale, sara necessario accedere al portale dell'ente con le tue credenziali SPID. L'accesso e personale e Herion non conserva le tue credenziali."
+    elif auth_method == "CIE":
+        auth_desc = "Sara necessario l'accesso tramite Carta d'Identita Elettronica (CIE) per il portale dell'ente."
+    elif auth_method:
+        auth_desc = f"Sara necessario autenticarsi con {auth_method} per completare il processo."
+    auth_block = {
+        "auth_required": auth_method is not None,
+        "auth_method": auth_method,
+        "auth_label": {"SPID": "SPID (Sistema Pubblico di Identita Digitale)", "CIE": "CIE (Carta d'Identita Elettronica)", "CNS": "CNS (Carta Nazionale dei Servizi)"}.get(auth_method, auth_method),
+        "auth_description": auth_desc,
+        "personal_access_required": who_acts.get("user_submits", False),
+        "when_needed": "Al momento dell'invio ufficiale" if who_acts.get("user_submits") else "Non richiesto per questa procedura",
+    }
+
+    # 5. ATECO
+    ateco_keywords = ["apertura", "partita iva", "attivita", "iscrizione", "scia", "ateco", "variazione ateco", "rea", "costituzione"]
+    name_lower = (entry.get("name") or "").lower()
+    practice_id_lower = practice_id.lower()
+    needs_ateco = any(kw in name_lower or kw in practice_id_lower for kw in ateco_keywords)
+    ateco_block = {
+        "relevant": needs_ateco,
+        "reason": "Il codice ATECO potrebbe influenzare requisiti, ente coinvolto e passaggi successivi." if needs_ateco else None,
+        "guidance": "Se non conosci il tuo codice ATECO, Herion puo aiutarti a capire da dove partire." if needs_ateco else None,
+    }
+
+    # 6. READINESS
+    issues = []
+    if not orientation["suitable_for_client_type"]:
+        issues.append({"code": "wrong_client_type", "label": "Questa procedura potrebbe non essere adatta al tipo di cliente selezionato", "severity": "warning"})
+    if len([c for c in checklist_items if c["mandatory"]]) > 3:
+        issues.append({"code": "many_documents", "label": f"Sono richiesti {len([c for c in checklist_items if c['mandatory']])} elementi obbligatori. Assicurati di averli pronti.", "severity": "info"})
+    if auth_method and who_acts.get("user_submits"):
+        issues.append({"code": "auth_needed", "label": f"Sara necessario accedere con {auth_method} durante il processo", "severity": "info"})
+    if needs_ateco:
+        issues.append({"code": "ateco_check", "label": "Potrebbe essere necessario il codice ATECO", "severity": "info"})
+    for b in blocking[:2]:
+        issues.append({"code": "blocking_condition", "label": b, "severity": "warning"})
+
+    has_critical = any(i["severity"] == "critical" for i in issues)
+    has_warnings = any(i["severity"] == "warning" for i in issues)
+
+    if has_critical:
+        readiness_state = "not_ready"
+    elif not orientation["suitable_for_client_type"]:
+        readiness_state = "likely_wrong_practice"
+    elif has_warnings:
+        readiness_state = "ready_with_warnings"
+    else:
+        readiness_state = "ready_to_start"
+
+    READINESS_LABELS = {
+        "ready_to_start": {"label": "Pronto per iniziare", "color": "#10B981", "can_start": True, "message": "Hai tutto il necessario per avviare questa pratica. Herion ti accompagnera in ogni passaggio."},
+        "ready_with_warnings": {"label": "Pronto con avvertenze", "color": "#F59E0B", "can_start": True, "message": "Puoi iniziare la pratica, ma ci sono alcuni elementi da tenere in considerazione."},
+        "likely_wrong_practice": {"label": "Verifica la scelta", "color": "#F59E0B", "can_start": False, "message": "Questa procedura potrebbe non essere adatta al tipo di cliente selezionato. Verifica prima di procedere."},
+        "not_ready": {"label": "Non ancora pronto", "color": "#EF4444", "can_start": False, "message": "Ci sono elementi critici da risolvere prima di poter avviare questa pratica."},
+    }
+    readiness_info = READINESS_LABELS.get(readiness_state, READINESS_LABELS["ready_to_start"])
+
+    return {
+        "practice_id": practice_id,
+        "orientation": orientation,
+        "entity_direction": entity_direction,
+        "checklist": checklist_items,
+        "auth": auth_block,
+        "ateco": ateco_block,
+        "readiness": {"state": readiness_state, **readiness_info, "issues": issues, "mandatory_count": len([c for c in checklist_items if c["mandatory"]]), "total_checklist": len(checklist_items)},
+        "timing": {"label": duration.get("label", ""), "min_days": duration.get("min_days"), "max_days": duration.get("max_days")},
+        "proof_expected": {"type": proof.get("type"), "label": proof.get("label", ""), "timing": proof.get("timing", "")} if proof.get("type") else None,
+        "who_acts_summary": {"herion_prepares": who_acts.get("herion_prepares", True), "user_submits": who_acts.get("user_submits", False), "user_signs": who_acts.get("user_signs", False), "delegation_possible": who_acts.get("delegation_possible", False)},
+    }
+
+
+
 # ========================
 # AUTHORITY REGISTRY
 # ========================

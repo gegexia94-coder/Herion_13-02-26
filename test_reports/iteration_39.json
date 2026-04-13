@@ -1,0 +1,86 @@
+{
+  "summary": "Iteration 39 - Admin Statistics Dashboard testing. All 15 backend tests passed. Frontend admin stats page verified with all UI components working correctly. Access control verified - non-admin users cannot see admin nav or access /admin/stats.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_stats.py",
+    "/app/test_reports/pytest/pytest_results_v39.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/admin/stats returns 200 with full statistics structure - VERIFIED",
+    "GET /api/admin/stats?window=today filters by today - VERIFIED",
+    "GET /api/admin/stats?window=7d filters by 7 days - VERIFIED",
+    "GET /api/admin/stats?window=30d filters by 30 days - VERIFIED",
+    "GET /api/admin/stats?window=all returns all-time data - VERIFIED",
+    "Admin stats endpoint returns 403 for non-admin users - VERIFIED",
+    "Admin stats endpoint returns 401 for unauthenticated requests - VERIFIED",
+    "Stats response includes users.total, users.new_today, users.active_today, users.inactive_30d - VERIFIED",
+    "Stats response includes users.segments (never_started, started_then_dropped, used_then_stopped) - VERIFIED",
+    "Stats response includes practices.total, practices.active, practices.completed, practices.blocked, practices.completion_rate - VERIFIED",
+    "Stats response includes trends.daily (14 data points) and trends.weekly (8 data points) - VERIFIED",
+    "Stats response includes operational.top_procedures and operational.most_blocked - VERIFIED",
+    "New user registration creates user with plan='free' and plan_status='active' fields - VERIFIED",
+    "Admin stats page renders at /admin/stats (data-testid='admin-stats-page') - VERIFIED",
+    "KPI row shows 4 cards (data-testid='kpi-users', 'kpi-practices', 'kpi-completed', 'kpi-active') - VERIFIED",
+    "User metrics block renders (data-testid='user-metrics') - VERIFIED",
+    "User segmentation block renders with progress bars (data-testid='user-segments') - VERIFIED",
+    "Practice metrics block renders with status distribution (data-testid='practice-metrics') - VERIFIED",
+    "Daily trend chart renders (data-testid='daily-trend') - VERIFIED",
+    "Weekly trend chart renders (data-testid='weekly-trend') - VERIFIED",
+    "Top procedures list renders (data-testid='top-procedures') - VERIFIED",
+    "Most blocked list renders (data-testid='most-blocked') - VERIFIED",
+    "Time window selector works (data-testid='window-selector', 'window-today', 'window-7d', 'window-30d', 'window-all') - VERIFIED",
+    "Sidebar shows 'Statistiche' nav item only for admin (data-testid='nav-admin-stats') - VERIFIED",
+    "Non-admin users cannot access /admin/stats page - redirected to dashboard - VERIFIED",
+    "All UI text is in Italian as required - VERIFIED"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_stats.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all admin stats UI components verified)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "No new seed data created - tested existing data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 39 verified the Admin Statistics Dashboard feature. Key verified: (1) GET /api/admin/stats endpoint returns full statistics with users, practices, trends, operational blocks. (2) Window parameter filters work (today, 7d, 30d, all). (3) Access control: 403 for non-admin, 401 for unauthenticated. (4) New user registration adds plan='free' and plan_status='active' fields. (5) Frontend AdminStatsPage renders all components: KPI cards, user metrics, user segments with progress bars, practice metrics with status distribution, daily/weekly trend charts, top procedures, most blocked. (6) Window selector buttons work. (7) Admin nav item 'Statistiche' only visible for admin users. (8) Non-admin users redirected to dashboard when accessing /admin/stats. (9) All UI in Italian.",
+  "features_tested": {
+    "admin_stats_endpoint": {"status": "PASS", "details": ["Returns 200 with full data structure"]},
+    "window_today_filter": {"status": "PASS", "details": ["window=today works"]},
+    "window_7d_filter": {"status": "PASS", "details": ["window=7d works"]},
+    "window_30d_filter": {"status": "PASS", "details": ["window=30d works"]},
+    "window_all_filter": {"status": "PASS", "details": ["window=all works"]},
+    "access_control_403": {"status": "PASS", "details": ["Non-admin gets 403"]},
+    "access_control_401": {"status": "PASS", "details": ["Unauthenticated gets 401"]},
+    "users_block": {"status": "PASS", "details": ["total, new_today, active_today, inactive_30d present"]},
+    "user_segments": {"status": "PASS", "details": ["never_started, started_then_dropped, used_then_stopped present"]},
+    "practices_block": {"status": "PASS", "details": ["total, active, completed, blocked, completion_rate present"]},
+    "trends_block": {"status": "PASS", "details": ["14 daily points, 8 weekly points"]},
+    "operational_block": {"status": "PASS", "details": ["top_procedures, most_blocked present"]},
+    "user_plan_fields": {"status": "PASS", "details": ["New users have plan='free', plan_status='active'"]},
+    "admin_stats_page_render": {"status": "PASS", "details": ["data-testid='admin-stats-page' found"]},
+    "kpi_cards": {"status": "PASS", "details": ["All 4 KPI cards render"]},
+    "user_metrics_block": {"status": "PASS", "details": ["data-testid='user-metrics' found"]},
+    "user_segments_block": {"status": "PASS", "details": ["data-testid='user-segments' with progress bars"]},
+    "practice_metrics_block": {"status": "PASS", "details": ["data-testid='practice-metrics' with status distribution"]},
+    "daily_trend_chart": {"status": "PASS", "details": ["data-testid='daily-trend' found"]},
+    "weekly_trend_chart": {"status": "PASS", "details": ["data-testid='weekly-trend' found"]},
+    "top_procedures_list": {"status": "PASS", "details": ["data-testid='top-procedures' found"]},
+    "most_blocked_list": {"status": "PASS", "details": ["data-testid='most-blocked' found"]},
+    "window_selector": {"status": "PASS", "details": ["All window buttons work"]},
+    "admin_nav_visibility": {"status": "PASS", "details": ["Statistiche nav only visible for admin"]},
+    "non_admin_redirect": {"status": "PASS", "details": ["Non-admin redirected to dashboard"]}
+  }
+}

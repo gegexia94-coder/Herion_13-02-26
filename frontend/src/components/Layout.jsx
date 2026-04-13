@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen, BookOpen, Compass } from 'lucide-react';
+import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen, BookOpen, Compass, BarChart3 } from 'lucide-react';
 import { HerionBrand } from '@/components/HerionLogo';
 import { NotificationBell, NotificationPanel } from '@/components/NotificationPanel';
 import { getDashboardStats } from '@/services/api';
@@ -19,6 +19,10 @@ const sideNav = [
   { path: '/email-center', label: 'Comunicazione', icon: Mail, hint: 'Email e messaggi' },
   { path: '/search', label: 'Ricerca', icon: Search, hint: 'Cerca pratiche e documenti' },
   { path: '/support', label: 'Supporto', icon: HelpCircle, hint: 'Aiuto e contatti' },
+];
+
+const adminNav = [
+  { path: '/admin/stats', label: 'Statistiche', icon: BarChart3, hint: 'Statistiche prodotto e utenti' },
 ];
 
 export default function Layout() {
@@ -99,6 +103,36 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* Admin nav */}
+        {user?.role === 'admin' && (
+          <nav className="px-3 pb-2 space-y-1 border-t pt-2" style={{ borderColor: 'var(--border-soft)' }} data-testid="nav-admin">
+            {adminNav.map(item => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) => `relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 group
+                  ${isActive
+                    ? 'bg-amber-50 text-amber-800 font-semibold shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--hover-soft)] hover:text-[var(--text-primary)]'
+                  }`
+                }
+                data-testid={`nav-${item.path.replace(/\//g, '-').slice(1)}`}
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 w-[3px] h-6 rounded-r-full bg-amber-500" />}
+                    <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-amber-500' : ''}`} strokeWidth={1.8} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[13px] truncate">{item.label}</span>
+                    </div>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+        )}
 
         {/* User area */}
         <div className="border-t px-3 py-3 flex-shrink-0" style={{ borderColor: 'var(--border-soft)' }}>

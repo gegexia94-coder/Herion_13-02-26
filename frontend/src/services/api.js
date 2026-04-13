@@ -179,4 +179,7 @@ export const getTrackingStatus = (practiceId) =>
 export const verifyTracking = (practiceId, data) =>
   api.post(`/practices/${practiceId}/tracking/verify`, data);
 
+// Admin Statistics
+export const getAdminStats = (window = '30d') => api.get(`/admin/stats?window=${window}`);
+
 export default api;

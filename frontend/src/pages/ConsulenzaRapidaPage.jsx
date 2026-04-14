@@ -19,16 +19,20 @@ const CONFIDENCE_CFG = {
 function SuggestionCard({ suggestion, onStart }) {
   const conf = CONFIDENCE_CFG[suggestion.confidence] || CONFIDENCE_CFG.medium;
   const ConfIcon = conf.icon;
+  const isWeak = suggestion.confidence === 'low';
+  const isMedium = suggestion.confidence === 'medium';
 
   return (
     <div
-      className="bg-white rounded-2xl border p-5 transition-all duration-200 hover:shadow-md group"
-      style={{ borderColor: 'var(--border-soft)' }}
+      className={`rounded-2xl border p-5 transition-all duration-200 group ${
+        isWeak ? 'bg-slate-50/60 border-dashed' : 'bg-white hover:shadow-md'
+      }`}
+      style={{ borderColor: isWeak ? '#CBD5E1' : 'var(--border-soft)' }}
       data-testid={`suggestion-card-${suggestion.practice_id}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <h4 className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">
+          <h4 className={`text-[15px] font-semibold leading-snug ${isWeak ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
             {suggestion.name}
           </h4>
           <span className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
@@ -44,7 +48,7 @@ function SuggestionCard({ suggestion, onStart }) {
         </div>
       </div>
 
-      <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed mb-4">
+      <p className={`text-[13px] leading-relaxed mb-4 ${isWeak ? 'text-[var(--text-muted)]' : 'text-[var(--text-secondary)]'}`}>
         {suggestion.why}
       </p>
 
@@ -55,14 +59,28 @@ function SuggestionCard({ suggestion, onStart }) {
         </p>
       )}
 
+      {isWeak && (
+        <p className="text-[11px] text-slate-500 mb-3 flex items-start gap-1.5 italic">
+          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+          Corrispondenza incerta — ti consigliamo di approfondire prima di procedere.
+        </p>
+      )}
+
       <Button
         onClick={() => onStart(suggestion.practice_id)}
-        className="w-full rounded-xl text-[13px] font-medium gap-2 transition-all"
-        style={{ background: '#0ABFCF', color: '#fff' }}
+        variant={isWeak ? 'outline' : 'default'}
+        className={`w-full rounded-xl text-[13px] font-medium gap-2 transition-all ${
+          isWeak
+            ? 'border-slate-300 text-slate-600 hover:bg-slate-100'
+            : isMedium
+              ? ''
+              : ''
+        }`}
+        style={isWeak ? {} : { background: isMedium ? '#F59E0B' : '#0ABFCF', color: '#fff' }}
         data-testid={`start-practice-${suggestion.practice_id}`}
       >
         <FileText className="w-4 h-4" />
-        Avvia questa procedura
+        {isWeak ? 'Esplora i requisiti' : isMedium ? 'Verifica questa procedura' : 'Avvia questa procedura'}
         <ArrowRight className="w-3.5 h-3.5 ml-auto" />
       </Button>
     </div>
@@ -219,6 +237,11 @@ export default function ConsulenzaRapidaPage() {
   const lastResponse = lastAssistant?.response || {};
   const suggestions = lastResponse.suggestions || [];
   const isClarification = lastResponse.type === 'clarification';
+  const highestConfidence = suggestions.reduce((best, s) => {
+    const order = { high: 3, medium: 2, low: 1 };
+    return (order[s.confidence] || 0) > (order[best] || 0) ? s.confidence : best;
+  }, 'low');
+  const hasWeakConfidence = suggestions.length > 0 && highestConfidence !== 'high';
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6" data-testid="consulenza-results">
@@ -287,7 +310,7 @@ export default function ConsulenzaRapidaPage() {
             ))}
           </div>
           {lastResponse.disclaimer && (
-            <div className="mt-3 flex items-start gap-2 p-3 rounded-xl bg-amber-50 text-amber-800">
+            <div className="mt-3 flex items-start gap-2 p-3 rounded-xl bg-amber-50 text-amber-800 border border-amber-200">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <p className="text-[11px] leading-relaxed">{lastResponse.disclaimer}</p>
             </div>
@@ -307,15 +330,49 @@ export default function ConsulenzaRapidaPage() {
         </div>
       )}
 
+      {/* Refinement encouragement — when confidence is not fully high */}
+      {(isClarification || hasWeakConfidence) && (
+        <div className={`mb-3 p-3.5 rounded-xl border flex items-start gap-3 ${
+          isClarification
+            ? 'bg-sky-50 border-sky-200'
+            : 'bg-amber-50/70 border-amber-200'
+        }`} data-testid="refine-encouragement">
+          <MessageCircle className={`w-4 h-4 mt-0.5 shrink-0 ${isClarification ? 'text-sky-500' : 'text-amber-500'}`} />
+          <div>
+            <p className={`text-[12px] font-semibold ${isClarification ? 'text-sky-800' : 'text-amber-800'}`}>
+              {isClarification
+                ? 'Rispondi qui sotto per ricevere suggerimenti piu precisi'
+                : 'I risultati non sono del tutto certi — vuoi approfondire?'}
+            </p>
+            <p className={`text-[11px] mt-0.5 ${isClarification ? 'text-sky-700' : 'text-amber-700'}`}>
+              {isClarification
+                ? 'Herion ti ha chiesto un dettaglio per orientarti meglio. Piu contesto dai, piu preciso sara il suggerimento.'
+                : 'Aggiungi dettagli sulla tua situazione qui sotto. Herion rielaborera i suggerimenti con informazioni piu complete.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Follow-up input */}
-      <div className="bg-white rounded-2xl border p-4 flex gap-2 items-end"
+      <div className={`rounded-2xl border p-4 flex gap-2 items-end bg-white ${
+        isClarification
+          ? 'ring-2 ring-sky-300 ring-offset-1'
+          : hasWeakConfidence
+            ? 'ring-2 ring-amber-300 ring-offset-1'
+            : ''
+      }`}
         style={{ borderColor: 'var(--border-soft)' }}
         data-testid="followup-section"
       >
         <Textarea
           value={followUp}
           onChange={(e) => setFollowUp(e.target.value)}
-          placeholder={isClarification ? "Rispondi al chiarimento..." : "Hai bisogno di ulteriori dettagli? Scrivi qui..."}
+          placeholder={isClarification
+            ? "Rispondi al chiarimento di Herion..."
+            : hasWeakConfidence
+              ? "Aggiungi dettagli per risultati piu precisi..."
+              : "Hai bisogno di ulteriori dettagli? Scrivi qui..."
+          }
           className="min-h-[44px] max-h-[100px] rounded-xl border-[var(--border-soft)] text-[13px] resize-none flex-1"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRefine(); } }}
           data-testid="followup-input"

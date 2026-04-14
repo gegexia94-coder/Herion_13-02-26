@@ -27,9 +27,18 @@ Herion is a digital accountant for Italian and international users. Free access,
 ## Tracking: 7 identifier types, 10 states, workspace enrichment
 ## Dependency & Risk: 16 procedures with linked obligations, risks, completion integrity
 ## International: 5 client types, translation/apostille/legalization guidance
-## Dashboard: Warm digital accountant tone with Consulenza rapida CTA
+## Dashboard: Warm digital accountant tone with Consulenza rapida CTA (4-column quick actions)
 ## Admin Stats: User/practice metrics, trends, operational insights
-## Consulenza Rapida: AI-powered triage (GPT-5.2) — user describes situation, gets 1-3 procedure suggestions with explanations, can refine with follow-ups, then start practice through readiness flow
+
+## Consulenza Rapida (AI-Powered Triage)
+- GPT-5.2 hybrid interface: single prompt → 1-3 suggestions → optional follow-up refinement
+- Confidence-aware UI: high=strong teal CTA, medium=amber "Verifica", low=dashed/muted "Esplora i requisiti"
+- Vague/ambiguous queries trigger clarification mode (no suggestions until clarified)
+- Weak confidence shows prominent refinement banner encouraging user to add detail
+- "Avvia questa procedura" routes to pre-practice readiness flow (checklist, requirements, auth, ATECO intact)
+- Disclaimers and transparency throughout. No false certainty.
+- MongoDB sessions stored in `consulenza_sessions` collection
+
 ## 7 Operational Areas
 
 ## Testing: Iterations 21-43 all 100%
@@ -41,7 +50,7 @@ Herion is a digital accountant for Italian and international users. Free access,
 4. ~~International/EU/foreign flows~~ DONE
 5. ~~server.py refactoring~~ DONE (7414 → 7104 lines, modularized)
 6. ~~Document upload clarity & archive logic~~ DONE
-7. ~~Consulenza rapida AI-powered triage~~ DONE (Apr 13, 2026)
+7. ~~Consulenza rapida AI-powered triage~~ DONE (Apr 13-14, 2026) — including confidence-aware UI validation
 8. **NEXT: Real SPID/CIE integration**
 9. Further server.py refactoring (paused by user)
 10. Advanced analytics

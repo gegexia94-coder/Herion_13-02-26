@@ -3,55 +3,49 @@
 ## Architecture
 Frontend: React + Tailwind + Shadcn | Backend: FastAPI + MongoDB (modularized) | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | Brand: Geometric H #0ABFCF
 
-### Backend Structure (Refactored Apr 2026)
+### Backend Structure
 ```
 /app/backend/
 ├── server.py              (~7380 lines — main app, routes, startup)
-├── database.py            (13 lines — shared DB connection)
-├── auth.py                (53 lines — JWT auth, password hashing, get_current_user)
-├── catalog_data.py        (444 lines — 123 base catalog procedures)
-├── dependency_data.py     (297 lines — 16 procedures with linked obligations/risks)
-├── international_data.py  (335 lines — 13 international procedures + guidance logic)
-├── models/
-│   └── schemas.py         (142 lines — all Pydantic request models incl. Consulenza)
-├── routes/
-│   └── admin_routes.py    (163 lines — admin statistics endpoint)
+├── database.py, auth.py   (shared modules)
+├── catalog_data.py, dependency_data.py, international_data.py (data seeds)
+├── models/schemas.py      (Pydantic models incl. ConsulenzaTriageRequest)
+├── routes/admin_routes.py  (admin statistics)
 └── helpers/               (ready for future extractions)
 ```
 
+### Frontend Language System (NEW - Apr 2026)
+```
+/app/frontend/src/
+├── contexts/LanguageContext.js  (IT/EN context with localStorage persistence)
+├── i18n/translations.js        (all bilingual strings)
+├── components/LanguageSwitcher.jsx (IT/EN pill toggle)
+```
+
 ## Product Vision
-Herion is a digital accountant for Italian and international users. Free access, guides through 136 official procedures, tracks real progress, protects from incomplete logic, supports cross-border documents.
+Herion is a digital accountant for Italian and international users. Free access, guides through 136 official procedures.
 
-## Catalog: 136 procedures, 7 categories
-## Pre-Practice Intelligence: 3-phase guided flow + dependency + international blocks
-## Tracking: 7 identifier types, 10 states, workspace enrichment
-## Dependency & Risk: 16 procedures with linked obligations, risks, completion integrity
-## International: 5 client types, translation/apostille/legalization guidance
-## Dashboard: Warm digital accountant tone with Consulenza rapida CTA (4-column quick actions)
-## Admin Stats: User/practice metrics, trends, operational insights
+## Key Features
+- **Catalog**: 136 procedures, 7 categories
+- **Pre-Practice Intelligence**: 3-phase guided flow + dependency + international blocks
+- **Tracking**: 7 identifier types, 10 states, workspace enrichment
+- **Consulenza Rapida**: AI triage (GPT-5.2) with confidence-aware UI
+- **Bilingual IT/EN**: Language switcher on Login, Register, Welcome, empty states
+- **3-Step Registration Wizard**: Personal → Fiscal → Security with progress bar, tooltips, dynamic advantages
+- **Trust Layer**: AES-256, GDPR, EU Data badges + social proof + human connection text
 
-## Consulenza Rapida (AI-Powered Triage)
-- GPT-5.2 hybrid interface: single prompt → 1-3 suggestions → optional follow-up refinement
-- Confidence-aware UI: high=strong teal CTA, medium=amber "Verifica", low=dashed/muted "Esplora i requisiti"
-- Vague/ambiguous queries trigger clarification mode (no suggestions until clarified)
-- Weak confidence shows prominent refinement banner encouraging user to add detail
-- "Avvia questa procedura" routes to pre-practice readiness flow (checklist, requirements, auth, ATECO intact)
-- Disclaimers and transparency throughout. No false certainty.
-- MongoDB sessions stored in `consulenza_sessions` collection
-
-## 7 Operational Areas
-
-## Testing: Iterations 21-43 all 100%
+## Testing: Iterations 21-44 all 100%
 
 ## Execution Queue
 1. ~~Dashboard tone refinement~~ DONE
 2. ~~Dependency & risk safeguard~~ DONE
 3. ~~Free access + admin stats~~ DONE
 4. ~~International/EU/foreign flows~~ DONE
-5. ~~server.py refactoring~~ DONE (7414 → 7104 lines, modularized)
+5. ~~server.py refactoring~~ DONE
 6. ~~Document upload clarity & archive logic~~ DONE
-7. ~~Consulenza rapida AI-powered triage~~ DONE (Apr 13-14, 2026) — including confidence-aware UI validation
-8. **NEXT: Real SPID/CIE integration**
-9. Further server.py refactoring (paused by user)
-10. Advanced analytics
-11. Multi-language support
+7. ~~Consulenza rapida AI-powered triage~~ DONE
+8. ~~Premium UX: 3-step wizard, bilingual IT/EN, trust badges, empty states~~ DONE (Apr 18, 2026)
+9. **NEXT: Real SPID/CIE integration**
+10. Further server.py refactoring (paused by user)
+11. Advanced analytics
+12. Multi-language support (extend beyond Login/Register/Welcome to full app)

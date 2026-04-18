@@ -1,17 +1,30 @@
 import { Link } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { t } from '@/i18n/translations';
 import { ArrowRight, FileCheck, MapPin, Shield, Compass, BookOpen, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HerionBrand, HerionMarkLight, HerionIcon } from '@/components/HerionLogo';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 // ─── FLOW STEPS (visual composition) ───
-const FLOW_STEPS = [
-  { num: '01', label: 'Capisci', desc: 'Herion ti spiega cosa serve e cosa succede' },
-  { num: '02', label: 'Prepara', desc: 'Raccoglie e verifica i tuoi documenti' },
-  { num: '03', label: 'Guida', desc: 'Ti accompagna verso il portale ufficiale' },
-  { num: '04', label: 'Segue', desc: 'Monitora lo stato e ti tiene informato' },
-];
+const FLOW_STEPS = {
+  it: [
+    { num: '01', label: 'Capisci', desc: 'Herion ti spiega cosa serve e cosa succede' },
+    { num: '02', label: 'Prepara', desc: 'Raccoglie e verifica i tuoi documenti' },
+    { num: '03', label: 'Guida', desc: 'Ti accompagna verso il portale ufficiale' },
+    { num: '04', label: 'Segue', desc: 'Monitora lo stato e ti tiene informato' },
+  ],
+  en: [
+    { num: '01', label: 'Understand', desc: 'Herion explains what you need and what happens' },
+    { num: '02', label: 'Prepare', desc: 'Collects and verifies your documents' },
+    { num: '03', label: 'Guide', desc: 'Walks you through the official portal' },
+    { num: '04', label: 'Follow', desc: 'Monitors status and keeps you informed' },
+  ],
+};
 
 export default function WelcomePage() {
+  const { lang } = useLanguage();
+
   return (
     <div className="min-h-screen bg-[var(--bg-app)]" data-testid="welcome-page">
 
@@ -21,16 +34,16 @@ export default function WelcomePage() {
           <Link to="/" className="flex items-center gap-2.5">
             <HerionBrand size={34} showText />
           </Link>
-          <div className="flex items-center gap-2">
-            <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl h-9 px-4" data-testid="nav-login-btn">Accedi</Button></Link>
-            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">Inizia ora</Button></Link>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl h-9 px-4" data-testid="nav-login-btn">{t('welcome_nav_login', lang)}</Button></Link>
+            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">{t('welcome_nav_register', lang)}</Button></Link>
           </div>
         </div>
       </nav>
 
       {/* ═══ HERO ═══ */}
       <section className="pt-32 pb-20 px-6 relative overflow-hidden" data-testid="hero-section">
-        {/* Architectural background element */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none" aria-hidden="true">
           <HerionIcon size={320} color="rgba(10,191,207,0.03)" />
         </div>
@@ -38,24 +51,21 @@ export default function WelcomePage() {
         <div className="max-w-3xl mx-auto relative">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#0ABFCF]/8 border border-[#0ABFCF]/15 rounded-full mb-6">
             <div className="w-1.5 h-1.5 rounded-full bg-[#0ABFCF] animate-pulse" />
-            <span className="text-[11px] font-semibold text-[#0ABFCF]">Commercialista digitale</span>
+            <span className="text-[11px] font-semibold text-[#0ABFCF]">{t('welcome_badge', lang)}</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-[2.85rem] font-extrabold text-[var(--text-primary)] leading-[1.12] tracking-tight mb-5">
-            Gestisci pratiche fiscali<br />
-            con piu chiarezza e meno stress.
+            {t('welcome_hero_title_1', lang)}<br />
+            {t('welcome_hero_title_2', lang)}
           </h1>
 
-          <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl mb-4">
-            Herion ti accompagna dalla preparazione dei documenti fino al completamento ufficiale. Sai sempre cosa sta succedendo, cosa devi fare e cosa viene dopo.
-          </p>
-          <p className="text-sm text-[var(--text-muted)] max-w-lg mb-10">
-            Non un gestionale. Non un portale. Un assistente operativo che resta al tuo fianco finche la pratica non e conclusa.
+          <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl mb-10">
+            {t('welcome_hero_desc', lang)}
           </p>
 
           <Link to="/register">
             <Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-12 px-8 text-[14px] font-semibold shadow-lg shadow-black/5" data-testid="hero-cta-btn">
-              Inizia il tuo percorso <ArrowRight className="w-4 h-4 ml-2" />
+              {t('welcome_cta_start', lang)} <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>
@@ -65,7 +75,7 @@ export default function WelcomePage() {
       <section className="pb-20 px-6" data-testid="flow-section">
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {FLOW_STEPS.map((step, i) => (
+            {(FLOW_STEPS[lang] || FLOW_STEPS.it).map((step, i) => (
               <div key={i} className="relative group">
                 <div className="bg-white rounded-xl border p-5 h-full transition-all duration-200 hover:shadow-md" style={{ borderColor: 'var(--border-soft)' }}>
                   <span className="text-[28px] font-black text-[#0ABFCF]/15 block mb-2 leading-none">{step.num}</span>

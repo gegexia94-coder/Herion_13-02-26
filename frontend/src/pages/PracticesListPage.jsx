@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { t } from '@/i18n/translations';
 import { getPractices, deletePractice } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +46,7 @@ const PRIORITY_CFG = {
 };
 
 export default function PracticesListPage() {
+  const { lang } = useLanguage();
   const [practices, setPractices] = useState([]);
   const [filteredPractices, setFilteredPractices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -193,14 +196,14 @@ export default function PracticesListPage() {
           <FileText className="w-7 h-7 text-[var(--text-muted)] mx-auto mb-2.5 opacity-30" strokeWidth={1.5} />
           {practices.length === 0 ? (
             <>
-              <p className="text-[13px] font-semibold text-[var(--text-primary)]">Nessuna pratica ancora</p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-sm mx-auto">Crea la tua prima pratica per iniziare. Herion ti guidera passo dopo passo: dalla raccolta documenti fino all'invio.</p>
-              <Link to="/practices/new"><Button className="mt-4 bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[11px] font-semibold h-9 px-5" data-testid="empty-create-btn"><Plus className="w-3.5 h-3.5 mr-1.5" />Crea la prima pratica</Button></Link>
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">{t('empty_practices_title', lang)}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-sm mx-auto">{t('empty_practices_desc', lang)}</p>
+              <Link to="/practices/new"><Button className="mt-4 bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[11px] font-semibold h-9 px-5" data-testid="empty-create-btn"><Plus className="w-3.5 h-3.5 mr-1.5" />{t('empty_practices_cta', lang)}</Button></Link>
             </>
           ) : (
             <>
-              <p className="text-[13px] font-semibold text-[var(--text-primary)]">Nessun risultato</p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1">Prova a cambiare i filtri o il termine di ricerca.</p>
+              <p className="text-[13px] font-semibold text-[var(--text-primary)]">{t('empty_filter_title', lang)}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">{t('empty_filter_desc', lang)}</p>
             </>
           )}
         </div>

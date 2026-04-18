@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { t } from '@/i18n/translations';
 import { getDashboardStats, getReminders, runPracticeWorkflow, approvePractice } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +54,7 @@ const REMINDER_ICONS = { deadlines: Calendar, declarations: FileCheck, vat_remin
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [reminders, setReminders] = useState([]);
@@ -226,7 +229,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <EmptyState navigate={navigate} />
+          <EmptyState navigate={navigate} lang={lang} />
         )}
       </div>
 
@@ -339,17 +342,22 @@ function PracticeRow({ practice: p, onRun, onApprove, actionLoading }) {
   );
 }
 
-function EmptyState({ navigate }) {
+function EmptyState({ navigate, lang }) {
   return (
     <div className="px-5 py-12 text-center">
       <Compass className="w-7 h-7 text-[#0ABFCF] mx-auto mb-3 opacity-40" strokeWidth={1.5} />
-      <p className="text-[13px] font-semibold text-[var(--text-primary)]">Il tuo commercialista digitale e pronto</p>
-      <p className="text-[11px] text-[var(--text-secondary)] mt-1 max-w-xs mx-auto leading-relaxed">
-        Crea la tua prima pratica per iniziare a gestire adempimenti, documenti e scadenze con Herion al tuo fianco.
+      <p className="text-[13px] font-semibold text-[var(--text-primary)]">{t('empty_dashboard_title', lang)}</p>
+      <p className="text-[11px] text-[var(--text-secondary)] mt-1 max-w-sm mx-auto leading-relaxed">
+        {t('empty_dashboard_desc', lang)}
       </p>
-      <Button onClick={() => navigate('/practices/new')} className="mt-5 bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[11px] h-9 px-5 font-semibold" data-testid="empty-create-btn">
-        <Plus className="w-3.5 h-3.5 mr-1.5" />Crea la prima pratica
-      </Button>
+      <div className="flex items-center justify-center gap-2.5 mt-5">
+        <Button onClick={() => navigate('/consulenza')} variant="outline" className="rounded-xl text-[11px] h-9 px-4 font-semibold gap-1.5 border-[#0ABFCF] text-[#0ABFCF] hover:bg-[#0ABFCF]/5" data-testid="empty-consult-btn">
+          <MessageCircle className="w-3.5 h-3.5" />{t('empty_dashboard_consult', lang)}
+        </Button>
+        <Button onClick={() => navigate('/practices/new')} className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl text-[11px] h-9 px-5 font-semibold" data-testid="empty-create-btn">
+          <Plus className="w-3.5 h-3.5 mr-1.5" />{t('empty_dashboard_cta', lang)}
+        </Button>
+      </div>
     </div>
   );
 }

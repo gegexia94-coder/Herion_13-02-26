@@ -2,6 +2,7 @@ import "@/index.css";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import WelcomePage from "@/pages/WelcomePage";
@@ -33,6 +34,7 @@ import ConsulenzaRapidaPage from "@/pages/ConsulenzaRapidaPage";
 
 function App() {
   return (
+    <LanguageProvider>
     <AuthProvider>
       <Router>
         <Toaster position="top-right" />
@@ -68,6 +70,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </LanguageProvider>
   );
 }
 

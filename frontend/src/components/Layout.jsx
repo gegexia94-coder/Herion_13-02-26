@@ -1,48 +1,45 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { t } from '@/i18n/translations';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen, BookOpen, Compass, BarChart3, MessageCircle } from 'lucide-react';
+import { LogOut, ChevronDown, UserCircle, Shield, LayoutDashboard, FileText, Mail, Search, HelpCircle, Menu, X, Bot, FolderOpen, BookOpen, Compass, BarChart3, MessageCircle, Globe } from 'lucide-react';
 import { HerionBrand } from '@/components/HerionLogo';
 import { NotificationBell, NotificationPanel } from '@/components/NotificationPanel';
 import { getDashboardStats } from '@/services/api';
 
-const sideNav = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hint: 'Panoramica e azioni rapide' },
-  { path: '/practices', label: 'Pratiche', icon: FileText, hint: 'Le tue pratiche attive' },
-  { path: '/consulenza', label: 'Consulenza', icon: MessageCircle, hint: 'Orientamento rapido con AI' },
-  { path: '/services', label: 'Servizi', icon: Compass, hint: 'Aree operative' },
-  { path: '/catalog', label: 'Catalogo', icon: BookOpen, hint: 'Tutte le procedure' },
-  { path: '/vault', label: 'Documenti', icon: FolderOpen, hint: 'Archivio documenti' },
-  { path: '/agents', label: 'Attivita AI', icon: Bot, hint: 'Azioni degli agenti' },
-  { path: '/email-center', label: 'Messaggi', icon: Mail, hint: 'Email e comunicazioni' },
-  { path: '/search', label: 'Ricerca', icon: Search, hint: 'Cerca pratiche e documenti' },
-  { path: '/support', label: 'Supporto', icon: HelpCircle, hint: 'Aiuto e contatti' },
-];
-
-const adminNav = [
-  { path: '/admin/stats', label: 'Statistiche', icon: BarChart3, hint: 'Statistiche prodotto e utenti' },
+const sideNavKeys = [
+  { path: '/dashboard', labelKey: 'nav_dashboard', hintKey: 'nav_dashboard_hint', icon: LayoutDashboard },
+  { path: '/practices', labelKey: 'nav_practices', hintKey: 'nav_practices_hint', icon: FileText },
+  { path: '/consulenza', labelKey: 'nav_consulenza', hintKey: 'nav_consulenza_hint', icon: MessageCircle },
+  { path: '/services', labelKey: 'nav_services', hintKey: 'nav_services_hint', icon: Compass },
+  { path: '/catalog', labelKey: 'nav_catalog', hintKey: 'nav_catalog_hint', icon: BookOpen },
+  { path: '/vault', labelKey: 'nav_vault', hintKey: 'nav_vault_hint', icon: FolderOpen },
+  { path: '/agents', labelKey: 'nav_agents', hintKey: 'nav_agents_hint', icon: Bot },
+  { path: '/email-center', labelKey: 'nav_email', hintKey: 'nav_email_hint', icon: Mail },
+  { path: '/search', labelKey: 'nav_search', hintKey: 'nav_search_hint', icon: Search },
+  { path: '/support', labelKey: 'nav_support', hintKey: 'nav_support_hint', icon: HelpCircle },
 ];
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { lang, toggle } = useLanguage();
   const navigate = useNavigate();
   const [showLogout, setShowLogout] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const isCreator = user?.is_creator || user?.role === 'creator';
+
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
-  // Fetch unread count
   useEffect(() => {
     const fetchUnread = async () => {
-      try {
-        const res = await getDashboardStats();
-        setUnreadCount(res.data?.unread_notifications || 0);
-      } catch { /* silent */ }
+      try { const res = await getDashboardStats(); setUnreadCount(res.data?.unread_notifications || 0); } catch { /* silent */ }
     };
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
@@ -58,7 +55,6 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-[var(--bg-app)] flex" data-testid="app-layout">
 
-      {/* Mobile overlay */}
       {mobileOpen && <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setMobileOpen(false)} />}
 
       {/* ─── LEFT SIDEBAR ─── */}
@@ -76,9 +72,9 @@ export default function Layout() {
           <NotificationBell unreadCount={unreadCount} onClick={() => setNotifOpen(!notifOpen)} />
         </div>
 
-        {/* Nav items — always show labels */}
-        <nav className="flex-1 py-4 px-3 space-y-1" data-testid="nav-main">
-          {sideNav.map(item => (
+        {/* Nav items */}
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto" data-testid="nav-main">
+          {sideNavKeys.map(item => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -96,8 +92,8 @@ export default function Layout() {
                   {isActive && <div className="absolute left-0 w-[3px] h-6 rounded-r-full bg-[#0ABFCF]" />}
                   <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-[#0ABFCF]' : ''}`} strokeWidth={1.8} />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] truncate">{item.label}</span>
-                    {!isActive && <span className="text-[9px] text-[var(--text-muted)] truncate">{item.hint}</span>}
+                    <span className="text-[13px] truncate">{t(item.labelKey, lang)}</span>
+                    {!isActive && <span className="text-[9px] text-[var(--text-muted)] truncate">{t(item.hintKey, lang)}</span>}
                   </div>
                 </>
               )}
@@ -105,33 +101,28 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Admin nav */}
-        {user?.role === 'admin' && (
-          <nav className="px-3 pb-2 space-y-1 border-t pt-2" style={{ borderColor: 'var(--border-soft)' }} data-testid="nav-admin">
-            {adminNav.map(item => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) => `relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 group
-                  ${isActive
-                    ? 'bg-amber-50 text-amber-800 font-semibold shadow-sm'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--hover-soft)] hover:text-[var(--text-primary)]'
-                  }`
-                }
-                data-testid={`nav-${item.path.replace(/\//g, '-').slice(1)}`}
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && <div className="absolute left-0 w-[3px] h-6 rounded-r-full bg-amber-500" />}
-                    <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-amber-500' : ''}`} strokeWidth={1.8} />
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[13px] truncate">{item.label}</span>
-                    </div>
-                  </>
-                )}
-              </NavLink>
-            ))}
+        {/* Creator-only: Statistics */}
+        {isCreator && (
+          <nav className="px-3 pb-2 space-y-1 border-t pt-2" style={{ borderColor: 'var(--border-soft)' }} data-testid="nav-creator-stats">
+            <NavLink
+              to="/admin/stats"
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => `relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 group
+                ${isActive
+                  ? 'bg-amber-50 text-amber-800 font-semibold shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--hover-soft)] hover:text-[var(--text-primary)]'
+                }`
+              }
+              data-testid="nav-admin-stats"
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && <div className="absolute left-0 w-[3px] h-6 rounded-r-full bg-amber-500" />}
+                  <BarChart3 className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-amber-500' : ''}`} strokeWidth={1.8} />
+                  <span className="text-[13px] truncate">{t('nav_stats', lang)}</span>
+                </>
+              )}
+            </NavLink>
           </nav>
         )}
 
@@ -150,19 +141,26 @@ export default function Layout() {
                 <ChevronDown className="w-3 h-3 text-[var(--text-muted)] flex-shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-48 rounded-xl shadow-lg mb-1" style={{ borderColor: 'var(--border-soft)' }}>
+            <DropdownMenuContent align="end" side="top" className="w-52 rounded-xl shadow-lg mb-1" style={{ borderColor: 'var(--border-soft)' }}>
               <div className="p-1">
                 <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer rounded-lg text-[12px] gap-2" data-testid="profile-nav-btn">
-                  <UserCircle className="w-3.5 h-3.5 text-[var(--text-muted)]" />Profilo
+                  <UserCircle className="w-3.5 h-3.5 text-[var(--text-muted)]" />{t('user_profile', lang)}
                 </DropdownMenuItem>
-                {user?.is_creator && (
+                {isCreator && (
                   <DropdownMenuItem onClick={() => navigate('/creator')} className="cursor-pointer rounded-lg text-[12px] gap-2 text-[#0ABFCF]" data-testid="nav-creator">
-                    <Shield className="w-3.5 h-3.5" />Control Room
+                    <Shield className="w-3.5 h-3.5" />{t('user_control_room', lang)}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
+                {/* Language toggle */}
+                <DropdownMenuItem onClick={toggle} className="cursor-pointer rounded-lg text-[12px] gap-2" data-testid="lang-toggle-menu">
+                  <Globe className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  <span className="flex-1">{t('user_language', lang)}</span>
+                  <span className="text-[10px] font-bold text-[#0ABFCF] bg-[#0ABFCF]/10 px-1.5 py-0.5 rounded" data-testid="lang-indicator">{lang.toUpperCase()}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowLogout(true)} className="text-red-600 cursor-pointer rounded-lg focus:bg-red-50 focus:text-red-600 text-[12px] gap-2" data-testid="logout-btn">
-                  <LogOut className="w-3.5 h-3.5" />Esci
+                  <LogOut className="w-3.5 h-3.5" />{t('user_logout', lang)}
                 </DropdownMenuItem>
               </div>
             </DropdownMenuContent>
@@ -172,7 +170,6 @@ export default function Layout() {
 
       {/* ─── MAIN CONTENT ─── */}
       <div className="flex-1 md:ml-[220px]">
-        {/* Mobile top bar */}
         <header className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b h-14 flex items-center px-4 gap-3" style={{ borderColor: 'var(--border-soft)' }}>
           <button onClick={() => setMobileOpen(!mobileOpen)} className="p-1.5 rounded-lg hover:bg-[var(--hover-soft)]" data-testid="mobile-menu-btn">
             {mobileOpen ? <X className="w-5 h-5 text-[var(--text-secondary)]" /> : <Menu className="w-5 h-5 text-[var(--text-secondary)]" />}
@@ -185,21 +182,21 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* ─── NOTIFICATION PANEL ─── */}
-      <NotificationPanel open={notifOpen} onClose={() => { setNotifOpen(false); /* refresh count */ getDashboardStats().then(r => setUnreadCount(r.data?.unread_notifications || 0)).catch(() => {}); }} />
+      {/* Notifications */}
+      <NotificationPanel open={notifOpen} onClose={() => { setNotifOpen(false); getDashboardStats().then(r => setUnreadCount(r.data?.unread_notifications || 0)).catch(() => {}); }} />
 
-      {/* ─── LOGOUT DIALOG ─── */}
+      {/* Logout dialog */}
       <AlertDialog open={showLogout} onOpenChange={setShowLogout}>
         <AlertDialogContent className="rounded-2xl shadow-2xl max-w-sm" style={{ borderColor: 'var(--border-soft)' }}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold text-center">Conferma uscita</AlertDialogTitle>
+            <AlertDialogTitle className="text-base font-bold text-center">{t('user_logout_confirm_title', lang)}</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-[var(--text-secondary)] text-sm">
-              Vuoi uscire dal tuo account Herion?
+              {t('user_logout_confirm_desc', lang)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="rounded-xl flex-1 text-sm">Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700 rounded-xl flex-1 text-sm" data-testid="confirm-logout-btn">Esci</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl flex-1 text-sm">{t('user_logout_cancel', lang)}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700 rounded-xl flex-1 text-sm" data-testid="confirm-logout-btn">{t('user_logout_action', lang)}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

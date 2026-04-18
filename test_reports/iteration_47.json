@@ -1,0 +1,136 @@
+{
+  "summary": "Iteration 47 - Bilingual System Cleanup + Creator-Only Statistics testing complete. All features verified: (1) Language switcher works on login/register pages, (2) User menu language toggle switches all labels immediately, (3) Profile page has IT/EN selector buttons, (4) Language persists in localStorage after navigation, (5) Admin user does NOT see Statistics link in sidebar, (6) Admin user accessing /admin/stats gets redirected to dashboard, (7) Backend GET /api/admin/stats returns 403 for admin@aic.it (non-creator).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration47_bilingual_stats.py",
+    "/app/test_reports/pytest/pytest_results_v47.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "features_tested": {
+    "login_page_language_switcher": {
+      "status": "PASS",
+      "details": [
+        "Language switcher visible on login page",
+        "Clicking EN switches 'Accedi' to 'Log in'",
+        "Clicking IT switches 'Log in' back to 'Accedi'",
+        "Subtitle text also switches correctly"
+      ]
+    },
+    "register_page_language_switcher": {
+      "status": "PASS",
+      "details": [
+        "Language switcher visible on register page",
+        "Title switches from 'Crea il tuo account' to 'Create your account'",
+        "Step labels switch (Dati personali -> Personal info)",
+        "Motivation message switches correctly"
+      ]
+    },
+    "sidebar_bilingual_labels": {
+      "status": "PASS",
+      "details": [
+        "Dashboard nav shows 'Dashboard' in both languages",
+        "Pratiche -> Practices",
+        "Consulenza -> Consultation",
+        "Servizi -> Services",
+        "Catalogo -> Catalog",
+        "Documenti -> Documents",
+        "Attivita AI -> AI Activity",
+        "Messaggi -> Messages",
+        "Ricerca -> Search",
+        "Supporto -> Support",
+        "Hint text also switches (e.g., 'Le tue pratiche attive' -> 'Your active practices')"
+      ]
+    },
+    "dashboard_quick_actions_bilingual": {
+      "status": "PASS",
+      "details": [
+        "Consulenza -> Consultation",
+        "Nuova pratica -> New practice",
+        "Servizi -> Services",
+        "Messaggi -> Messages",
+        "Hint text also switches"
+      ]
+    },
+    "dashboard_section_headers_bilingual": {
+      "status": "PASS",
+      "details": [
+        "Le tue pratiche -> Your practices",
+        "Vedi tutte -> View all",
+        "Attive -> Active",
+        "Completate -> Completed"
+      ]
+    },
+    "user_menu_language_toggle": {
+      "status": "PASS",
+      "details": [
+        "Language toggle visible in user menu (data-testid='lang-toggle-menu')",
+        "Language indicator shows current language (IT or EN)",
+        "Clicking toggle switches all visible labels immediately",
+        "Menu item shows 'Lingua' in IT and 'Language' in EN"
+      ]
+    },
+    "profile_page_language_selector": {
+      "status": "PASS",
+      "details": [
+        "Preferenze/Preferences section visible",
+        "IT button (data-testid='lang-select-it') visible and functional",
+        "EN button (data-testid='lang-select-en') visible and functional",
+        "Clicking buttons switches page labels immediately",
+        "Profile title switches: 'Profilo e impostazioni' <-> 'Profile and settings'"
+      ]
+    },
+    "language_persistence": {
+      "status": "PASS",
+      "details": [
+        "Language stored in localStorage under 'herion_lang'",
+        "Language persists after navigating to Practices page",
+        "Language persists after navigating to Services page",
+        "Language persists after navigating back to Dashboard"
+      ]
+    },
+    "admin_no_stats_sidebar": {
+      "status": "PASS",
+      "details": [
+        "Admin user (admin@aic.it) does NOT see Statistics link in sidebar",
+        "nav-admin-stats element not visible for admin",
+        "nav-creator-stats section not visible for admin"
+      ]
+    },
+    "admin_stats_redirect": {
+      "status": "PASS",
+      "details": [
+        "Admin user navigating to /admin/stats gets redirected to /dashboard",
+        "AdminStatsPage checks isCreator and redirects non-creator users"
+      ]
+    },
+    "backend_stats_403_for_admin": {
+      "status": "PASS",
+      "details": [
+        "GET /api/admin/stats returns 403 for admin@aic.it",
+        "Error message: 'Accesso riservato al creatore'",
+        "All window parameters (today, 7d, 30d, all) also return 403"
+      ]
+    }
+  },
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (5/5 tests passed)",
+    "frontend": "100% (all UI tests passed)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 47 verified the bilingual system cleanup and creator-only statistics access: (1) Language switcher on login/register pages uses data-testid='language-switcher' with 'lang-switch-it' and 'lang-switch-en' buttons. (2) User menu language toggle uses data-testid='lang-toggle-menu' with 'lang-indicator' showing IT/EN. (3) Profile page language selector uses data-testid='lang-select-it' and 'lang-select-en'. (4) Language stored in localStorage as 'herion_lang'. (5) Statistics restricted to creator role - admin user cannot see nav-admin-stats, gets redirected from /admin/stats to /dashboard, and backend returns 403. (6) All sidebar labels, quick actions, and dashboard headers switch correctly between IT and EN."
+}

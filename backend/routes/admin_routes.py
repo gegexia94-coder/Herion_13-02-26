@@ -10,8 +10,8 @@ router = APIRouter()
 @router.get("/admin/stats")
 async def get_admin_statistics(window: str = "30d", user: dict = Depends(get_current_user)):
     """Full statistics dashboard for admin/creator — product intelligence."""
-    if user.get("role") not in ["admin", "creator"]:
-        raise HTTPException(status_code=403, detail="Accesso riservato all'amministratore")
+    if user.get("role") != "creator" and not user.get("is_creator"):
+        raise HTTPException(status_code=403, detail="Accesso riservato al creatore")
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

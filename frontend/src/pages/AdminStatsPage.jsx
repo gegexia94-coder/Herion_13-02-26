@@ -23,8 +23,10 @@ export default function AdminStatsPage() {
   const [loading, setLoading] = useState(true);
   const [window, setWindow] = useState('30d');
 
+  const isCreator = user?.is_creator || user?.role === 'creator';
+
   useEffect(() => {
-    if (user?.role !== 'admin') { navigate('/dashboard'); return; }
+    if (!isCreator) { navigate('/dashboard'); return; }
     (async () => {
       setLoading(true);
       try {
@@ -33,9 +35,9 @@ export default function AdminStatsPage() {
       } catch (e) { console.warn('Stats load failed:', e?.message); }
       finally { setLoading(false); }
     })();
-  }, [window, user, navigate]);
+  }, [window, isCreator, navigate]);
 
-  if (user?.role !== 'admin') return null;
+  if (!isCreator) return null;
   if (loading) return <div className="flex items-center justify-center h-64"><RefreshCw className="w-5 h-5 animate-spin text-[var(--text-muted)]" /></div>;
   if (!stats) return <div className="text-center py-12 text-[var(--text-muted)]">Impossibile caricare le statistiche</div>;
 

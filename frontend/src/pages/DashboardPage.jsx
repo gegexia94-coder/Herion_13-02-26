@@ -134,12 +134,12 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4 flex-shrink-0 ml-6">
             <div className="text-center">
               <p className="text-[18px] font-bold text-[var(--text-primary)]">{totalActive}</p>
-              <p className="text-[9px] text-[var(--text-muted)] font-medium">Attive</p>
+              <p className="text-[9px] text-[var(--text-muted)] font-medium">{t('dash_active', lang)}</p>
             </div>
             <div className="w-px h-8 bg-[var(--border-soft)]" />
             <div className="text-center">
               <p className="text-[18px] font-bold text-emerald-500">{totalDone}</p>
-              <p className="text-[9px] text-[var(--text-muted)] font-medium">Completate</p>
+              <p className="text-[9px] text-[var(--text-muted)] font-medium">{t('dash_completed', lang)}</p>
             </div>
           </div>
         </div>
@@ -189,23 +189,23 @@ export default function DashboardPage() {
       <div className="grid grid-cols-4 gap-2.5" data-testid="quick-actions">
         <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
           <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Consulenza</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Orientamento rapido con AI</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_consulenza', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_consulenza_hint', lang)}</p>
         </button>
         <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
           <Plus className="w-4 h-4 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Nuova pratica</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Preparazione guidata</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_new', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_new_hint', lang)}</p>
         </button>
         <button onClick={() => navigate('/services')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-services-btn">
           <BookOpen className="w-4 h-4 text-purple-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Servizi</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Aree operative</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_services', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_services_hint', lang)}</p>
         </button>
         <button onClick={() => navigate('/email-center')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
           <Send className="w-4 h-4 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Messaggi</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Email e comunicazioni</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_messages', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_messages_hint', lang)}</p>
         </button>
       </div>
 
@@ -217,9 +217,9 @@ export default function DashboardPage() {
       {/* ═══ ALL PRACTICES ═══ */}
       <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-table">
         <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: 'var(--border-soft)' }}>
-          <h2 className="text-[12px] font-bold text-[var(--text-primary)]">Le tue pratiche</h2>
+          <h2 className="text-[12px] font-bold text-[var(--text-primary)]">{t('dash_your_practices', lang)}</h2>
           <Link to="/practices" className="text-[10px] font-semibold flex items-center gap-1 text-[#0ABFCF] hover:underline" data-testid="view-all-practices">
-            Vedi tutte <ArrowRight className="w-3 h-3" />
+            {t('dash_view_all', lang)} <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
         {allPractices.length > 0 ? (

@@ -90,13 +90,13 @@ export default function PracticesListPage() {
   return (
     <div className="space-y-5" data-testid="practices-list-page">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Pratiche</h1>
           <p className="text-[12px] text-[var(--text-secondary)]">{practices.length} pratiche totali</p>
         </div>
         <Link to="/practices/new">
-          <Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg text-[12px] font-semibold gap-2 h-9 px-5" data-testid="create-practice-btn">
+          <Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg text-[12px] font-semibold gap-2 h-9 px-5 w-full sm:w-auto" data-testid="create-practice-btn">
             <Plus className="w-3.5 h-3.5" /> Nuova Pratica
           </Button>
         </Link>
@@ -137,8 +137,8 @@ export default function PracticesListPage() {
       {/* Table */}
       {filteredPractices.length > 0 ? (
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }}>
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_70px_100px_60px_80px] sm:grid-cols-[1fr_70px_100px_70px_80px] px-5 py-2.5 border-b text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]" style={{ borderColor: 'var(--border-soft)' }}>
+          {/* Table header — hidden on mobile */}
+          <div className="hidden sm:grid grid-cols-[1fr_70px_100px_70px_80px] px-5 py-2.5 border-b text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]" style={{ borderColor: 'var(--border-soft)' }}>
             <span>Nome</span>
             <span>Priorita</span>
             <span>Stato</span>
@@ -153,39 +153,53 @@ export default function PracticesListPage() {
               const stepIdx = p.step_index ?? 0;
               const isBlocked = stepIdx === -1;
               return (
-                <div key={p.id} className="grid grid-cols-[1fr_70px_100px_60px_80px] sm:grid-cols-[1fr_70px_100px_70px_80px] items-center px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${idx}`}>
-                  <Link to={`/practices/${p.id}`} className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{p.client_name}</p>
-                    <p className="text-[10px] text-[var(--text-muted)] truncate">{p.practice_type_label}</p>
-                  </Link>
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold ${pcfg.bg} ${pcfg.text}`} data-testid={`priority-${idx}`}>
-                    <span className={`w-1 h-1 rounded-full ${pcfg.dot}`} />
-                    {pcfg.label}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: cfg.color }}>
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
-                    {cfg.label}
-                  </span>
-                  {/* Progress indicator */}
-                  <div className="flex items-center gap-0.5" data-testid={`progress-${idx}`}>
-                    {isBlocked ? (
-                      <span className="text-[9px] font-bold text-red-500">!</span>
-                    ) : (
-                      [0,1,2,3,4,5].map(s => (
-                        <div key={s} className={`h-1.5 flex-1 rounded-full max-w-[8px] ${
-                          s < stepIdx ? 'bg-emerald-400' : s === stepIdx ? 'bg-[#0ABFCF]' : 'bg-[var(--border-soft)]'
-                        }`} />
-                      ))
-                    )}
-                  </div>
-                  <div className="flex justify-end gap-0.5">
-                    <Link to={`/practices/${p.id}`}>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded" data-testid={`view-practice-${idx}`}><Eye className="w-3.5 h-3.5 text-[var(--text-secondary)]" /></Button>
+                <div key={p.id} data-testid={`practice-row-${idx}`}>
+                  {/* Desktop row */}
+                  <div className="hidden sm:grid grid-cols-[1fr_70px_100px_70px_80px] items-center px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors">
+                    <Link to={`/practices/${p.id}`} className="min-w-0">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{p.client_name}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] truncate">{p.practice_type_label}</p>
                     </Link>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded hover:bg-red-50" onClick={() => setDeleteDialog({ open: true, practice: p })} data-testid={`delete-practice-${idx}`}>
-                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                    </Button>
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold ${pcfg.bg} ${pcfg.text}`} data-testid={`priority-${idx}`}>
+                      <span className={`w-1 h-1 rounded-full ${pcfg.dot}`} />
+                      {pcfg.label}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: cfg.color }}>
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
+                      {cfg.label}
+                    </span>
+                    <div className="flex items-center gap-0.5" data-testid={`progress-${idx}`}>
+                      {isBlocked ? (
+                        <span className="text-[9px] font-bold text-red-500">!</span>
+                      ) : (
+                        [0,1,2,3,4,5].map(s => (
+                          <div key={s} className={`h-1.5 flex-1 rounded-full max-w-[8px] ${
+                            s < stepIdx ? 'bg-emerald-400' : s === stepIdx ? 'bg-[#0ABFCF]' : 'bg-[var(--border-soft)]'
+                          }`} />
+                        ))
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-0.5">
+                      <Link to={`/practices/${p.id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded" data-testid={`view-practice-${idx}`}><Eye className="w-3.5 h-3.5 text-[var(--text-secondary)]" /></Button>
+                      </Link>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded hover:bg-red-50" onClick={() => setDeleteDialog({ open: true, practice: p })} data-testid={`delete-practice-${idx}`}>
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                      </Button>
+                    </div>
                   </div>
+                  {/* Mobile card */}
+                  <Link to={`/practices/${p.id}`} className="sm:hidden flex items-center gap-3 px-4 py-3 hover:bg-[var(--hover-soft)] transition-colors">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate">{p.client_name}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] truncate">{p.practice_type_label}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold ${pcfg.bg} ${pcfg.text}`}>{pcfg.label}</span>
+                      <span className="text-[9px] font-medium" style={{ color: cfg.color }}>{cfg.label}</span>
+                    </div>
+                  </Link>
                 </div>
               );
             })}

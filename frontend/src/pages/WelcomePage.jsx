@@ -30,20 +30,20 @@ export default function WelcomePage() {
 
       {/* ─── NAV ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b" style={{ borderColor: 'var(--border-soft)' }}>
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
             <HerionBrand size={34} showText />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <LanguageSwitcher />
-            <Link to="/login"><Button variant="ghost" className="text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl h-9 px-4" data-testid="nav-login-btn">{t('welcome_nav_login', lang)}</Button></Link>
-            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-9 px-5 text-[13px] font-semibold" data-testid="nav-register-btn">{t('welcome_nav_register', lang)}</Button></Link>
+            <Link to="/login"><Button variant="ghost" className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl h-8 sm:h-9 px-2 sm:px-4" data-testid="nav-login-btn">{t('welcome_nav_login', lang)}</Button></Link>
+            <Link to="/register"><Button className="bg-[var(--text-primary)] hover:bg-[#2a3040] text-white rounded-xl h-8 sm:h-9 px-3 sm:px-5 text-[12px] sm:text-[13px] font-semibold" data-testid="nav-register-btn">{t('welcome_nav_register', lang)}</Button></Link>
           </div>
         </div>
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden" data-testid="hero-section">
+      <section className="pt-24 sm:pt-32 pb-14 sm:pb-20 px-4 sm:px-6 relative overflow-hidden" data-testid="hero-section">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none" aria-hidden="true">
           <HerionIcon size={320} color="rgba(10,191,207,0.03)" />
         </div>

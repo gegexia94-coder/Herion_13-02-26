@@ -177,7 +177,7 @@ export default function Layout() {
           <HerionBrand size={28} showText />
         </header>
 
-        <main className="max-w-[1080px] mx-auto px-5 md:px-8 pt-8 pb-16">
+        <main className="max-w-[1080px] mx-auto px-4 sm:px-5 md:px-8 pt-6 sm:pt-8 pb-16">
           <Outlet />
         </main>
       </div>

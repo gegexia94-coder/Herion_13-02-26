@@ -38,6 +38,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-app);
   color: var(--text-primary);
+  overflow-x: hidden;
 }
 
 @layer base {

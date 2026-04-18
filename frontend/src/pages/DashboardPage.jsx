@@ -121,7 +121,7 @@ export default function DashboardPage() {
 
       {/* ═══ WELCOME / ORIENTATION ═══ */}
       <div className="bg-white rounded-xl border p-5 animate-fade-in" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="welcome-block">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight" data-testid="greeting">
               {greeting}{userName ? `, ${userName}` : ''}
@@ -146,7 +146,7 @@ export default function DashboardPage() {
             </p>
           </div>
           {/* Compact stats */}
-          <div className="flex items-center gap-4 flex-shrink-0 ml-6">
+          <div className="flex items-center gap-4 flex-shrink-0 sm:ml-6">
             <div className="text-center">
               <p className="text-[18px] font-bold text-[var(--text-primary)]">{totalActive}</p>
               <p className="text-[9px] text-[var(--text-muted)] font-medium">{t('dash_active', lang)}</p>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
       )}
 
       {/* ═══ QUICK ACTIONS ═══ */}
-      <div className="grid grid-cols-4 gap-2.5" data-testid="quick-actions">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" data-testid="quick-actions">
         <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
           <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_consulenza', lang)}</p>

@@ -46,10 +46,10 @@ function InsightCard({ insight }) {
 
 function MetricTile({ label, value, sub, color }) {
   return (
-    <div className="p-3 bg-white/5 rounded-xl" data-testid={`metric-${label.toLowerCase().replace(/\s/g, '-')}`}>
-      <p className="text-[9px] text-white/50 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-bold" style={{ color: color || '#fff' }}>{value}</p>
-      {sub && <p className="text-[9px] text-white/40 mt-0.5">{sub}</p>}
+    <div className="p-3.5 bg-white/[0.06] rounded-xl backdrop-blur-sm border border-white/[0.04]" data-testid={`metric-${label.toLowerCase().replace(/\s/g, '-')}`}>
+      <p className="text-[8px] text-white/40 uppercase tracking-widest font-semibold mb-1.5">{label}</p>
+      <p className="text-[22px] font-extrabold leading-none tracking-tight" style={{ color: color || '#fff' }}>{value}</p>
+      {sub && <p className="text-[8px] text-white/30 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -118,34 +118,38 @@ export default function CreatorControlRoom() {
       </div>
 
       {/* ═══ SYSTEM HEALTH ═══ */}
-      <div className="bg-[#0A192F] rounded-2xl p-5 text-white" data-testid="system-health">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-[#0A192F] rounded-2xl p-6 text-white animate-fade-in" data-testid="system-health">
+        <div className="flex items-center gap-2 mb-5">
           <Activity className="w-4 h-4 text-[#3B82F6]" />
-          <h3 className="text-[12px] font-bold uppercase tracking-wider">Stato del sistema</h3>
-          {criticalCount > 0 && <span className="text-[8px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full ml-auto">{criticalCount} critici</span>}
-          {highCount > 0 && criticalCount === 0 && <span className="text-[8px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-full ml-auto">{highCount} da risolvere</span>}
-          {criticalCount === 0 && highCount === 0 && <span className="text-[8px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full ml-auto">Stabile</span>}
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-white/70">Stato del sistema</h3>
+          {criticalCount > 0 && <span className="text-[8px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full ml-auto animate-pulse-soft">{criticalCount} critici</span>}
+          {highCount > 0 && criticalCount === 0 && <span className="text-[8px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full ml-auto">{highCount} da risolvere</span>}
+          {criticalCount === 0 && highCount === 0 && <span className="text-[8px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full ml-auto">Stabile</span>}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <MetricTile label="Utenti" value={h.total_users} />
           <MetricTile label="Pratiche attive" value={h.active} color="#3B82F6" />
           <MetricTile label="Completate" value={h.completed} color="#10B981" />
-          <MetricTile label="Bloccate" value={h.blocked} color={h.blocked > 0 ? '#EF4444' : '#6B7280'} />
-          <MetricTile label="Attesa documenti" value={h.waiting_docs} color={h.waiting_docs > 0 ? '#F59E0B' : '#6B7280'} />
-          <MetricTile label="Ferme 7g+" value={h.stalled_7d} color={h.stalled_7d > 0 ? '#F59E0B' : '#6B7280'} />
+          <MetricTile label="Bloccate" value={h.blocked} color={h.blocked > 0 ? '#EF4444' : '#4B5563'} />
+          <MetricTile label="Attesa documenti" value={h.waiting_docs} color={h.waiting_docs > 0 ? '#F59E0B' : '#4B5563'} />
+          <MetricTile label="Ferme 7g+" value={h.stalled_7d} color={h.stalled_7d > 0 ? '#F59E0B' : '#4B5563'} />
         </div>
       </div>
 
       {/* ═══ FATHER INSIGHTS ═══ */}
       <div data-testid="father-insights">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-[#0A192F]" />
           <h2 className="text-[13px] font-bold text-[var(--text-primary)]">Analisi Father</h2>
-          <span className="text-[9px] text-[var(--text-muted)] ml-1">{insights.length} segnali</span>
+          <span className="text-[9px] text-[var(--text-muted)] ml-1">{insights.length} {insights.length === 1 ? 'segnale' : 'segnali'}</span>
         </div>
         {insights.length > 0 ? (
-          <div className="space-y-2.5">
-            {insights.map((ins, i) => <InsightCard key={i} insight={ins} />)}
+          <div className="space-y-3">
+            {insights.map((ins, i) => (
+              <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 0.06}s` }}>
+                <InsightCard insight={ins} />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-8 bg-emerald-50 rounded-xl border border-emerald-200">
@@ -158,8 +162,8 @@ export default function CreatorControlRoom() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* ═══ FRICTION POINTS ═══ */}
-        <div className="bg-white rounded-2xl border p-5" style={{ borderColor: 'var(--border-soft)' }} data-testid="friction-points">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="bg-white rounded-2xl border p-5 card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="friction-points">
+          <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <h3 className="text-[12px] font-bold text-[var(--text-primary)]">Punti di frizione</h3>
           </div>
@@ -181,8 +185,8 @@ export default function CreatorControlRoom() {
         </div>
 
         {/* ═══ MOST USED ═══ */}
-        <div className="bg-white rounded-2xl border p-5" style={{ borderColor: 'var(--border-soft)' }} data-testid="top-procedures">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="bg-white rounded-2xl border p-5 card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="top-procedures">
+          <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-4 h-4 text-[#0ABFCF]" />
             <h3 className="text-[12px] font-bold text-[var(--text-primary)]">Procedure piu utilizzate</h3>
           </div>

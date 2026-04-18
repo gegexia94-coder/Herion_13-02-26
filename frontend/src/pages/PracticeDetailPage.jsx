@@ -351,8 +351,51 @@ export default function PracticeDetailPage() {
           {/* ── UNDERSTANDING GATE (draft) ── */}
           {canStart && <UnderstandingGate practice={practice} workspace={ws} onStart={handleStart} />}
 
+          {/* ── COMPLETION EXPERIENCE ── */}
+          {isDone && (
+            <div className="rounded-xl overflow-hidden animate-fade-in animate-completion-pulse" data-testid="completion-card">
+              <div className="bg-gradient-to-r from-emerald-50 to-emerald-50/30 px-5 py-5 border border-emerald-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[14px] font-bold text-emerald-800">Pratica completata</p>
+                    <p className="text-[12px] text-emerald-700 mt-1 leading-relaxed">
+                      {practice.practice_type_label} per {practice.client_name} e stata completata con successo.
+                    </p>
+                    <div className="mt-3 space-y-1.5">
+                      {practice.tracking?.reference_id && (
+                        <div className="flex items-center gap-2 text-[11px] text-emerald-700">
+                          <FileText className="w-3 h-3" />
+                          <span className="font-medium">Riferimento:</span> <span className="font-mono bg-emerald-100 px-1.5 py-0.5 rounded">{practice.tracking.reference_id}</span>
+                        </div>
+                      )}
+                      {practice.tracking?.entity_state && (
+                        <div className="flex items-center gap-2 text-[11px] text-emerald-700">
+                          <Eye className="w-3 h-3" />
+                          <span className="font-medium">Stato ente:</span> {practice.tracking.entity_state}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-[11px] text-emerald-700">
+                        <Clock className="w-3 h-3" />
+                        <span className="font-medium">Completata il:</span> {practice.updated_at ? new Date(practice.updated_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-emerald-200/50">
+                      <p className="text-[10px] text-emerald-600 leading-relaxed">
+                        I documenti archiviati restano disponibili nel tuo Vault. Se in futuro dovesse servire un riferimento o una verifica, tutto e conservato.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* ── UI GUIDANCE from workspace ── */}
-          {!canStart && guidance.headline && (
+          {!canStart && guidance.headline && !isDone && (
             <div className={`rounded-xl px-5 py-4 ${isBlocked ? 'bg-red-50/40' : activity.user_action_required ? 'bg-amber-50/40' : isDone ? 'bg-emerald-50/40' : 'bg-blue-50/30'}`} data-testid="guidance-card">
               {/* Who acts now — most important info */}
               <div className="flex items-center gap-2 mb-2">

@@ -106,14 +106,21 @@ export default function DashboardPage() {
 
   // Greeting logic
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Buongiorno' : hour < 18 ? 'Buon pomeriggio' : 'Buonasera';
+  const greeting = hour < 6 ? (lang === 'en' ? 'Good evening' : 'Buonanotte') : hour < 12 ? (lang === 'en' ? 'Good morning' : 'Buongiorno') : hour < 18 ? (lang === 'en' ? 'Good afternoon' : 'Buon pomeriggio') : (lang === 'en' ? 'Good evening' : 'Buonasera');
   const userName = user?.first_name || user?.name?.split(' ')[0] || '';
+
+  // "What changed" — derive from stats
+  const changedItems = [];
+  if (actionNeeded.length > 0) changedItems.push({ type: 'action', text: lang === 'en' ? `${actionNeeded.length} practice${actionNeeded.length > 1 ? 's' : ''} need your attention` : `${actionNeeded.length} ${actionNeeded.length === 1 ? 'pratica richiede' : 'pratiche richiedono'} il tuo intervento`, color: '#F59E0B' });
+  if (herionWorking.length > 0) changedItems.push({ type: 'herion', text: lang === 'en' ? `Herion is working on ${herionWorking.length} practice${herionWorking.length > 1 ? 's' : ''}` : `Herion sta lavorando su ${herionWorking.length} ${herionWorking.length === 1 ? 'pratica' : 'pratiche'}`, color: '#0ABFCF' });
+  if (tracked.length > 0) changedItems.push({ type: 'track', text: lang === 'en' ? `${tracked.length} practice${tracked.length > 1 ? 's' : ''} waiting for official response` : `${tracked.length} ${tracked.length === 1 ? 'pratica' : 'pratiche'} in attesa di risposta`, color: '#3B82F6' });
+  if (totalDone > 0) changedItems.push({ type: 'done', text: lang === 'en' ? `${totalDone} practice${totalDone > 1 ? 's' : ''} completed` : `${totalDone} ${totalDone === 1 ? 'pratica completata' : 'pratiche completate'}`, color: '#10B981' });
 
   return (
     <div className="space-y-5" data-testid="dashboard-page">
 
       {/* ═══ WELCOME / ORIENTATION ═══ */}
-      <div className="bg-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="welcome-block">
+      <div className="bg-white rounded-xl border p-5 animate-fade-in" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="welcome-block">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight" data-testid="greeting">
@@ -121,12 +128,20 @@ export default function DashboardPage() {
             </h1>
             <p className="text-[12px] text-[var(--text-secondary)] mt-1 max-w-md leading-relaxed">
               {actionNeeded.length > 0
-                ? `Hai ${actionNeeded.length} ${actionNeeded.length === 1 ? 'pratica che richiede' : 'pratiche che richiedono'} il tuo intervento. Herion ti indica da dove partire.`
+                ? lang === 'en'
+                  ? `You have ${actionNeeded.length} practice${actionNeeded.length > 1 ? 's' : ''} that need your action. Herion shows you where to start.`
+                  : `Hai ${actionNeeded.length} ${actionNeeded.length === 1 ? 'pratica che richiede' : 'pratiche che richiedono'} il tuo intervento. Herion ti indica da dove partire.`
                 : tracked.length > 0
-                  ? `Herion sta monitorando ${tracked.length} ${tracked.length === 1 ? 'pratica' : 'pratiche'} in attesa di risposta ufficiale. Nessuna azione richiesta da parte tua.`
+                  ? lang === 'en'
+                    ? `Herion is monitoring ${tracked.length} practice${tracked.length > 1 ? 's' : ''} waiting for official response. No action needed from you.`
+                    : `Herion sta monitorando ${tracked.length} ${tracked.length === 1 ? 'pratica' : 'pratiche'} in attesa di risposta ufficiale. Nessuna azione richiesta da parte tua.`
                   : herionWorking.length > 0
-                    ? `Herion sta lavorando su ${herionWorking.length} ${herionWorking.length === 1 ? 'pratica' : 'pratiche'}. Ti avviseremo quando sara il tuo turno.`
-                    : 'Tutto in ordine. Nessuna azione urgente in questo momento.'
+                    ? lang === 'en'
+                      ? `Herion is working on ${herionWorking.length} practice${herionWorking.length > 1 ? 's' : ''}. We'll notify you when it's your turn.`
+                      : `Herion sta lavorando su ${herionWorking.length} ${herionWorking.length === 1 ? 'pratica' : 'pratiche'}. Ti avviseremo quando sara il tuo turno.`
+                    : lang === 'en'
+                      ? 'All clear. No urgent action needed right now.'
+                      : 'Tutto in ordine. Nessuna azione urgente in questo momento.'
               }
             </p>
           </div>
@@ -143,6 +158,18 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* What's happening — signature moment */}
+        {changedItems.length > 0 && (
+          <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: 'var(--border-soft)' }} data-testid="whats-happening">
+            {changedItems.map((item, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-full animate-fade-in" style={{ animationDelay: `${i * 0.08}s`, background: `${item.color}08`, color: item.color }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: item.color }} />
+                {item.text}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ═══ WHAT NEEDS ATTENTION NOW ═══ */}
@@ -187,22 +214,22 @@ export default function DashboardPage() {
 
       {/* ═══ QUICK ACTIONS ═══ */}
       <div className="grid grid-cols-4 gap-2.5" data-testid="quick-actions">
-        <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
+        <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
           <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_consulenza', lang)}</p>
           <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_consulenza_hint', lang)}</p>
         </button>
-        <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
+        <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
           <Plus className="w-4 h-4 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_new', lang)}</p>
           <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_new_hint', lang)}</p>
         </button>
-        <button onClick={() => navigate('/services')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-services-btn">
+        <button onClick={() => navigate('/services')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-services-btn">
           <BookOpen className="w-4 h-4 text-purple-500 mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_services', lang)}</p>
           <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_services_hint', lang)}</p>
         </button>
-        <button onClick={() => navigate('/email-center')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
+        <button onClick={() => navigate('/email-center')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
           <Send className="w-4 h-4 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_messages', lang)}</p>
           <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_messages_hint', lang)}</p>

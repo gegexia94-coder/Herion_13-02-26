@@ -373,6 +373,16 @@ export default function PracticeDetailPage() {
               <p className="text-[14px] font-bold text-[var(--text-primary)] leading-tight">{guidance.headline}</p>
               <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">{guidance.subheadline}</p>
 
+              {/* Status-specific reinforcement for waiting_user_documents */}
+              {status === 'waiting_user_documents' && docsSummary.missing_count > 0 && (
+                <div className="mt-3 p-3 bg-white/80 rounded-lg border border-amber-200/60" data-testid="missing-docs-hint">
+                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Documenti mancanti: {docsSummary.missing_count}</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    Carica i documenti richiesti qui sotto per sbloccare il passaggio successivo. Herion li verifichera automaticamente.
+                  </p>
+                </div>
+              )}
+
               {/* Next action — bold and clear */}
               {guidance.next_step_label && guidance.next_step_detail && (
                 <div className="mt-3 p-3 bg-white/60 rounded-lg border border-white/80">
@@ -583,18 +593,36 @@ export default function PracticeDetailPage() {
           )}
 
           {/* ── CHAT ── */}
+          {/* ── PRACTICE-SPECIFIC AI SUPPORT ── */}
           <div className="bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-chat">
-            <div className="flex items-center gap-2 mb-3">
-              <Bot className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Chiedi a Herion</p>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#0ABFCF]/10 flex items-center justify-center">
+                  <Bot className="w-3.5 h-3.5 text-[#0ABFCF]" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--text-primary)]">Chiedi a Herion</p>
+                  <p className="text-[8px] text-[#0ABFCF] font-medium">Supporto su questa pratica</p>
+                </div>
+              </div>
+              <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full" data-testid="chat-context-badge">Contesto attivo</span>
             </div>
+            <p className="text-[9px] text-[var(--text-muted)] mb-3 pl-8">Herion conosce lo stato, i documenti e le azioni di questa pratica.</p>
             <ScrollArea className="h-[180px] mb-3">
               <div className="space-y-2 pr-2">
                 {chatHistory.length === 0 && !chatLoading && (
-                  <div className="text-center py-4">
-                    <p className="text-[11px] text-[var(--text-secondary)] mb-1">Hai domande sulla pratica?</p>
-                    {['Cosa devo fare adesso?', 'Manca qualcosa?', 'Qual e lo stato?'].map((q, i) => (
-                      <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[11px] text-[var(--text-primary)] p-2.5 bg-[var(--hover-soft)] rounded-lg hover:bg-[#0ABFCF]/10 transition-colors mb-1.5" data-testid={`chat-suggestion-${i}`}>{q}</button>
+                  <div className="py-3">
+                    <p className="text-[10px] text-[var(--text-secondary)] mb-2 font-medium">Domande frequenti per questa fase:</p>
+                    {(status === 'waiting_user_documents' ? [
+                      'Quali documenti mancano?',
+                      'Cosa succede dopo il caricamento?',
+                      'Posso procedere senza tutti i documenti?'
+                    ] : status === 'ready_for_submission' ? [
+                      'Come procedo con l\'invio?',
+                      'Cosa devo verificare prima?',
+                      'Dove invio la pratica?'
+                    ] : ['Cosa devo fare adesso?', 'Qual e lo stato attuale?', 'Manca qualcosa per procedere?']).map((q, i) => (
+                      <button key={i} onClick={() => setChatQuestion(q)} className="block w-full text-left text-[10px] text-[var(--text-primary)] p-2.5 bg-[var(--hover-soft)] rounded-lg hover:bg-[#0ABFCF]/10 transition-colors mb-1.5" data-testid={`chat-suggestion-${i}`}>{q}</button>
                     ))}
                   </div>
                 )}
@@ -602,18 +630,28 @@ export default function PracticeDetailPage() {
                   <div key={msg.id}>
                     <div className="flex justify-end mb-1"><div className="bg-[var(--text-primary)] text-white px-2.5 py-1.5 rounded-lg text-[10px] max-w-[85%]">{msg.question}</div></div>
                     <div className="flex gap-1.5 mb-1">
-                      <div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[var(--text-secondary)]" /></div>
+                      <div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0 mt-0.5"><Bot className="w-3 h-3 text-[#0ABFCF]" /></div>
                       <div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg text-[10px] text-[var(--text-primary)] max-w-[85%] whitespace-pre-wrap" style={{ borderColor: 'var(--border-soft)' }}>{msg.answer}</div>
                     </div>
                   </div>
                 ))}
-                {chatLoading && <div className="flex gap-1.5"><div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3" /></div><div className="bg-[var(--bg-app)] border px-2.5 py-1.5 rounded-lg" style={{ borderColor: 'var(--border-soft)' }}><Loader2 className="w-3 h-3 animate-spin text-[var(--text-secondary)]" /></div></div>}
+                {chatLoading && (
+                  <div className="flex gap-1.5">
+                    <div className="w-5 h-5 rounded bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0"><Bot className="w-3 h-3 text-[#0ABFCF]" /></div>
+                    <div className="bg-[var(--bg-app)] border px-3 py-2 rounded-lg" style={{ borderColor: 'var(--border-soft)' }}>
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin text-[#0ABFCF]" />
+                        <span className="text-[9px] text-[var(--text-muted)]">Herion sta analizzando la pratica...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div ref={chatEndRef} />
               </div>
             </ScrollArea>
             <form onSubmit={handleChat} className="flex gap-1.5">
-              <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Domanda..." className="rounded-lg h-8 text-[10px] flex-1" style={{ borderColor: 'var(--border-soft)' }} disabled={chatLoading} data-testid="chat-input" />
-              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[var(--text-primary)] hover:bg-[#2a3040] rounded-lg h-8 w-8 p-0" data-testid="chat-send-btn"><Send className="w-3 h-3" /></Button>
+              <Input value={chatQuestion} onChange={e => setChatQuestion(e.target.value)} placeholder="Chiedi qualcosa su questa pratica..." className="rounded-lg h-8 text-[10px] flex-1" style={{ borderColor: 'var(--border-soft)' }} disabled={chatLoading} data-testid="chat-input" />
+              <Button type="submit" size="sm" disabled={chatLoading || !chatQuestion.trim()} className="bg-[#0ABFCF] hover:bg-[#09a8b6] rounded-lg h-8 w-8 p-0" data-testid="chat-send-btn"><Send className="w-3 h-3 text-white" /></Button>
             </form>
           </div>
 

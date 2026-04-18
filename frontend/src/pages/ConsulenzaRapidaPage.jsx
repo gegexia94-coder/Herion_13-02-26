@@ -216,9 +216,19 @@ export default function ConsulenzaRapidaPage() {
               data-testid="consulenza-submit"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              Analizza la mia situazione
+              {loading ? 'Analisi in corso...' : 'Analizza la mia situazione'}
             </Button>
           </div>
+
+          {/* Loading reassurance */}
+          {loading && (
+            <div className="mt-4 flex items-center gap-3 p-3.5 rounded-xl bg-[#0ABFCF]/5 border border-[#0ABFCF]/15 animate-fade-in" data-testid="consulenza-loading-msg">
+              <Loader2 className="w-4 h-4 animate-spin text-[#0ABFCF] shrink-0" />
+              <p className="text-[12px] text-[var(--text-secondary)]">
+                Herion sta analizzando la tua situazione e cercando il percorso piu adatto per te...
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-[var(--bg-soft)]">

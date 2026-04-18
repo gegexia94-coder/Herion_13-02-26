@@ -189,23 +189,23 @@ export default function DashboardPage() {
       <div className="grid grid-cols-4 gap-2.5" data-testid="quick-actions">
         <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
           <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Consulenza rapida</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Descrivi e trova la procedura giusta</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">Consulenza</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Orientamento rapido con AI</p>
         </button>
         <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
           <Plus className="w-4 h-4 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
           <p className="text-[11px] font-bold text-[var(--text-primary)]">Nuova pratica</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Avvia con la preparazione guidata</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Preparazione guidata</p>
         </button>
         <button onClick={() => navigate('/services')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-services-btn">
           <BookOpen className="w-4 h-4 text-purple-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Aree operative</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Esplora i servizi di Herion</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">Servizi</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Aree operative</p>
         </button>
         <button onClick={() => navigate('/email-center')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
           <Send className="w-4 h-4 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">Comunicazione</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Messaggi e notifiche</p>
+          <p className="text-[11px] font-bold text-[var(--text-primary)]">Messaggi</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Email e comunicazioni</p>
         </button>
       </div>
 

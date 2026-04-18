@@ -11,13 +11,13 @@ import { getDashboardStats } from '@/services/api';
 
 const sideNav = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hint: 'Panoramica e azioni rapide' },
-  { path: '/practices', label: 'Pratiche', icon: FileText, hint: 'Gestisci le tue pratiche' },
-  { path: '/consulenza', label: 'Consulenza rapida', icon: MessageCircle, hint: 'Orientamento guidato con AI' },
-  { path: '/services', label: 'Aree operative', icon: Compass, hint: 'I sei pilastri del commercialista digitale' },
-  { path: '/catalog', label: 'Catalogo', icon: BookOpen, hint: 'Procedure disponibili' },
-  { path: '/vault', label: 'Documenti', icon: FolderOpen, hint: 'Tutti i tuoi documenti' },
-  { path: '/agents', label: 'Agenti', icon: Bot, hint: 'Attivita degli agenti' },
-  { path: '/email-center', label: 'Comunicazione', icon: Mail, hint: 'Email e messaggi' },
+  { path: '/practices', label: 'Pratiche', icon: FileText, hint: 'Le tue pratiche attive' },
+  { path: '/consulenza', label: 'Consulenza', icon: MessageCircle, hint: 'Orientamento rapido con AI' },
+  { path: '/services', label: 'Servizi', icon: Compass, hint: 'Aree operative' },
+  { path: '/catalog', label: 'Catalogo', icon: BookOpen, hint: 'Tutte le procedure' },
+  { path: '/vault', label: 'Documenti', icon: FolderOpen, hint: 'Archivio documenti' },
+  { path: '/agents', label: 'Attivita AI', icon: Bot, hint: 'Azioni degli agenti' },
+  { path: '/email-center', label: 'Messaggi', icon: Mail, hint: 'Email e comunicazioni' },
   { path: '/search', label: 'Ricerca', icon: Search, hint: 'Cerca pratiche e documenti' },
   { path: '/support', label: 'Supporto', icon: HelpCircle, hint: 'Aiuto e contatti' },
 ];

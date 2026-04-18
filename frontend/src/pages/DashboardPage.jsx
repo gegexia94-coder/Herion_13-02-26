@@ -175,9 +175,9 @@ export default function DashboardPage() {
       {/* ═══ WHAT NEEDS ATTENTION NOW ═══ */}
       {actionNeeded.length > 0 && (
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="attention-block">
-          <div className="flex items-center gap-2 px-5 py-3 bg-amber-50/40 border-b border-amber-100">
+          <div className="flex items-center gap-2 px-4 sm:px-5 py-3 bg-amber-50/40 border-b border-amber-100">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            <p className="text-[11px] font-bold text-amber-800">Serve il tuo intervento</p>
+            <p className="text-[11px] font-bold text-amber-800">{t('dash_attention', lang)}</p>
             <span className="text-[10px] font-bold text-amber-500 ml-auto">{actionNeeded.length}</span>
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--border-soft)' }}>
@@ -196,9 +196,9 @@ export default function DashboardPage() {
       {/* ═══ HERION ACTIVITY ═══ */}
       {(herionWorking.length > 0 || tracked.length > 0) && (
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="herion-activity-block">
-          <div className="flex items-center gap-2 px-5 py-3 bg-[#0ABFCF]/5 border-b" style={{ borderColor: 'rgba(10,191,207,0.15)' }}>
+          <div className="flex items-center gap-2 px-4 sm:px-5 py-3 bg-[#0ABFCF]/5 border-b" style={{ borderColor: 'rgba(10,191,207,0.15)' }}>
             <Compass className="w-3.5 h-3.5 text-[#0ABFCF]" />
-            <p className="text-[11px] font-bold text-[var(--text-primary)]">Herion sta seguendo</p>
+            <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_herion_following', lang)}</p>
             <span className="text-[10px] font-bold text-[#0ABFCF] ml-auto">{herionWorking.length + tracked.length}</span>
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--border-soft)' }}>
@@ -213,26 +213,26 @@ export default function DashboardPage() {
       )}
 
       {/* ═══ QUICK ACTIONS ═══ */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" data-testid="quick-actions">
-        <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
-          <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_consulenza', lang)}</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_consulenza_hint', lang)}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" data-testid="quick-actions">
+        <button onClick={() => navigate('/consulenza')} className="bg-white rounded-xl border p-3 sm:p-4 text-left hover:shadow-md transition-all group card-hover overflow-hidden" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-consulenza-btn">
+          <MessageCircle className="w-4 h-4 text-[#0ABFCF] mb-1.5 group-hover:scale-110 transition-transform" />
+          <p className="text-[11px] font-bold text-[var(--text-primary)] truncate">{t('dash_quick_consulenza', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5 truncate">{t('dash_quick_consulenza_hint', lang)}</p>
         </button>
-        <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
-          <Plus className="w-4 h-4 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_new', lang)}</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_new_hint', lang)}</p>
+        <button onClick={() => navigate('/practices/new')} className="bg-white rounded-xl border p-3 sm:p-4 text-left hover:shadow-md transition-all group card-hover overflow-hidden" style={{ borderColor: 'var(--border-soft)' }} data-testid="create-practice-btn">
+          <Plus className="w-4 h-4 text-emerald-500 mb-1.5 group-hover:scale-110 transition-transform" />
+          <p className="text-[11px] font-bold text-[var(--text-primary)] truncate">{t('dash_quick_new', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5 truncate">{t('dash_quick_new_hint', lang)}</p>
         </button>
-        <button onClick={() => navigate('/services')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-services-btn">
-          <BookOpen className="w-4 h-4 text-purple-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_services', lang)}</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_services_hint', lang)}</p>
+        <button onClick={() => navigate('/services')} className="bg-white rounded-xl border p-3 sm:p-4 text-left hover:shadow-md transition-all group card-hover overflow-hidden" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-services-btn">
+          <BookOpen className="w-4 h-4 text-purple-500 mb-1.5 group-hover:scale-110 transition-transform" />
+          <p className="text-[11px] font-bold text-[var(--text-primary)] truncate">{t('dash_quick_services', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5 truncate">{t('dash_quick_services_hint', lang)}</p>
         </button>
-        <button onClick={() => navigate('/email-center')} className="bg-white rounded-xl border p-4 text-left hover:shadow-md transition-all group card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
-          <Send className="w-4 h-4 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-          <p className="text-[11px] font-bold text-[var(--text-primary)]">{t('dash_quick_messages', lang)}</p>
-          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{t('dash_quick_messages_hint', lang)}</p>
+        <button onClick={() => navigate('/email-center')} className="bg-white rounded-xl border p-3 sm:p-4 text-left hover:shadow-md transition-all group card-hover overflow-hidden" style={{ borderColor: 'var(--border-soft)' }} data-testid="quick-email-btn">
+          <Send className="w-4 h-4 text-blue-500 mb-1.5 group-hover:scale-110 transition-transform" />
+          <p className="text-[11px] font-bold text-[var(--text-primary)] truncate">{t('dash_quick_messages', lang)}</p>
+          <p className="text-[9px] text-[var(--text-muted)] mt-0.5 truncate">{t('dash_quick_messages_hint', lang)}</p>
         </button>
       </div>
 
@@ -243,7 +243,7 @@ export default function DashboardPage() {
 
       {/* ═══ ALL PRACTICES ═══ */}
       <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="practice-table">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: 'var(--border-soft)' }}>
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b" style={{ borderColor: 'var(--border-soft)' }}>
           <h2 className="text-[12px] font-bold text-[var(--text-primary)]">{t('dash_your_practices', lang)}</h2>
           <Link to="/practices" className="text-[10px] font-semibold flex items-center gap-1 text-[#0ABFCF] hover:underline" data-testid="view-all-practices">
             {t('dash_view_all', lang)} <ArrowRight className="w-3 h-3" />
@@ -279,7 +279,7 @@ function ActionRow({ practice: p, onRun, onApprove, actionLoading }) {
   const isDraft = p.status === 'draft';
 
   return (
-    <div className="flex items-center gap-3 px-5 py-3 hover:bg-amber-50/20 transition-colors" data-testid={`action-row-${p.id}`}>
+    <div className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-amber-50/20 transition-colors" data-testid={`action-row-${p.id}`}>
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
       <Link to={`/practices/${p.id}`} className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold text-[var(--text-primary)] truncate">{p.client_name || 'Pratica'}</p>
@@ -339,7 +339,7 @@ function HerionRow({ practice: p, type }) {
 function PracticeRow({ practice: p, onRun, onApprove, actionLoading }) {
   const cfg = STATUS_CFG[p.status] || STATUS_CFG.draft;
   return (
-    <div className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${p.id}`}>
+    <div className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[var(--hover-soft)] transition-colors" data-testid={`practice-row-${p.id}`}>
       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
       <Link to={`/practices/${p.id}`} className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold text-[var(--text-primary)] truncate">{p.client_name || 'N/A'}</p>

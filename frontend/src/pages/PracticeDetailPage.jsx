@@ -260,14 +260,14 @@ export default function PracticeDetailPage() {
 
       {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <button onClick={() => navigate('/practices')} className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-2 transition-colors" data-testid="back-btn">
             <ArrowLeft className="w-3.5 h-3.5" />Torna alle pratiche
           </button>
-          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">{practice.practice_type_label}</h1>
-          <p className="text-[12px] text-[var(--text-secondary)]">{practice.client_name} &middot; {practice.country}</p>
+          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight truncate">{practice.practice_type_label}</h1>
+          <p className="text-[12px] text-[var(--text-secondary)] truncate">{practice.client_name} &middot; {practice.country}</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${pCfg.bg} ${pCfg.text}`} data-testid="practice-priority-badge">
             <span className={`w-1.5 h-1.5 rounded-full ${pCfg.dot}`} />{pCfg.label}
           </span>

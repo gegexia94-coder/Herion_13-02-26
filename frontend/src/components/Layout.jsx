@@ -169,7 +169,7 @@ export default function Layout() {
       </aside>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="flex-1 md:ml-[220px]">
+      <div className="flex-1 md:ml-[220px] overflow-x-hidden">
         <header className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b h-14 flex items-center px-4 gap-3" style={{ borderColor: 'var(--border-soft)' }}>
           <button onClick={() => setMobileOpen(!mobileOpen)} className="p-1.5 rounded-lg hover:bg-[var(--hover-soft)]" data-testid="mobile-menu-btn">
             {mobileOpen ? <X className="w-5 h-5 text-[var(--text-secondary)]" /> : <Menu className="w-5 h-5 text-[var(--text-secondary)]" />}

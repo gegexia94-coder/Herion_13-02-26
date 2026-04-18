@@ -20,7 +20,7 @@ function InsightCard({ insight }) {
   const cfg = PRIORITY_CFG[insight.priority] || PRIORITY_CFG.info;
   const Icon = cfg.icon;
   return (
-    <div className={`${cfg.bg} ${cfg.border} border rounded-xl p-4`} data-testid={`insight-${insight.priority}`}>
+    <div className={`${cfg.bg} ${cfg.border} border rounded-xl p-4 overflow-hidden`} data-testid={`insight-${insight.priority}`}>
       <div className="flex items-start gap-3">
         <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: cfg.color }} />
         <div className="flex-1 min-w-0">

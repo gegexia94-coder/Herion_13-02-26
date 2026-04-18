@@ -1,0 +1,129 @@
+{
+  "summary": "Iteration 46 - Document Verification + Rights/Risks Guidance Layer testing complete. All features verified: compliance endpoint returns rights/obligations/risks, workspace includes practice_type resolved via LEGACY_MAP, search matches practice_id and user_explanation, ComplianceCard visible in PracticeDetailPage, DocumentVaultPage privacy manifesto and badges visible.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/catalog/{id}/compliance",
+        "issue": "compliance_data.py had DICHIARAZIONE_REDDITI_PF but catalog uses INCOME_TAX_PF - FIXED by updating compliance_data.py",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration46.py",
+    "/app/test_reports/pytest/pytest_results_v46.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "features_tested": {
+    "compliance_endpoint_f24_preparation": {
+      "status": "PASS",
+      "details": [
+        "GET /api/catalog/F24_PREPARATION/compliance returns 200",
+        "has_guidance=true",
+        "rights array contains title and detail fields",
+        "obligations array contains title and detail fields",
+        "risks array contains title and detail fields",
+        "what_if_missed field present",
+        "disclaimer field present"
+      ]
+    },
+    "compliance_endpoint_vat_open_pf": {
+      "status": "PASS",
+      "details": [
+        "GET /api/catalog/VAT_OPEN_PF/compliance returns 200",
+        "has_guidance=true",
+        "category=fiscale",
+        "Procedure-specific guidance returned (Scelta del regime, Codice ATECO)"
+      ]
+    },
+    "compliance_endpoint_income_tax_pf": {
+      "status": "PASS",
+      "details": [
+        "GET /api/catalog/INCOME_TAX_PF/compliance returns 200",
+        "has_guidance=true",
+        "Redditi-specific guidance returned"
+      ]
+    },
+    "workspace_practice_type_field": {
+      "status": "PASS",
+      "details": [
+        "Workspace endpoint returns practice_type field",
+        "Workspace endpoint returns practice_name field",
+        "LEGACY_MAP resolves vat_registration to VAT_OPEN_PF"
+      ]
+    },
+    "create_practice_search_practice_id": {
+      "status": "PASS",
+      "details": [
+        "Search for 'F24' finds F24_PREPARATION and F24_WEB procedures",
+        "Search matches on practice_id field"
+      ]
+    },
+    "create_practice_search_user_explanation": {
+      "status": "PASS",
+      "details": [
+        "Search for 'apertura' finds 'Apertura Partita IVA persone fisiche'",
+        "Search for 'apertura' finds 'Orientamento apertura attivita'",
+        "Search matches on user_explanation and description fields"
+      ]
+    },
+    "practice_detail_compliance_card": {
+      "status": "PASS",
+      "details": [
+        "'Tutela e conformita' expandable card visible in PracticeDetailPage",
+        "data-testid='compliance-toggle' works to expand/collapse",
+        "'I tuoi diritti' section visible when expanded (green styling)",
+        "'I tuoi obblighi' section visible when expanded (blue styling)",
+        "'Rischi e sanzioni' section visible when expanded (amber styling)",
+        "'Cosa succede se salto un passaggio?' section visible (teal bg)",
+        "Disclaimer at bottom of compliance card visible"
+      ]
+    },
+    "document_vault_privacy_manifesto": {
+      "status": "PASS",
+      "details": [
+        "'La tua privacy, il nostro motore' visible in DocumentVaultPage",
+        "AES-256 badge visible",
+        "GDPR badge visible",
+        "'Dati in UE' badge visible",
+        "Archive clarification banner preserved"
+      ]
+    },
+    "practice_detail_document_section": {
+      "status": "PASS",
+      "details": [
+        "Document section visible in PracticeDetailPage",
+        "Archive clarification banner visible in document section",
+        "'Solo AI' badge shows on uploaded docs (when docs exist)",
+        "Data sovereignty section with AES-256/GDPR/UE badges visible (when docs exist)"
+      ]
+    }
+  },
+  "updated_files": [
+    "/app/backend/compliance_data.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (all UI tests passed)"
+  },
+  "test_credentials": {
+    "admin": "admin@aic.it / Admin123!"
+  },
+  "seed_data_creation": "Created TEST_Compliance_Test_User practice for testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 46 verified the Document Verification + Rights/Risks Guidance Layer: (1) GET /api/catalog/{id}/compliance endpoint returns rights, obligations, risks with has_guidance=true for F24_PREPARATION, VAT_OPEN_PF, INCOME_TAX_PF. (2) Workspace endpoint includes practice_type field resolved via LEGACY_MAP (vat_registration -> VAT_OPEN_PF). (3) CreatePracticePage search now matches on practice_id and user_explanation fields. (4) PracticeDetailPage shows 'Tutela e conformita' expandable card with rights (green), obligations (blue), risks (amber), what-if-missed (teal), and disclaimer sections. (5) DocumentVaultPage shows privacy manifesto 'La tua privacy, il nostro motore' with AES-256/GDPR/UE badges. (6) Document section in PracticeDetailPage shows 'Solo AI' badge and data sovereignty badges when documents exist. Fixed: compliance_data.py had DICHIARAZIONE_REDDITI_PF but catalog uses INCOME_TAX_PF - updated to match.",
+  "screenshots": [
+    ".screenshots/vault_privacy.png",
+    ".screenshots/create_practice_search.png",
+    ".screenshots/practice_compliance_card.png",
+    ".screenshots/practice_detail_full.png"
+  ]
+}

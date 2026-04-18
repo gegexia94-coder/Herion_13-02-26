@@ -102,6 +102,8 @@ export const getPreStartIntelligence = (practiceId, clientType = 'private') =>
   api.get(`/catalog/${practiceId}/pre-start?client_type=${clientType}`);
 export const getProcedureDependencies = (practiceId) =>
   api.get(`/catalog/${practiceId}/dependencies`);
+export const getProcedureCompliance = (practiceId) =>
+  api.get(`/catalog/${practiceId}/compliance`);
 export const getRegistry = () => api.get('/registry');
 export const getRegistryEntry = (registryId) => api.get(`/registry/${registryId}`);
 

@@ -105,6 +105,27 @@ export default function DocumentVaultPage() {
         <p className="text-[13px] text-[var(--text-secondary)]">I tuoi documenti sono conservati qui per la preparazione e l'organizzazione delle pratiche.</p>
       </div>
 
+      {/* Privacy manifesto */}
+      <div className="bg-gradient-to-r from-[var(--bg-soft)] to-white rounded-xl border p-5" style={{ borderColor: 'var(--border-soft)' }} data-testid="vault-privacy-manifesto">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[#0ABFCF]/10 flex items-center justify-center flex-shrink-0">
+            <Lock className="w-5 h-5 text-[#0ABFCF]" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[13px] font-bold text-[var(--text-primary)] mb-1">La tua privacy, il nostro motore</p>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              I tuoi documenti sono elaborati in modo automatizzato e protetto.
+              I dati necessari vengono estratti per la preparazione della pratica, senza visualizzazione del contenuto originale da parte di operatori.
+            </p>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Lock className="w-2.5 h-2.5" />AES-256</span>
+              <span className="text-[8px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Shield className="w-2.5 h-2.5" />GDPR</span>
+              <span className="text-[8px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" />Dati in UE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Archive clarification banner */}
       <div className="flex items-start gap-3 p-4 bg-blue-50/40 rounded-xl border border-blue-100/50" data-testid="vault-archive-banner">
         <Shield className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />

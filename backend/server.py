@@ -665,6 +665,19 @@ async def get_procedure_dependencies(practice_id: str, user: dict = Depends(get_
     deps["practice_name"] = entry.get("name", "")
     return deps
 
+
+@api_router.get("/catalog/{practice_id}/compliance")
+async def get_procedure_compliance(practice_id: str, user: dict = Depends(get_current_user)):
+    """Get rights, obligations, risks and sanctions guidance for a procedure."""
+    entry = await db.practice_catalog.find_one({"practice_id": practice_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Servizio non trovato nel catalogo")
+    from compliance_data import get_compliance_guidance
+    category = entry.get("category", "")
+    guidance = get_compliance_guidance(practice_id, category)
+    guidance["practice_name"] = entry.get("name", "")
+    return guidance
+
 @api_router.get("/registry")
 async def get_authority_registry(user: dict = Depends(get_current_user)):
     entries = await db.authority_registry.find({}, {"_id": 0}).to_list(200)
@@ -3431,6 +3444,7 @@ async def get_practice_workspace(practice_id: str, user: dict = Depends(get_curr
 
     return {
         "practice_id": practice_id,
+        "practice_type": catalog.get("practice_id") if catalog else practice_type,
         "practice_name": practice.get("practice_type_label", ""),
         "client_name": practice.get("client_name", ""),
         "user_status": USER_STATUS_DISPLAY.get(status, USER_STATUS_DISPLAY.get("draft")),

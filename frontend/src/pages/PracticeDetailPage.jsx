@@ -7,7 +7,7 @@ import {
   approvePractice, startPractice, markPracticeSubmitted, markPracticeCompleted,
   downloadPracticePdf, getPracticeWorkspace, delegatePractice,
   revokeDelegation, uploadProof, completeOfficialStep,
-  updateTracking, verifyTracking, getProcedureDependencies
+  updateTracking, verifyTracking, getProcedureDependencies, getProcedureCompliance
 } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +93,7 @@ export default function PracticeDetailPage() {
   const [trackingIdType, setTrackingIdType] = useState('protocol_number');
   const [trackingIdValue, setTrackingIdValue] = useState('');
   const [deps, setDeps] = useState(null);
+  const [compliance, setCompliance] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -108,6 +109,7 @@ export default function PracticeDetailPage() {
       const pType = w.data?.practice_type || p.data?.practice_type;
       if (pType) {
         try { const depRes = await getProcedureDependencies(pType); setDeps(depRes.data); } catch { /* no deps */ }
+        try { const compRes = await getProcedureCompliance(pType); setCompliance(compRes.data); } catch { /* no compliance */ }
       }
     } catch (e) { console.warn('Load failed:', e?.message); }
     finally { setLoading(false); }
@@ -412,6 +414,9 @@ export default function PracticeDetailPage() {
 
           {/* ── DEPENDENCY & RISK CARD ── */}
           {deps?.has_dependencies && <PracticeDependencyCard deps={deps} />}
+
+          {/* ── TUTELA E CONFORMITA ── */}
+          {compliance?.has_guidance && <ComplianceCard compliance={compliance} />}
 
           {/* ── FATHER REVIEW / APPROVAL GATE ── */}
           {canApprove && father.active && (
@@ -987,6 +992,106 @@ function OfficialStepCard({ action, proof, status, delegation, onOfficialStepCom
 }
 
 
+function ComplianceCard({ compliance }) {
+  const [expanded, setExpanded] = useState(false);
+  const rights = compliance.rights || [];
+  const obligations = compliance.obligations || [];
+  const risks = compliance.risks || [];
+  const whatIfMissed = compliance.what_if_missed;
+
+  return (
+    <div className="bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)', boxShadow: 'var(--shadow-card)' }} data-testid="compliance-card">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[var(--hover-soft)] transition-colors"
+        data-testid="compliance-toggle"
+      >
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-[#0ABFCF]" />
+          <div className="text-left">
+            <p className="text-[11px] font-bold text-[var(--text-primary)]">Tutela e conformita</p>
+            <p className="text-[9px] text-[var(--text-muted)]">Diritti, obblighi e rischi per questa procedura</p>
+          </div>
+        </div>
+        {expanded ? <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
+      </button>
+
+      {expanded && (
+        <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: 'var(--border-soft)' }}>
+          {/* Rights */}
+          {rights.length > 0 && (
+            <div data-testid="compliance-rights">
+              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <CheckCircle className="w-3 h-3" />I tuoi diritti
+              </p>
+              <div className="space-y-1.5">
+                {rights.map((r, i) => (
+                  <div key={i} className="p-2.5 bg-emerald-50/50 rounded-lg">
+                    <p className="text-[10px] font-semibold text-emerald-800">{r.title}</p>
+                    <p className="text-[9px] text-emerald-700/80 mt-0.5 leading-relaxed">{r.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Obligations */}
+          {obligations.length > 0 && (
+            <div data-testid="compliance-obligations">
+              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <ClipboardCheck className="w-3 h-3" />I tuoi obblighi
+              </p>
+              <div className="space-y-1.5">
+                {obligations.map((o, i) => (
+                  <div key={i} className="p-2.5 bg-blue-50/50 rounded-lg">
+                    <p className="text-[10px] font-semibold text-blue-800">{o.title}</p>
+                    <p className="text-[9px] text-blue-700/80 mt-0.5 leading-relaxed">{o.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Risks */}
+          {risks.length > 0 && (
+            <div data-testid="compliance-risks">
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3" />Rischi e sanzioni
+              </p>
+              <div className="space-y-1.5">
+                {risks.map((r, i) => (
+                  <div key={i} className="p-2.5 bg-amber-50/50 rounded-lg">
+                    <p className="text-[10px] font-semibold text-amber-800">{r.title}</p>
+                    <p className="text-[9px] text-amber-700/80 mt-0.5 leading-relaxed">{r.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* What happens if missed */}
+          {whatIfMissed && (
+            <div className="p-3 bg-[var(--bg-soft)] rounded-lg" data-testid="compliance-what-if">
+              <p className="text-[10px] font-bold text-[var(--text-primary)] mb-1 flex items-center gap-1.5">
+                <Info className="w-3 h-3 text-[#0ABFCF]" />Cosa succede se salto un passaggio?
+              </p>
+              <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed">{whatIfMissed}</p>
+            </div>
+          )}
+
+          {/* Disclaimer */}
+          <div className="flex items-start gap-2 pt-1" data-testid="compliance-disclaimer">
+            <Shield className="w-3 h-3 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
+            <p className="text-[8px] text-[var(--text-muted)] leading-relaxed italic">{compliance.disclaimer}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileSelect }) {
   const uploadedDocs = documents.filter(d => !d.is_deleted);
   return (
@@ -1046,7 +1151,12 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
                   <File className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{doc.original_filename}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">{badge}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {badge}
+                      <span className="text-[7px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" data-testid={`doc-ai-badge-${doc.id}`}>
+                        <Lock className="w-2 h-2" />Solo AI
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded"><Download className="w-3 h-3" /></Button>
@@ -1066,6 +1176,24 @@ function DocumentSection({ documents, docsSummary, canUpload, uploading, onFileS
         <div className="mt-3 p-3 bg-[var(--bg-soft)] rounded-lg flex items-start gap-2">
           <Shield className="w-3.5 h-3.5 text-[#0ABFCF] flex-shrink-0 mt-0.5" />
           <p className="text-[10px] text-[var(--text-secondary)]">I file <strong>.p7m</strong> sono firmati digitalmente. La firma garantisce autenticita e integrita.</p>
+        </div>
+      )}
+
+      {/* Data sovereignty & access transparency */}
+      {uploadedDocs.length > 0 && (
+        <div className="mt-3 p-3 bg-[var(--bg-app)] rounded-lg space-y-2" data-testid="doc-sovereignty">
+          <div className="flex items-start gap-2">
+            <Lock className="w-3 h-3 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[9px] font-semibold text-[var(--text-primary)]">Privacy dei tuoi documenti</p>
+              <p className="text-[8px] text-[var(--text-muted)] leading-relaxed">I file vengono elaborati in modalita automatizzata. I dati necessari alla pratica vengono estratti senza visualizzazione del contenuto originale da parte di operatori.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 pl-5">
+            <span className="text-[7px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Crittografia AES-256</span>
+            <span className="text-[7px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Conforme GDPR</span>
+            <span className="text-[7px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded">Dati in UE</span>
+          </div>
         </div>
       )}
     </div>

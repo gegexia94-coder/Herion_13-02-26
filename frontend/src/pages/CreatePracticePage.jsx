@@ -95,6 +95,8 @@ export default function CreatePracticePage() {
       c.name?.toLowerCase().includes(q) ||
       c.description?.toLowerCase().includes(q) ||
       c.category?.toLowerCase().includes(q) ||
+      c.practice_id?.toLowerCase().includes(q) ||
+      c.user_explanation?.toLowerCase().includes(q) ||
       c.official_action?.entity_name?.toLowerCase().includes(q)
     );
   }, [catalog, search]);

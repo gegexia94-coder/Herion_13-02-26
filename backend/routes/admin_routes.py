@@ -161,3 +161,182 @@ async def get_admin_statistics(window: str = "30d", user: dict = Depends(get_cur
         "trends": {"daily": daily_trend, "weekly": weekly_trend},
         "operational": {"top_procedures": top_procedures, "most_blocked": most_blocked},
     }
+
+
+
+@router.get("/creator/father")
+async def get_father_intelligence(user: dict = Depends(get_current_user)):
+    """Father Agent intelligence — creator-only operational analysis."""
+    if user.get("role") != "creator" and not user.get("is_creator"):
+        raise HTTPException(status_code=403, detail="Accesso riservato al creatore")
+
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = (now - timedelta(days=7)).isoformat()
+
+    # ── CORE COUNTS ──
+    total_users = await db.users.count_documents({"role": {"$ne": "admin"}})
+    total_practices = await db.practices.count_documents({})
+    practices_active = await db.practices.count_documents({"status": {"$nin": ["completed", "accepted_by_entity", "rejected_by_entity", "draft"]}})
+    practices_blocked = await db.practices.count_documents({"status": {"$in": ["blocked", "escalated", "internal_validation_failed"]}})
+    practices_waiting_docs = await db.practices.count_documents({"status": "waiting_user_documents"})
+    practices_draft = await db.practices.count_documents({"status": "draft"})
+    practices_completed = await db.practices.count_documents({"status": {"$in": ["completed", "accepted_by_entity"]}})
+    practices_waiting_ext = await db.practices.count_documents({"status": {"$in": ["waiting_external_response", "submitted_manually", "submitted_via_channel"]}})
+
+    # ── STALLED PRACTICES (no activity in 7+ days) ──
+    stalled = []
+    async for p in db.practices.find(
+        {"status": {"$nin": ["completed", "accepted_by_entity", "rejected_by_entity", "draft"]}, "updated_at": {"$lt": week_ago}},
+        {"_id": 0, "id": 1, "client_name": 1, "practice_type_label": 1, "status": 1, "updated_at": 1}
+    ).sort("updated_at", 1).limit(10):
+        days_idle = (now - datetime.fromisoformat(p.get("updated_at", now.isoformat()).replace("Z", "+00:00"))).days
+        stalled.append({**p, "days_idle": days_idle})
+
+    # ── ABANDONED FLOWS (draft for 3+ days, never started) ──
+    three_days_ago = (now - timedelta(days=3)).isoformat()
+    abandoned_drafts = await db.practices.count_documents({"status": "draft", "created_at": {"$lt": three_days_ago}})
+
+    # ── USERS WHO REGISTERED BUT NEVER CREATED A PRACTICE ──
+    users_with_practices = set(await db.practices.distinct("user_id"))
+    all_user_ids = []
+    async for u in db.users.find({"role": {"$ne": "admin"}}, {"_id": 1, "created_at": 1}):
+        all_user_ids.append({"id": str(u["_id"]), "created_at": u.get("created_at", "")})
+    never_started_count = len([u for u in all_user_ids if u["id"] not in users_with_practices])
+
+    # ── TOP BLOCKED PROCEDURE TYPES ──
+    blocked_pipeline = [
+        {"$match": {"status": {"$in": ["blocked", "escalated", "internal_validation_failed", "waiting_user_documents"]}}},
+        {"$group": {"_id": "$practice_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    friction_points = []
+    async for doc in db.practices.aggregate(blocked_pipeline):
+        cat = await db.practice_catalog.find_one({"practice_id": doc["_id"]}, {"_id": 0, "name": 1})
+        friction_points.append({
+            "procedure": cat.get("name", doc["_id"]) if cat else doc["_id"],
+            "practice_type": doc["_id"],
+            "stuck_count": doc["count"],
+        })
+
+    # ── MOST USED PROCEDURES ──
+    usage_pipeline = [
+        {"$match": {"practice_type": {"$exists": True}}},
+        {"$group": {"_id": "$practice_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    top_used = []
+    async for doc in db.practices.aggregate(usage_pipeline):
+        cat = await db.practice_catalog.find_one({"practice_id": doc["_id"]}, {"_id": 0, "name": 1})
+        top_used.append({
+            "procedure": cat.get("name", doc["_id"]) if cat else doc["_id"],
+            "count": doc["count"],
+        })
+
+    # ── CONSULENZA SESSIONS (last 7d) ──
+    consulenza_count = await db.consulenza_sessions.count_documents({"created_at": {"$gte": week_ago}})
+
+    # ── ACTIVITY TREND (last 7 days) ──
+    daily_actions = []
+    for i in range(6, -1, -1):
+        day = today_start - timedelta(days=i)
+        day_end = day + timedelta(days=1)
+        count = await db.activity_logs.count_documents({"timestamp": {"$gte": day.isoformat(), "$lt": day_end.isoformat()}})
+        daily_actions.append({"date": day.strftime("%a %d"), "count": count})
+
+    # ── BUILD FATHER INSIGHTS (prioritized) ──
+    insights = []
+
+    # Critical: blocked practices
+    if practices_blocked > 0:
+        insights.append({
+            "priority": "critical",
+            "signal": f"{practices_blocked} {'pratica bloccata' if practices_blocked == 1 else 'pratiche bloccate'}",
+            "explanation": "Queste pratiche hanno raggiunto uno stato di errore o escalation e richiedono intervento diretto.",
+            "action": "Controlla le pratiche bloccate e identifica la causa del blocco.",
+            "link": "/practices?filter=blocked",
+        })
+
+    # High: practices waiting for user documents
+    if practices_waiting_docs > 0:
+        insights.append({
+            "priority": "high",
+            "signal": f"{practices_waiting_docs} {'pratica in attesa' if practices_waiting_docs == 1 else 'pratiche in attesa'} di documenti",
+            "explanation": "Gli utenti non hanno ancora caricato i documenti richiesti. Questo e il collo di bottiglia piu comune.",
+            "action": "Valuta se le richieste documentali sono chiare o se serve semplificare il processo.",
+            "link": "/practices?filter=waiting_docs",
+        })
+
+    # High: stalled practices
+    if len(stalled) > 0:
+        insights.append({
+            "priority": "high",
+            "signal": f"{len(stalled)} {'pratica ferma' if len(stalled) == 1 else 'pratiche ferme'} da piu di 7 giorni",
+            "explanation": f"La pratica piu vecchia e ferma da {stalled[0]['days_idle']} giorni. Possibile confusione dell'utente o blocco tecnico.",
+            "action": "Verifica se gli utenti hanno bisogno di supporto o se il flusso ha un problema.",
+            "link": "/practices",
+        })
+
+    # Medium: abandoned drafts
+    if abandoned_drafts > 0:
+        insights.append({
+            "priority": "medium",
+            "signal": f"{abandoned_drafts} {'bozza abbandonata' if abandoned_drafts == 1 else 'bozze abbandonate'} da 3+ giorni",
+            "explanation": "Utenti che hanno iniziato a creare una pratica ma non l'hanno mai avviata. Possibile frizione nella fase di preparazione.",
+            "action": "Controlla se il flusso di creazione pratica e troppo complesso o mancano indicazioni.",
+        })
+
+    # Medium: users who never started
+    if never_started_count > 0 and total_users > 0:
+        pct = round(never_started_count / len(all_user_ids) * 100)
+        insights.append({
+            "priority": "medium",
+            "signal": f"{never_started_count} utenti registrati non hanno mai creato una pratica ({pct}%)",
+            "explanation": "Questi utenti si sono registrati ma non hanno trovato il percorso giusto o hanno perso interesse.",
+            "action": "Valuta se la dashboard iniziale guida abbastanza verso la prima azione.",
+        })
+
+    # Info: consulenza usage
+    if consulenza_count > 0:
+        insights.append({
+            "priority": "info",
+            "signal": f"{consulenza_count} consulenze rapide negli ultimi 7 giorni",
+            "explanation": "La Consulenza Rapida sta venendo utilizzata. Questo indica che gli utenti cercano orientamento.",
+            "action": "Verifica che le consulenze portino effettivamente a pratiche avviate.",
+        })
+
+    # Info: completion rate
+    total_non_draft = total_practices - practices_draft
+    if total_non_draft > 0:
+        completion_rate = round(practices_completed / total_non_draft * 100, 1)
+        insights.append({
+            "priority": "info",
+            "signal": f"Tasso di completamento: {completion_rate}%",
+            "explanation": f"{practices_completed} pratiche completate su {total_non_draft} avviate.",
+            "action": "Obiettivo: portare il tasso sopra il 60% migliorando i punti di frizione.",
+        })
+
+    return {
+        "generated_at": now.isoformat(),
+        "health": {
+            "total_users": total_users,
+            "total_practices": total_practices,
+            "active": practices_active,
+            "blocked": practices_blocked,
+            "waiting_docs": practices_waiting_docs,
+            "waiting_external": practices_waiting_ext,
+            "completed": practices_completed,
+            "draft": practices_draft,
+            "stalled_7d": len(stalled),
+            "abandoned_drafts": abandoned_drafts,
+            "never_started_users": never_started_count,
+            "consulenza_7d": consulenza_count,
+        },
+        "insights": insights,
+        "friction_points": friction_points,
+        "top_used": top_used,
+        "stalled_practices": stalled[:5],
+        "daily_activity": daily_actions,
+    }

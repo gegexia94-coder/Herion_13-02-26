@@ -13,7 +13,8 @@ import { toast } from 'sonner';
 const CAROUSEL_SLIDES = [
   { src: '/carousel-1.svg', alt: 'Autonomia fiscale' },
   { src: '/carousel-2.svg', alt: 'Il metodo Herion' },
-  { src: '/carousel-3.svg', alt: 'La tua crescita fiscale' },
+  { src: '/carousel-3.svg', alt: 'Gli agenti Herion' },
+  { src: '/carousel-4.svg', alt: 'La tua crescita fiscale' },
 ];
 
 function HeroCarousel() {

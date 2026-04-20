@@ -11,10 +11,9 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { toast } from 'sonner';
 
 const CAROUSEL_SLIDES = [
-  { src: '/carousel-1.png', alt: 'Autonomia fiscale' },
-  { src: '/carousel-2.png', alt: 'Il metodo Herion' },
-  { src: '/carousel-3.png', alt: 'Gli agenti Herion' },
-  { src: '/carousel-4.png', alt: 'La tua crescita fiscale' },
+  { src: '/carousel-1.svg', alt: 'Autonomia fiscale' },
+  { src: '/carousel-2.svg', alt: 'Il metodo Herion' },
+  { src: '/carousel-3.svg', alt: 'La tua crescita fiscale' },
 ];
 
 function HeroCarousel() {
@@ -32,8 +31,8 @@ function HeroCarousel() {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-2xl bg-[#0A192F]"
-      style={{ aspectRatio: '16/9', maxHeight: '480px' }}
+      className="relative w-full overflow-hidden rounded-2xl bg-[#F8F9FC]"
+      style={{ paddingBottom: '56.25%' }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       data-testid="hero-carousel"
@@ -41,23 +40,23 @@ function HeroCarousel() {
       {CAROUSEL_SLIDES.map((slide, i) => (
         <div
           key={i}
-          className="absolute inset-0 transition-opacity duration-700 ease-in-out"
+          className="absolute inset-0 transition-opacity duration-700 ease-in-out flex items-center justify-center"
           style={{ opacity: i === current ? 1 : 0 }}
         >
           <img
             src={slide.src}
             alt={slide.alt}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             loading={i === 0 ? 'eager' : 'lazy'}
           />
         </div>
       ))}
 
       {/* Nav arrows */}
-      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/20 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/40 transition-colors z-10" aria-label="Previous" data-testid="carousel-prev">
+      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/60 backdrop-blur-sm text-[#0A192F] flex items-center justify-center hover:bg-white/90 transition-colors z-10 shadow-sm" aria-label="Previous" data-testid="carousel-prev">
         <ChevronLeft className="w-5 h-5" />
       </button>
-      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/20 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/40 transition-colors z-10" aria-label="Next" data-testid="carousel-next">
+      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/60 backdrop-blur-sm text-[#0A192F] flex items-center justify-center hover:bg-white/90 transition-colors z-10 shadow-sm" aria-label="Next" data-testid="carousel-next">
         <ChevronRight className="w-5 h-5" />
       </button>
 
@@ -67,7 +66,7 @@ function HeroCarousel() {
           <button
             key={i}
             onClick={() => setCurrent(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? 'w-6 bg-white' : 'w-1.5 bg-white/40'}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? 'w-6 bg-[#0A192F]' : 'w-1.5 bg-[#0A192F]/25'}`}
             data-testid={`carousel-dot-${i}`}
           />
         ))}
@@ -301,19 +300,19 @@ export default function WelcomePage() {
       </section>
 
       {/* ═══ FINAL CTA ═══ */}
-      <section className="py-16 px-4 sm:px-6 bg-[#0A192F]/95" data-testid="cta-section">
+      <section className="py-16 px-4 sm:px-6" style={{ background: 'linear-gradient(180deg, rgba(10,25,47,0.04) 0%, rgba(10,191,207,0.06) 100%)' }} data-testid="cta-section">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-lg font-bold text-white/90 mb-2">
+          <h2 className="text-lg font-bold text-[#0A192F] mb-2">
             {isIT ? 'Meno confusione. Piu controllo.' : 'Less confusion. More control.'}
           </h2>
-          <p className="text-[12px] text-white/35 mb-6 max-w-md mx-auto leading-relaxed">
+          <p className="text-[12px] text-[var(--text-secondary)] mb-6 max-w-md mx-auto leading-relaxed">
             {isIT
               ? 'Inizia a gestire le tue pratiche con un commercialista digitale che ti accompagna. Dall\'inizio alla fine.'
               : 'Start managing your procedures with a digital accountant that walks with you. From start to finish.'
             }
           </p>
           <Link to="/register">
-            <Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-11 px-7 text-[13px] font-semibold" data-testid="cta-register-btn">
+            <Button className="bg-[#0A192F] hover:bg-[#162033] text-white rounded-xl h-11 px-7 text-[13px] font-semibold shadow-sm" data-testid="cta-register-btn">
               {t('welcome_cta_start', lang)} <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>

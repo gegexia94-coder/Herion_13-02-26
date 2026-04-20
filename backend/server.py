@@ -7127,10 +7127,13 @@ async def health():
 app.include_router(api_router)
 
 # CORS Middleware
+cors_origins_str = os.environ.get('CORS_ORIGINS', os.environ.get('FRONTEND_URL', '*'))
+cors_origins = ["*"] if cors_origins_str == "*" else [o.strip() for o in cors_origins_str.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[os.environ.get('FRONTEND_URL', '*')],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -325,7 +325,7 @@ export default function WelcomePage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <HerionMarkLight size={20} />
-            <span className="text-[10px] text-[var(--text-muted)] font-medium">Herion</span>
+            <span className="text-[10px] text-[var(--text-muted)] font-medium">HerionAgent</span>
             <span className="text-[9px] text-[var(--text-muted)]">&middot; {isIT ? 'Commercialista digitale' : 'Digital accountant'}</span>
           </div>
           <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">

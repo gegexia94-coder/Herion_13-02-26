@@ -5,7 +5,7 @@ export function HerionBrand({ size = 32, className = '', showText = false }) {
     <div className={`flex items-center gap-2 ${className}`} data-testid="herion-brand">
       <img src={LOGO_SRC} alt="Herion" width={size} height={size} className="object-contain" style={{ imageRendering: 'auto' }} />
       {showText && (
-        <span className="text-[15px] font-extrabold tracking-tight text-[#0A192F]">Herion</span>
+        <span className="text-[15px] font-extrabold tracking-tight text-[#0A192F]">HerionAgent</span>
       )}
     </div>
   );

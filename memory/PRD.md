@@ -1,19 +1,27 @@
 # Herion - Digital Accountant Platform
 
 ## Architecture
-Frontend: React + Tailwind + Shadcn | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | i18n: IT/EN | Responsive: mobile-first, 0 overflow
+Frontend: React + Tailwind + Shadcn | Backend: FastAPI + MongoDB | Auth: Cookie JWT | AI: GPT-5.2 via Emergent Key | i18n: IT/EN | Logo: /herion-logo.png
 
-## Responsive System
-- `overflow-x: hidden` on body + main content wrapper
-- Cards: `p-3 sm:p-4`, `overflow-hidden`, `truncate` on labels
-- Grids: `grid-cols-2 sm:grid-cols-4` (quick actions), `grid-cols-2 sm:grid-cols-3 lg:grid-cols-6` (metrics)
-- Layout stacking: `flex-col sm:flex-row` for headers
-- Tables: dual layout (hidden sm:grid desktop / sm:hidden mobile cards)
-- Padding: `px-4 sm:px-5 md:px-8`
-- Verified: 320px, 375px, 768px, 1920px — 0 overflow across all
+## Brand
+- Official logo: `/public/herion-logo.png` (3D metallic blue H)
+- Integrated: nav, sidebar, login, register, hero, CTA, footer, favicon
+- Component: `HerionLogo.jsx` exports HerionBrand, HerionHeroLogo, HerionIcon, HerionMark, HerionMarkLight
 
-## Testing: Iterations 21-50 all 100%
+## Welcome Page Structure (7 sections)
+1. Hero — "Le procedure fiscali non dovrebbero essere un labirinto"
+2. Value Blocks — 4 pillars (Comprendi/Prepara/Segui/Continuita)
+3. Flow Steps — 01-04 visual progression
+4. Before/After — emotional contrast (Prima/Dopo Herion)
+5. Chi Siamo — "Autonomia fiscale e liberta personale" + Herion principle
+6. Per Chi — 3 audience cards (Freelancer/Azienda/Privato)
+7. Final CTA — dark section with "Meno confusione. Piu controllo."
 
-## Execution Queue — DONE
-1-14. All features complete including responsive polish
-15. **NEXT**: Real SPID/CIE integration
+## Testing: Iterations 21-51 all 100%
+
+## Execution Queue
+1-14. ~~All previous~~ DONE
+15. ~~Brand integration + Welcome/Chi siamo rewrite + UX review~~ DONE (Apr 20, 2026)
+16. **NEXT**: Father Autonomous Change Authority (governance layer)
+17. Real SPID/CIE integration
+18. Advanced analytics

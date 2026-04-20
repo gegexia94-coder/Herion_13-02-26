@@ -1,44 +1,112 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { t } from '@/i18n/translations';
-import { ArrowRight, FileCheck, Compass, Shield, Eye, BookOpen, Users, Heart, CheckCircle } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Eye, FileCheck, Compass, Shield, Heart, CheckCircle, Users, BookOpen, Send, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { HerionBrand, HerionHeroLogo, HerionMarkLight } from '@/components/HerionLogo';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { HerionBrand, HerionMarkLight } from '@/components/HerionLogo';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { toast } from 'sonner';
+
+const CAROUSEL_SLIDES = [
+  { src: '/carousel-1.png', alt: 'Autonomia fiscale' },
+  { src: '/carousel-2.png', alt: 'Il metodo Herion' },
+  { src: '/carousel-3.png', alt: 'Gli agenti Herion' },
+  { src: '/carousel-4.png', alt: 'La tua crescita fiscale' },
+];
+
+function HeroCarousel() {
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const next = useCallback(() => setCurrent(c => (c + 1) % CAROUSEL_SLIDES.length), []);
+  const prev = useCallback(() => setCurrent(c => (c - 1 + CAROUSEL_SLIDES.length) % CAROUSEL_SLIDES.length), []);
+
+  useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(next, 6000);
+    return () => clearInterval(timer);
+  }, [paused, next]);
+
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-2xl bg-[#0A192F]"
+      style={{ aspectRatio: '16/9', maxHeight: '480px' }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      data-testid="hero-carousel"
+    >
+      {CAROUSEL_SLIDES.map((slide, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-opacity duration-700 ease-in-out"
+          style={{ opacity: i === current ? 1 : 0 }}
+        >
+          <img
+            src={slide.src}
+            alt={slide.alt}
+            className="w-full h-full object-cover"
+            loading={i === 0 ? 'eager' : 'lazy'}
+          />
+        </div>
+      ))}
+
+      {/* Nav arrows */}
+      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/20 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/40 transition-colors z-10" aria-label="Previous" data-testid="carousel-prev">
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/20 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/40 transition-colors z-10" aria-label="Next" data-testid="carousel-next">
+        <ChevronRight className="w-5 h-5" />
+      </button>
+
+      {/* Dots */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {CAROUSEL_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? 'w-6 bg-white' : 'w-1.5 bg-white/40'}`}
+            data-testid={`carousel-dot-${i}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const VALUE_BLOCKS = {
   it: [
-    { icon: Eye, title: 'Comprendi il contesto', desc: 'Ogni passaggio viene spiegato con chiarezza. Capisci cosa stai facendo e perche, senza dover ogni volta rivolgerti a uno specialista.' },
-    { icon: FileCheck, title: 'Prepara con sicurezza', desc: 'Herion raccoglie i documenti, verifica che siano completi e corretti, e ti prepara tutto prima del contatto con l\'ente. Niente sorprese.' },
-    { icon: Compass, title: 'Segui una guida chiara', desc: 'Per ogni procedura sai esattamente dove andare, cosa portare e cosa aspettarti. Herion ti accompagna verso il portale giusto al momento giusto.' },
-    { icon: Shield, title: 'Continuita fino alla fine', desc: 'Dopo l\'invio, Herion monitora lo stato della pratica e ti tiene informato. Non ti abbandona dopo il primo passaggio.' },
+    { icon: Eye, title: 'Comprensione', desc: 'Ogni passaggio viene spiegato nel suo contesto, cosi capisci il perche di cio che stai facendo.' },
+    { icon: Compass, title: 'Guida operativa', desc: 'Indicazioni chiare e progressive ti accompagnano in ogni fase, senza lasciarti nel dubbio.' },
+    { icon: FileCheck, title: 'Preparazione sicura', desc: 'Documenti verificati, dati controllati, firma pronta. Tutto e organizzato prima del contatto con l\'ente.' },
+    { icon: Shield, title: 'Autonomia crescente', desc: 'Piu utilizzi Herion, piu sviluppi sicurezza e indipendenza nelle tue procedure.' },
   ],
   en: [
-    { icon: Eye, title: 'Understand the context', desc: 'Each step is explained clearly. You understand what you\'re doing and why, without needing a specialist every time.' },
-    { icon: FileCheck, title: 'Prepare with confidence', desc: 'Herion collects documents, verifies completeness, and prepares everything before you contact the authority. No surprises.' },
-    { icon: Compass, title: 'Follow a clear guide', desc: 'For each procedure you know exactly where to go, what to bring, and what to expect. Herion walks you through the right portal at the right time.' },
-    { icon: Shield, title: 'Continuity to the end', desc: 'After submission, Herion monitors the practice status and keeps you informed. It doesn\'t leave after the first step.' },
-  ],
-};
-
-const FLOW_STEPS = {
-  it: [
-    { num: '01', label: 'Capisci', desc: 'Cosa serve e cosa succede' },
-    { num: '02', label: 'Prepara', desc: 'Documenti verificati e pronti' },
-    { num: '03', label: 'Agisci', desc: 'Guida verso il portale ufficiale' },
-    { num: '04', label: 'Segui', desc: 'Monitoraggio fino alla conferma' },
-  ],
-  en: [
-    { num: '01', label: 'Understand', desc: 'What\'s needed and what happens' },
-    { num: '02', label: 'Prepare', desc: 'Documents verified and ready' },
-    { num: '03', label: 'Act', desc: 'Guided to the official portal' },
-    { num: '04', label: 'Follow', desc: 'Monitored until confirmation' },
+    { icon: Eye, title: 'Understanding', desc: 'Each step is explained in context, so you understand the why behind what you\'re doing.' },
+    { icon: Compass, title: 'Operational guidance', desc: 'Clear and progressive directions guide you through every phase, never leaving you in doubt.' },
+    { icon: FileCheck, title: 'Secure preparation', desc: 'Documents verified, data checked, signature ready. Everything is organized before contacting the authority.' },
+    { icon: Shield, title: 'Growing autonomy', desc: 'The more you use Herion, the more confidence and independence you develop in your procedures.' },
   ],
 };
 
 export default function WelcomePage() {
   const { lang } = useLanguage();
   const isIT = lang === 'it';
+  const [collab, setCollab] = useState({ name: '', email: '', message: '' });
+  const [sending, setSending] = useState(false);
+
+  const handleCollab = (e) => {
+    e.preventDefault();
+    if (!collab.email.trim()) return;
+    setSending(true);
+    setTimeout(() => {
+      toast.success(isIT ? 'Grazie! Ti contatteremo presto.' : 'Thanks! We\'ll contact you soon.');
+      setCollab({ name: '', email: '', message: '' });
+      setSending(false);
+    }, 800);
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-app)]" data-testid="welcome-page">
@@ -55,42 +123,36 @@ export default function WelcomePage() {
         </div>
       </nav>
 
-      {/* ═══ HERO ═══ */}
-      <section className="pt-28 sm:pt-36 pb-16 sm:pb-24 px-4 sm:px-6 relative overflow-hidden" data-testid="hero-section">
-        <div className="max-w-3xl mx-auto relative">
-          <div className="mb-8">
-            <HerionHeroLogo className="mb-6" />
-          </div>
+      {/* ═══ HERO CAROUSEL ═══ */}
+      <section className="pt-20 sm:pt-24 px-4 sm:px-6" data-testid="hero-section">
+        <div className="max-w-5xl mx-auto">
+          <HeroCarousel />
+        </div>
+      </section>
 
-          <h1 className="text-[26px] sm:text-[34px] lg:text-[40px] font-extrabold text-[#0A192F] leading-[1.15] tracking-tight mb-5">
+      {/* ═══ HEADLINE + CTA ═══ */}
+      <section className="py-12 sm:py-16 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-[24px] sm:text-[32px] lg:text-[38px] font-extrabold text-[#0A192F] leading-[1.15] tracking-tight mb-4">
             {isIT
-              ? <>Le procedure fiscali<br />non dovrebbero essere un labirinto.</>
-              : <>Tax procedures<br />shouldn't be a maze.</>
+              ? <>La burocrazia fiscale non dovrebbe<br className="hidden sm:block" /> essere un labirinto incomprensibile.</>
+              : <>Tax bureaucracy shouldn't be<br className="hidden sm:block" /> an incomprehensible maze.</>
             }
           </h1>
-
-          <p className="text-[15px] sm:text-[16px] text-[var(--text-secondary)] leading-[1.7] max-w-xl mb-4">
+          <p className="text-[14px] sm:text-[15px] text-[var(--text-secondary)] leading-[1.7] max-w-xl mx-auto mb-8">
             {isIT
-              ? 'Troppo spesso nessuno spiega con chiarezza cosa fare, a meno di rivolgersi ogni volta a uno specialista. Ma questo costa tempo, energia e denaro che non tutti possono permettersi per ogni pratica personale.'
-              : 'Too often, nobody explains clearly what to do unless you go to a specialist every single time. But this takes time, energy, and money that not everyone can afford for each personal procedure.'
+              ? 'Herion ti accompagna passo dopo passo in ogni procedura, trasformando la complessita in un percorso piu chiaro, consapevole e gestibile.'
+              : 'Herion walks with you step by step through every procedure, turning complexity into a clearer, more conscious, and manageable path.'
             }
           </p>
-
-          <p className="text-[15px] sm:text-[16px] text-[#0A192F] leading-[1.7] max-w-xl mb-10 font-medium">
-            {isIT
-              ? 'Herion nasce per rendere questi passaggi piu chiari, piu accessibili e meno pesanti da affrontare.'
-              : 'Herion exists to make these steps clearer, more accessible, and less heavy to face.'
-            }
-          </p>
-
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap justify-center gap-3">
             <Link to="/register">
-              <Button className="bg-[#0A192F] hover:bg-[#162033] text-white rounded-xl h-12 px-8 text-[14px] font-semibold shadow-lg shadow-black/8" data-testid="hero-cta-btn">
+              <Button className="bg-[#0A192F] hover:bg-[#162033] text-white rounded-xl h-11 px-7 text-[13px] font-semibold shadow-lg shadow-black/8" data-testid="hero-cta-btn">
                 {t('welcome_cta_start', lang)} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
-            <a href="#come-funziona">
-              <Button variant="outline" className="rounded-xl h-12 px-6 text-[14px] border-[var(--border-soft)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]" data-testid="hero-how-btn">
+            <a href="#metodo">
+              <Button variant="outline" className="rounded-xl h-11 px-6 text-[13px] border-[var(--border-soft)] text-[var(--text-secondary)]" data-testid="hero-how-btn">
                 {t('welcome_cta_how', lang)}
               </Button>
             </a>
@@ -98,33 +160,23 @@ export default function WelcomePage() {
         </div>
       </section>
 
-      {/* ═══ VALUE BLOCKS — Core reasons Herion matters ═══ */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white" id="come-funziona" data-testid="value-section">
+      {/* ═══ VALUE BLOCKS — Il metodo Herion ═══ */}
+      <section className="py-14 sm:py-18 px-4 sm:px-6 bg-white" id="metodo" data-testid="value-section">
         <div className="max-w-4xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-2 text-center">
             {isIT ? 'Il metodo Herion' : 'The Herion method'}
           </p>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0A192F] leading-tight mb-3">
-            {isIT
-              ? 'Comprendere, agire, diventare autonomi.'
-              : 'Understand, act, become autonomous.'
-            }
+          <h2 className="text-lg sm:text-xl font-bold text-[#0A192F] text-center mb-8">
+            {isIT ? 'Comprendere, agire, diventare autonomi.' : 'Understand, act, become autonomous.'}
           </h2>
-          <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed mb-10 max-w-xl">
-            {isIT
-              ? 'Herion ti accompagna passo dopo passo in ogni procedura, trasformando la complessita in un percorso chiaro, consapevole e gestibile.'
-              : 'Herion walks with you step by step through every procedure, turning complexity into a clear, conscious, and manageable path.'
-            }
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(VALUE_BLOCKS[lang] || VALUE_BLOCKS.it).map((block, i) => (
-              <div key={i} className="flex items-start gap-4 p-5 rounded-xl border bg-[var(--bg-app)] transition-all hover:shadow-sm" style={{ borderColor: 'var(--border-soft)' }} data-testid={`value-block-${i}`}>
-                <div className="w-10 h-10 rounded-xl bg-[#0ABFCF]/8 flex items-center justify-center flex-shrink-0">
-                  <block.icon className="w-[18px] h-[18px] text-[#0ABFCF]" strokeWidth={1.5} />
+              <div key={i} className="flex items-start gap-3.5 p-4 rounded-xl border bg-[var(--bg-app)] card-hover" style={{ borderColor: 'var(--border-soft)' }} data-testid={`value-block-${i}`}>
+                <div className="w-9 h-9 rounded-lg bg-[#0ABFCF]/8 flex items-center justify-center flex-shrink-0">
+                  <block.icon className="w-4 h-4 text-[#0ABFCF]" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-[#0A192F] mb-1">{block.title}</p>
+                  <p className="text-[12px] font-bold text-[#0A192F] mb-0.5">{block.title}</p>
                   <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{block.desc}</p>
                 </div>
               </div>
@@ -133,157 +185,135 @@ export default function WelcomePage() {
         </div>
       </section>
 
-      {/* ═══ FLOW STEPS — Quick visual ═══ */}
-      <section className="py-14 px-4 sm:px-6" data-testid="flow-section">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {(FLOW_STEPS[lang] || FLOW_STEPS.it).map((step, i) => (
-              <div key={i} className="relative group">
-                <div className="bg-white rounded-xl border p-4 sm:p-5 h-full" style={{ borderColor: 'var(--border-soft)' }}>
-                  <span className="text-[24px] font-black text-[#0ABFCF]/12 block mb-1.5 leading-none">{step.num}</span>
-                  <p className="text-[12px] font-bold text-[#0A192F] mb-0.5">{step.label}</p>
-                  <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">{step.desc}</p>
-                </div>
-                {i < 3 && <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-px bg-[var(--border-soft)]" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ BEFORE / AFTER — Emotional impact ═══ */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white" data-testid="before-after-section">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Before */}
-            <div className="p-6 rounded-xl bg-[#FEF2F2] border border-red-100">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-400 mb-3">
-                {isIT ? 'Prima di Herion' : 'Before Herion'}
-              </p>
-              <div className="space-y-2.5">
-                {(isIT
-                  ? ['Compilavi moduli senza comprenderli davvero', 'Firmavi con incertezza', 'Ogni scadenza sembrava una fonte di ansia', 'La burocrazia appariva come un percorso confuso, da affrontare per tentativi']
-                  : ['You filled out forms without truly understanding them', 'You signed with uncertainty', 'Every deadline felt like a source of anxiety', 'Bureaucracy appeared as a confusing path, faced by trial and error']
-                ).map((line, i) => (
-                  <p key={i} className="text-[12px] text-red-800/70 leading-relaxed">{line}.</p>
-                ))}
-              </div>
+      {/* ═══ BEFORE / AFTER ═══ */}
+      <section className="py-14 sm:py-18 px-4 sm:px-6" data-testid="before-after-section">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-5 rounded-xl bg-red-50/60 border border-red-100/80">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-400 mb-3">
+              {isIT ? 'Prima di Herion' : 'Before Herion'}
+            </p>
+            <div className="space-y-2">
+              {(isIT
+                ? ['Compilavi moduli senza comprenderli davvero', 'Firmavi con incertezza', 'Ogni scadenza sembrava una fonte di ansia', 'La burocrazia appariva come un percorso confuso']
+                : ['You filled forms without truly understanding them', 'You signed with uncertainty', 'Every deadline felt like anxiety', 'Bureaucracy was a confusing path']
+              ).map((line, i) => (
+                <p key={i} className="text-[11px] text-red-700/60 leading-relaxed">{line}.</p>
+              ))}
             </div>
-            {/* After */}
-            <div className="p-6 rounded-xl bg-[#F0FDF4] border border-emerald-100">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-500 mb-3">
-                {isIT ? 'Dopo Herion' : 'After Herion'}
-              </p>
-              <div className="space-y-2.5">
-                {(isIT
-                  ? ['Ogni campo ha un significato chiaro', 'Ogni firma diventa una scelta consapevole', 'Le scadenze non sono piu un peso, ma passaggi da gestire con metodo', 'Con Herion capisci cosa stai facendo e lo fai con piu sicurezza']
-                  : ['Every field has a clear meaning', 'Every signature becomes a conscious choice', 'Deadlines are no longer a burden, but steps to manage with method', 'With Herion you understand what you\'re doing and do it with more confidence']
-                ).map((line, i) => (
-                  <p key={i} className="text-[12px] text-emerald-800/70 leading-relaxed flex items-start gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />{line}.
-                  </p>
-                ))}
-              </div>
+          </div>
+          <div className="p-5 rounded-xl bg-emerald-50/60 border border-emerald-100/80">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-500 mb-3">
+              {isIT ? 'Dopo Herion' : 'After Herion'}
+            </p>
+            <div className="space-y-2">
+              {(isIT
+                ? ['Ogni campo ha un significato chiaro', 'Ogni firma diventa una scelta consapevole', 'Le scadenze diventano passaggi da gestire con metodo', 'Con Herion capisci cosa fai e lo fai con sicurezza']
+                : ['Every field has clear meaning', 'Every signature becomes a conscious choice', 'Deadlines become steps managed with method', 'With Herion you understand and act with confidence']
+              ).map((line, i) => (
+                <p key={i} className="text-[11px] text-emerald-700/60 leading-relaxed flex items-start gap-2">
+                  <CheckCircle className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />{line}.
+                </p>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══ CHI SIAMO — Why Herion exists ═══ */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6" data-testid="about-section">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-3">Chi siamo</p>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0A192F] leading-tight mb-6">
-            {isIT
-              ? <>Autonomia fiscale<br />e liberta personale.</>
-              : <>Fiscal autonomy<br />is personal freedom.</>
-            }
+      {/* ═══ CHI SIAMO ═══ */}
+      <section className="py-14 sm:py-18 px-4 sm:px-6 bg-white" data-testid="about-section">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] mb-2">Chi siamo</p>
+          <h2 className="text-lg sm:text-xl font-bold text-[#0A192F] mb-5">
+            {isIT ? 'Autonomia fiscale e liberta personale.' : 'Fiscal autonomy is personal freedom.'}
           </h2>
-
-          <div className="space-y-4 mb-8">
-            <p className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
-              {isIT
-                ? 'La chiarezza non e un lusso, ma una condizione per agire bene. Herion rende le procedure piu comprensibili, piu guidate e meno pesanti da affrontare.'
-                : 'Clarity is not a luxury, but a condition for acting well. Herion makes procedures more understandable, more guided, and less heavy to face.'
-              }
-            </p>
-            <p className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
-              {isIT
-                ? 'Oggi molte procedure sembrano difficili soprattutto perche nessuno le spiega con chiarezza, se non a costo di rivolgersi ogni volta a uno specialista. Ma questo richiede tempo, energie e spese che non tutti possono sostenere per ogni pratica personale presso gli enti competenti.'
-                : 'Today many procedures seem difficult mainly because nobody explains them clearly, unless you pay a specialist every single time. But this requires time, energy, and costs that not everyone can sustain for each personal procedure at the relevant authorities.'
-              }
-            </p>
-            <p className="text-[14px] text-[#0A192F] leading-[1.75] font-medium">
-              {isIT
-                ? 'Herion nasce per rendere questi passaggi piu chiari, piu accessibili e meno pesanti, aiutandoti a comprendere, preparare e procedere con maggiore sicurezza.'
-                : 'Herion exists to make these steps clearer, more accessible, and less heavy, helping you understand, prepare, and proceed with greater confidence.'
-              }
-            </p>
-          </div>
-
-          <div className="p-5 bg-white rounded-xl border" style={{ borderColor: 'var(--border-soft)' }}>
-            <div className="flex items-start gap-3">
-              <Heart className="w-4 h-4 text-[#0ABFCF] flex-shrink-0 mt-1" />
-              <div>
-                <p className="text-[12px] text-[#0A192F] font-semibold mb-1">
-                  {isIT ? 'Il principio di Herion' : 'The Herion principle'}
-                </p>
-                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed italic">
-                  {isIT
-                    ? '"Impara a essere contabile di te stesso. Herion e il partner che ti insegna mentre ti aiuta, trasformando ogni procedura fiscale in un\'opportunita di crescita personale e professionale."'
-                    : '"Learn to be your own accountant. Herion is the partner that teaches while it helps, turning every fiscal procedure into an opportunity for personal and professional growth."'
-                  }
-                </p>
-              </div>
+          <p className="text-[13px] text-[var(--text-secondary)] leading-[1.75] max-w-lg mx-auto mb-6">
+            {isIT
+              ? 'Oggi molte procedure sembrano difficili soprattutto perche nessuno le spiega con chiarezza, se non a costo di rivolgersi ogni volta a uno specialista. Ma questo richiede tempo, energie e spese che non tutti possono sostenere.'
+              : 'Today many procedures seem difficult mainly because nobody explains them clearly, unless you pay a specialist every time. But this requires time, energy, and costs that not everyone can sustain.'
+            }
+          </p>
+          <div className="p-4 bg-[var(--bg-app)] rounded-xl border inline-block text-left max-w-md" style={{ borderColor: 'var(--border-soft)' }}>
+            <div className="flex items-start gap-2.5">
+              <Heart className="w-3.5 h-3.5 text-[#0ABFCF] flex-shrink-0 mt-1" />
+              <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed italic">
+                {isIT
+                  ? '"Impara a essere contabile di te stesso. Herion e il partner che ti insegna mentre ti aiuta."'
+                  : '"Learn to be your own accountant. Herion is the partner that teaches while it helps."'
+                }
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══ CONSULTATION / GUIDANCE ═══ */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white" data-testid="consultation-section">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-3">
+      {/* ═══ FOR WHO ═══ */}
+      <section className="py-14 sm:py-18 px-4 sm:px-6" data-testid="audience-section">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-2 text-center">
             {isIT ? 'Per chi e Herion' : 'Who is Herion for'}
           </p>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0A192F] leading-tight mb-8">
-            {isIT
-              ? <>Non sai da dove partire?<br />Herion ti aiuta a orientarti.</>
-              : <>Not sure where to start?<br />Herion helps you find the way.</>
-            }
+          <h2 className="text-lg sm:text-xl font-bold text-[#0A192F] text-center mb-8">
+            {isIT ? 'Per chi vuole procedere con piu chiarezza.' : 'For anyone who wants to proceed with more clarity.'}
           </h2>
-
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { icon: Users, label: isIT ? 'Libero professionista' : 'Freelancer', desc: isIT ? 'P.IVA, regime forfettario, contributi, F24 e scadenze. Herion ti mostra il percorso adatto a te.' : 'VAT, flat-rate regime, contributions, tax payments. Herion shows you the right path.' },
-              { icon: BookOpen, label: isIT ? 'Azienda' : 'Company', desc: isIT ? 'Adempimenti societari, Camera di Commercio, bilanci. Herion organizza e segue tutto il necessario.' : 'Corporate filings, chamber of commerce, financial statements. Herion organizes everything.' },
-              { icon: Compass, label: isIT ? 'Privato' : 'Individual', desc: isIT ? 'Dichiarazioni, cassetto fiscale, documenti personali. Herion ti guida anche nelle pratiche piu semplici.' : 'Tax returns, fiscal records, personal documents. Herion guides you through even the simplest procedures.' },
+              { icon: Users, label: isIT ? 'Professionisti' : 'Professionals', desc: isIT ? 'P.IVA, regime forfettario, contributi, F24 e scadenze.' : 'VAT, flat-rate regime, contributions, tax payments.' },
+              { icon: BookOpen, label: isIT ? 'Aziende' : 'Companies', desc: isIT ? 'Adempimenti societari, Camera di Commercio, bilanci.' : 'Corporate filings, chamber of commerce, statements.' },
+              { icon: Compass, label: isIT ? 'Privati' : 'Individuals', desc: isIT ? 'Dichiarazioni, cassetto fiscale, documenti personali.' : 'Tax returns, fiscal records, personal documents.' },
             ].map((card, i) => (
-              <div key={i} className="p-5 rounded-xl border bg-[var(--bg-app)]" style={{ borderColor: 'var(--border-soft)' }} data-testid={`consultation-card-${i}`}>
-                <card.icon className="w-5 h-5 text-[#0ABFCF] mb-3" strokeWidth={1.5} />
-                <p className="text-[13px] font-bold text-[#0A192F] mb-1.5">{card.label}</p>
-                <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{card.desc}</p>
+              <div key={i} className="p-4 rounded-xl border bg-white card-hover" style={{ borderColor: 'var(--border-soft)' }}>
+                <card.icon className="w-5 h-5 text-[#0ABFCF] mb-2.5" strokeWidth={1.5} />
+                <p className="text-[12px] font-bold text-[#0A192F] mb-1">{card.label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">{card.desc}</p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ═══ COLLABORATION FORM ═══ */}
+      <section className="py-14 sm:py-18 px-4 sm:px-6 bg-white" data-testid="collab-section">
+        <div className="max-w-lg mx-auto text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0ABFCF] mb-2">
+            {isIT ? 'Collabora con noi' : 'Join us'}
+          </p>
+          <h2 className="text-lg font-bold text-[#0A192F] mb-2">
+            {isIT ? 'Vuoi aiutarci a crescere?' : 'Want to help us grow?'}
+          </h2>
+          <p className="text-[12px] text-[var(--text-secondary)] mb-6 max-w-sm mx-auto leading-relaxed">
+            {isIT
+              ? 'Cerchiamo collaboratori, commercialisti, sviluppatori e professionisti che vogliono rendere la burocrazia piu umana.'
+              : 'We\'re looking for collaborators, accountants, developers, and professionals who want to make bureaucracy more human.'
+            }
+          </p>
+          <form onSubmit={handleCollab} className="space-y-3 text-left">
+            <div className="grid grid-cols-2 gap-3">
+              <Input value={collab.name} onChange={e => setCollab({...collab, name: e.target.value})} placeholder={isIT ? 'Nome' : 'Name'} className="rounded-xl h-10 text-[12px] border-[var(--border-soft)]" data-testid="collab-name" />
+              <Input type="email" value={collab.email} onChange={e => setCollab({...collab, email: e.target.value})} placeholder="Email" required className="rounded-xl h-10 text-[12px] border-[var(--border-soft)]" data-testid="collab-email" />
+            </div>
+            <Textarea value={collab.message} onChange={e => setCollab({...collab, message: e.target.value})} placeholder={isIT ? 'Come vorresti contribuire?' : 'How would you like to contribute?'} className="rounded-xl text-[12px] border-[var(--border-soft)] min-h-[80px] resize-none" data-testid="collab-message" />
+            <Button type="submit" disabled={sending} className="w-full bg-[#0A192F] hover:bg-[#162033] text-white rounded-xl h-10 text-[12px] font-semibold gap-2" data-testid="collab-submit">
+              <Mail className="w-3.5 h-3.5" />
+              {sending ? (isIT ? 'Invio...' : 'Sending...') : (isIT ? 'Invia' : 'Send')}
+            </Button>
+          </form>
         </div>
       </section>
 
       {/* ═══ FINAL CTA ═══ */}
-      <section className="py-20 px-4 sm:px-6 bg-[#0A192F]" data-testid="cta-section">
+      <section className="py-16 px-4 sm:px-6 bg-[#0A192F]/95" data-testid="cta-section">
         <div className="max-w-2xl mx-auto text-center">
-          <HerionMarkLight size={40} className="mx-auto mb-5" />
-          <h2 className="text-xl font-bold text-white mb-3">
+          <h2 className="text-lg font-bold text-white/90 mb-2">
             {isIT ? 'Meno confusione. Piu controllo.' : 'Less confusion. More control.'}
           </h2>
-          <p className="text-[13px] text-white/40 mb-8 max-w-md mx-auto leading-relaxed">
+          <p className="text-[12px] text-white/35 mb-6 max-w-md mx-auto leading-relaxed">
             {isIT
-              ? 'Inizia a gestire le tue pratiche con un commercialista digitale che ti accompagna davvero. Dall\'inizio alla fine.'
-              : 'Start managing your procedures with a digital accountant that truly walks with you. From start to finish.'
+              ? 'Inizia a gestire le tue pratiche con un commercialista digitale che ti accompagna. Dall\'inizio alla fine.'
+              : 'Start managing your procedures with a digital accountant that walks with you. From start to finish.'
             }
           </p>
           <Link to="/register">
-            <Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-12 px-8 text-[14px] font-semibold" data-testid="cta-register-btn">
+            <Button className="bg-[#0ABFCF] hover:bg-[#09a8b6] text-white rounded-xl h-11 px-7 text-[13px] font-semibold" data-testid="cta-register-btn">
               {t('welcome_cta_start', lang)} <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
@@ -291,18 +321,16 @@ export default function WelcomePage() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="py-8 px-4 sm:px-6 bg-[#0f1420] text-white/40" data-testid="footer">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <HerionMarkLight size={24} />
-            <span className="text-[11px] text-white/30 font-medium">Herion</span>
+      <footer className="py-6 px-4 sm:px-6 bg-[var(--bg-app)] border-t" style={{ borderColor: 'var(--border-soft)' }} data-testid="footer">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <HerionMarkLight size={20} />
+            <span className="text-[10px] text-[var(--text-muted)] font-medium">Herion</span>
+            <span className="text-[9px] text-[var(--text-muted)]">&middot; {isIT ? 'Commercialista digitale' : 'Digital accountant'}</span>
           </div>
-          <p className="text-[10px] text-white/20 text-center">
-            {isIT ? 'Commercialista digitale. Chiarezza, guida e continuita.' : 'Digital accountant. Clarity, guidance, and continuity.'}
-          </p>
-          <div className="flex items-center gap-4 text-[11px]">
-            <Link to="/login" className="text-white/30 hover:text-white/50 transition-colors">{t('welcome_nav_login', lang)}</Link>
-            <Link to="/register" className="text-white/30 hover:text-white/50 transition-colors">{t('welcome_nav_register', lang)}</Link>
+          <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
+            <Link to="/login" className="hover:text-[var(--text-primary)] transition-colors">{t('welcome_nav_login', lang)}</Link>
+            <Link to="/register" className="hover:text-[var(--text-primary)] transition-colors">{t('welcome_nav_register', lang)}</Link>
           </div>
         </div>
       </footer>

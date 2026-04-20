@@ -46,7 +46,7 @@ export default function ProfileSettingsPage() {
     finally { setPwLoading(false); }
   };
 
-  const roleLabel = { creator: 'Creator / Fondatore', admin: lang === 'en' ? 'Administrator' : 'Amministratore', user: lang === 'en' ? 'User' : 'Utente' };
+  const roleLabel = { creator: 'Founder', admin: lang === 'en' ? 'Administrator' : 'Amministratore', user: lang === 'en' ? 'User' : 'Utente' };
   const clientLabel = { private: lang === 'en' ? 'Individual' : 'Privato', freelancer: lang === 'en' ? 'Freelancer' : 'Libero Professionista', company: lang === 'en' ? 'Company' : 'Azienda' };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A192F]" /></div>;

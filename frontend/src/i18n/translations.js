@@ -255,7 +255,7 @@ const translations = {
   profile_client_type: { it: 'Tipo cliente', en: 'Client type' },
 
   // ─── STATS ACCESS ───
-  stats_access_denied: { it: 'Accesso riservato al creatore', en: 'Creator access only' },
+  stats_access_denied: { it: 'Accesso riservato al fondatore', en: 'Founder access only' },
 };
 
 export function t(key, lang = 'it') {

@@ -114,7 +114,7 @@ export default function CreatorControlRoom() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[8px] px-2 py-[3px] bg-[#0A192F] text-white/80 rounded font-bold uppercase tracking-[0.1em]">Creator</span>
+          <span className="text-[8px] px-2 py-[3px] bg-[#0A192F] text-white/80 rounded font-bold uppercase tracking-[0.1em]">Founder</span>
           <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing} className="rounded-lg gap-1.5 text-[10px] h-7 px-3 border-[var(--border-soft)]" data-testid="father-refresh">
             <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />Aggiorna
           </Button>
@@ -260,7 +260,7 @@ export default function CreatorControlRoom() {
       <div className="py-2 px-3 flex items-center gap-2">
         <Lock className="w-3 h-3 text-[var(--text-muted)]" />
         <p className="text-[8px] text-[var(--text-muted)]">
-          Area riservata al Creator. I dati sono generati in tempo reale.
+          Area riservata al Founder. I dati sono generati in tempo reale.
         </p>
       </div>
     </div>

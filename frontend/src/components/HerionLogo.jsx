@@ -1,50 +1,28 @@
+const LOGO_SRC = '/herion-logo.png';
+
 export function HerionBrand({ size = 32, className = '', showText = false }) {
   return (
-    <div className={`flex items-center gap-2.5 ${className}`} data-testid="herion-brand">
-      <HerionIcon size={size} />
+    <div className={`flex items-center gap-2 ${className}`} data-testid="herion-brand">
+      <img src={LOGO_SRC} alt="Herion" width={size} height={size} className="object-contain" style={{ imageRendering: 'auto' }} />
       {showText && (
-        <div className="flex flex-col leading-none">
-          <span className="text-[14px] font-bold tracking-tight text-[#0ABFCF]">Herion</span>
-          <span className="text-[8px] text-[var(--text-muted)] tracking-wide">Virtual Accountant</span>
-        </div>
+        <span className="text-[15px] font-extrabold tracking-tight text-[#0A192F]">Herion</span>
       )}
     </div>
   );
 }
 
-export function HerionIcon({ size = 28, color = '#0ABFCF' }) {
-  const h = size;
-  const w = Math.round(size * 0.88);
-  return (
-    <svg
-      viewBox="0 0 28 32"
-      width={w}
-      height={h}
-      fill="none"
-      data-testid="herion-logo-icon"
-    >
-      {/* Left pillar — pill-shaped */}
-      <rect x="1" y="1" width="8" height="30" rx="4" fill={color} />
-      {/* Right pillar — pill-shaped */}
-      <rect x="19" y="1" width="8" height="30" rx="4" fill={color} />
-      {/* Bridge — connecting crossbar with subtle rounded ends */}
-      <rect x="9" y="12.5" width="10" height="7" rx="3" fill={color} />
-    </svg>
-  );
+export function HerionIcon({ size = 28 }) {
+  return <img src={LOGO_SRC} alt="H" width={size} height={size} className="object-contain" data-testid="herion-logo-icon" />;
 }
 
 export function HerionMark({ size = 32, className = '' }) {
-  return (
-    <div className={className}>
-      <HerionIcon size={size} />
-    </div>
-  );
+  return <div className={className}><img src={LOGO_SRC} alt="Herion" width={size} height={size} className="object-contain" /></div>;
 }
 
 export function HerionMarkLight({ size = 32, className = '' }) {
-  return (
-    <div className={className}>
-      <HerionIcon size={size} color="rgba(255,255,255,0.5)" />
-    </div>
-  );
+  return <div className={className}><img src={LOGO_SRC} alt="Herion" width={size} height={size} className="object-contain opacity-60" /></div>;
+}
+
+export function HerionHeroLogo({ className = '' }) {
+  return <img src={LOGO_SRC} alt="Herion" className={`object-contain ${className}`} width={80} height={80} />;
 }

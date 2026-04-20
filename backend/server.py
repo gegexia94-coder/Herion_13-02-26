@@ -51,6 +51,11 @@ EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 APP_NAME = "aic-commercialista"
 storage_key = None
 
+# Creator identity constants
+CREATOR_EMAIL = os.environ.get("CREATOR_EMAIL", "gegexia94@gmail.com")
+CREATOR_NAME = os.environ.get("CREATOR_NAME", "Gege-Xia")
+CREATOR_UUID = os.environ.get("CREATOR_UUID", "HERION-CREATOR-001")
+
 def init_storage():
     global storage_key
     if storage_key:
@@ -1761,10 +1766,6 @@ IMPORTANTE: Includi OBBLIGATORIAMENTE questi tag nel testo:
 
 Rispondi SEMPRE in italiano con tono professionale e rassicurante, come un commercialista di fiducia."""
 
-# Creator bootstrap configuration - protected, non-public
-CREATOR_EMAIL = "gegexia94@gmail.com"
-CREATOR_NAME = "Gege-Xia"
-CREATOR_UUID = "HERION-CREATOR-001"
 STATUS_LABELS = {
     # New semantic statuses
     "draft": "Bozza",
